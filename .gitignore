@@ -1,0 +1,4 @@
+.env
+__pycache__/
+*.pyc
+.planning/spikes/*/audit_record.json
