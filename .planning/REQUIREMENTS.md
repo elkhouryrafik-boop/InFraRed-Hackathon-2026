@@ -55,4 +55,25 @@ Scope for the infrared.city Buildathon (Tree Budget track). v1 = what we demo Ma
 
 ## Traceability
 
-<!-- Filled by roadmapper: REQ-ID → Phase -->
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| SDK-01 | Phase 1 — Foundation & SDK Boundary | Pending |
+| SDK-02 | Phase 1 — Foundation & SDK Boundary | Pending |
+| SDK-03 | Phase 1 — Foundation & SDK Boundary | Pending |
+| SPATIAL-01 | Phase 1 — Foundation & SDK Boundary | Pending |
+| SPATIAL-02 | Phase 1 — Foundation & SDK Boundary | Pending |
+| SPATIAL-03 | Phase 1 — Foundation & SDK Boundary | Pending |
+| COST-01 | Phase 1 — Foundation & SDK Boundary | Pending |
+| COST-02 | Phase 1 — Foundation & SDK Boundary | Pending |
+| RULES-01 | Phase 2 — Optimizer Core | Pending |
+| RULES-02 | Phase 2 — Optimizer Core | Pending |
+| OPT-01 | Phase 2 — Optimizer Core | Pending |
+| OPT-02 | Phase 2 — Optimizer Core | Pending |
+| OPT-03 | Phase 2 — Optimizer Core | Pending |
+| DEC-01 | Phase 2 — Optimizer Core | Pending |
+| DEC-02 | Phase 2 — Optimizer Core | Pending |
+| APP-01 | Phase 3 — Web App & Decision UI | Pending |
+| APP-02 | Phase 3 — Web App & Decision UI | Pending |
+| SHIP-01 | Phase 4 — Ship | Pending |
+| SHIP-02 | Phase 4 — Ship | Pending |
+| SHIP-03 | Phase 4 — Ship | Pending |
