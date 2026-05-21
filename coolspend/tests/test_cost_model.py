@@ -340,3 +340,125 @@ class TestDefaultCostTable:
         opex_lines = [l for l in DEFAULT_COST_TABLE.lines if l.kind == "opex"]
         assert len(capex_lines) == 5
         assert len(opex_lines) == 1
+
+
+# ── GrowthDiscountParams + growth_cooling_fraction tests (COST-05 / D-07) ────
+
+from coolspend.cost_model import (  # noqa: E402
+    GrowthDiscountParams,
+    DEFAULT_GROWTH_DISCOUNT,
+    growth_cooling_fraction,
+    discounted_lifetime_degc,
+    discounted_total_cost,
+)
+
+
+class TestGrowthCoolingFraction:
+    """growth_cooling_fraction(year, p) linear ramp from initial to 1.0 (D-07)."""
+
+    def test_initial_fraction_at_year_zero(self) -> None:
+        """growth_cooling_fraction(0, default) == 0.20 (initial_fraction)."""
+        p = DEFAULT_GROWTH_DISCOUNT
+        assert growth_cooling_fraction(0, p) == pytest.approx(0.20)
+
+    def test_full_fraction_at_ramp_years(self) -> None:
+        """growth_cooling_fraction(25, default) == 1.0 (full at ramp_years)."""
+        p = DEFAULT_GROWTH_DISCOUNT
+        assert growth_cooling_fraction(25, p) == pytest.approx(1.0)
+
+    def test_clamped_after_ramp_years(self) -> None:
+        """growth_cooling_fraction(40, default) == 1.0 (clamped beyond ramp)."""
+        p = DEFAULT_GROWTH_DISCOUNT
+        assert growth_cooling_fraction(40, p) == pytest.approx(1.0)
+
+    def test_linear_midpoint(self) -> None:
+        """At year 12.5 (half of 25), fraction == 0.60 (linear: 0.2 + 0.8*0.5)."""
+        p = DEFAULT_GROWTH_DISCOUNT
+        assert growth_cooling_fraction(12.5, p) == pytest.approx(0.60, rel=0.05)
+
+    def test_monotonic_non_decreasing(self) -> None:
+        """growth_cooling_fraction is non-decreasing across years 0..40."""
+        p = DEFAULT_GROWTH_DISCOUNT
+        fracs = [growth_cooling_fraction(y, p) for y in range(41)]
+        for i in range(len(fracs) - 1):
+            assert fracs[i] <= fracs[i + 1], (
+                f"Not monotonic at year {i}: {fracs[i]} > {fracs[i+1]}"
+            )
+
+
+class TestDiscountedLifetimeDegc:
+    """discounted_lifetime_degc is a discounted-weighted average °C (D-10)."""
+
+    def test_strictly_less_than_full_canopy(self) -> None:
+        """Discounted result is strictly < 1.0 (ramp + discount both reduce)."""
+        p = DEFAULT_GROWTH_DISCOUNT
+        result = discounted_lifetime_degc(1.0, p)
+        assert result < 1.0, f"Expected < 1.0 but got {result}"
+
+    def test_strictly_greater_than_initial_fraction(self) -> None:
+        """Discounted result is > 0.20 (it's an average over ramp, not planting-yr only)."""
+        p = DEFAULT_GROWTH_DISCOUNT
+        result = discounted_lifetime_degc(1.0, p)
+        assert result > 0.20, f"Expected > 0.20 but got {result}"
+
+    def test_scales_linearly(self) -> None:
+        """discounted_lifetime_degc(2.0, p) == 2 * discounted_lifetime_degc(1.0, p)."""
+        p = DEFAULT_GROWTH_DISCOUNT
+        result_1 = discounted_lifetime_degc(1.0, p)
+        result_2 = discounted_lifetime_degc(2.0, p)
+        assert result_2 == pytest.approx(2.0 * result_1, rel=1e-6)
+
+
+class TestDiscountedTotalCost:
+    """discounted_total_cost PV(OpEx) is bounded correctly."""
+
+    def test_greater_than_capex_only(self) -> None:
+        """PV of total cost > CapEx alone (OpEx PV is positive)."""
+        p = DEFAULT_GROWTH_DISCOUNT
+        result = discounted_total_cost({"tree_count": 1}, p)
+        from coolspend.cost_model import DEFAULT_COST_TABLE
+        capex = DEFAULT_COST_TABLE.capex_total()
+        assert result > capex, (
+            f"Expected discounted_total_cost > capex={capex}, got {result}"
+        )
+
+    def test_less_than_undiscounted_per_tree_cost(self) -> None:
+        """PV of OpEx over 40yr (discounted) < undiscounted per_tree_cost(40)."""
+        p = DEFAULT_GROWTH_DISCOUNT
+        result = discounted_total_cost({"tree_count": 1}, p)
+        undiscounted = per_tree_cost(40)
+        assert result < undiscounted, (
+            f"Expected discounted ({result}) < undiscounted ({undiscounted})"
+        )
+
+    def test_zero_tree_count_returns_zero(self) -> None:
+        """tree_count=0 returns 0.0 without raising."""
+        p = DEFAULT_GROWTH_DISCOUNT
+        assert discounted_total_cost({"tree_count": 0}, p) == 0.0
+
+    def test_scales_linearly_with_tree_count(self) -> None:
+        """discounted_total_cost scales linearly with tree_count."""
+        p = DEFAULT_GROWTH_DISCOUNT
+        c1 = discounted_total_cost({"tree_count": 1}, p)
+        c5 = discounted_total_cost({"tree_count": 5}, p)
+        assert c5 == pytest.approx(5 * c1, rel=1e-6)
+
+
+class TestGrowthDiscountParams:
+    """GrowthDiscountParams dataclass has correct defaults (D-07/D-08/D-09)."""
+
+    def test_default_ramp_years(self) -> None:
+        """Default ramp_years == 25.0 (D-07)."""
+        assert GrowthDiscountParams().ramp_years == 25.0
+
+    def test_default_initial_fraction(self) -> None:
+        """Default initial_fraction == 0.20 (D-07)."""
+        assert GrowthDiscountParams().initial_fraction == pytest.approx(0.20)
+
+    def test_default_discount_rate(self) -> None:
+        """Default discount_rate == 0.035 (D-08: EU/UK Green Book)."""
+        assert GrowthDiscountParams().discount_rate == pytest.approx(0.035)
+
+    def test_default_horizon_years(self) -> None:
+        """Default horizon_years == 40 (D-09: tree functional lifespan)."""
+        assert GrowthDiscountParams().horizon_years == 40
