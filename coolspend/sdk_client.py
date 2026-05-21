@@ -324,7 +324,25 @@ def _dispatch(metric_key: str, mock_fn, geometry: dict) -> UTCIResult:
     if backend == "cached":
         if cache_file.exists():
             raw = json.loads(cache_file.read_text(encoding="utf-8"))
-            return UTCIResult(**{k: raw[k] for k in UTCIResult.__dataclass_fields__})
+            result = UTCIResult(**{k: raw[k] for k in UTCIResult.__dataclass_fields__})
+            # Audit fix (H-2): label the replayed result as "cached" so provenance
+            # is unambiguous in call logs and UI. Preserve the original backend in
+            # `source` so the origin (mock or live) is still auditable.
+            original_backend = result.backend  # "mock" or "live"
+            result.backend = f"cached:{original_backend}"
+            # Retain "NOT MEASURED DATA" for originally-mock results; add replay note.
+            if "NOT MEASURED DATA" in result.disclaimer:
+                result.disclaimer = (
+                    f"NOT MEASURED DATA — replayed from cache (origin: {original_backend}). "
+                    "Cached mock result; NOT a live measurement."
+                )
+            else:
+                result.disclaimer = (
+                    f"replayed from cache (origin: {original_backend}). "
+                    f"{result.disclaimer}"
+                )
+            result.source = f"cached replay of {original_backend} result — {result.source}"
+            return result
         raise FileNotFoundError(
             f"INFRARED_BACKEND=cached but no cache at {cache_file}"
         )
