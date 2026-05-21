@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Market-Ready CoolSpend
 status: executing
-stopped_at: "Completed 05-02: UTCI-routed KPI with dual units and interval band"
-last_updated: "2026-05-21T17:20:00.000Z"
-last_activity: 2026-05-21 -- Phase 05 Plan 02 execution complete
+stopped_at: "Completed 05-03: Calibration study (RMSE/R2/band + rank stability both ways)"
+last_updated: "2026-05-21T18:00:00.000Z"
+last_activity: 2026-05-21 -- Phase 05 Plan 03 execution complete
 progress:
   total_phases: 9
   completed_phases: 4
@@ -69,6 +69,7 @@ Progress: [████████░░] 78%
 | Phase 04-ship P04-02 | 3m | 3 tasks | 3 files |
 | Phase 05-surrogate-ground-truth-honesty-reset P01 | 15m | 2 tasks | 4 files |
 | Phase 05-surrogate-ground-truth-honesty-reset P02 | 25m | 2 tasks | 2 files |
+| Phase 05-surrogate-ground-truth-honesty-reset P03 | 25m | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -151,8 +152,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-21T16:26:26.291Z
-Stopped at: Completed 05-02: UTCI-routed KPI with dual units and interval band
+Last session: 2026-05-21T18:00:00.000Z
+Stopped at: Completed 05-03: Calibration study (RMSE/R2/band + rank stability both ways)
 Resume file: None
 
 **Planned Phase:** 5 (Surrogate Ground-Truth & Honesty Reset) — 5 plans — 2026-05-21T16:15:19.750Z
