@@ -25,10 +25,10 @@
 | 2 | 0:35 | App input panel, full view | "With the mock backend, every number you see is labelled NOT MEASURED DATA — it is a synthetic placeholder for integration testing. When I switch to the live Infrared backend after May 27, these fields are replaced with real measured values." | Optionally show the backend radio button (mock is selected). |
 | 3 | 0:50 | Click "Run Optimization" | "Let's run it." | Click the **Run Optimization** button. |
 | 4 | 0:55–1:15 | Spinner, then results appear | "The optimizer is running NSGA-II over 12-tree planting coordinates — about 3,600 surrogate evaluations. Zero real API calls in the hot path." | Wait for results. The call-log panel will appear. |
-| 5 | 1:15 | SDK Call Log accordion — expand it | "Here — the SDK call log. You can see the SimBudget guard: exactly three calls to the real Infrared UTCI API for Top-3 validation." | Click to expand the **SDK Call Log** accordion. Point at each call entry. |
-| 6 | 1:30 | Before/after UTCI map panel | "Before and after. The left panel is the open-site baseline UTCI. The right shows the predicted thermal comfort after planting the rank-1 configuration. The surrogate carries a ±4°C uncertainty — but the Top-3 were validated with the real Infrared SDK, so the direction is real." | Let the map sit. Point at the two side-by-side images. |
-| 7 | 1:50 | Ranked allocation table (3 rows) | "Three configs, three labels. MAX THERMAL RELIEF is rank one — the most degrees of cooling per euro. MAX ECOLOGICAL prioritises tree spacing and species diversity. BALANCED sits between them. All three use 12 trees." | Scroll to or expand the ranked table. Highlight the rank-1 row. |
-| 8 | 2:10 | Rank-1 row, cost-per-degree cell highlighted | "The headline KPI: euros per degree Celsius of UTCI relief. On the mock run you'll see approximately 5,957 EUR per degree Celsius — labelled NOT MEASURED DATA. On the live run, read the real number off this cell. That number is Maria's defensible answer." | Point at the cost-per-degree column in the rank-1 row. |
+| 5 | 1:15 | SDK Call Log accordion — expand it | "Here — the SDK call log. You can see the SimBudget guard: exactly three calls to the Infrared UTCI SDK for Top-3 validation. On this mock take, those are mock backend calls — the same code path that fires real API calls when run live with a key." | Click to expand the **SDK Call Log** accordion. Point at each of the three call entries. |
+| 6 | 1:30 | Before/after UTCI map panel | "Before and after. The left panel is the open-site baseline UTCI. The right shows the predicted thermal comfort after planting the rank-1 configuration. These are mock values — labelled NOT MEASURED DATA — but the surrogate trade-off is real and the same framework fires live SDK calls when run with a key." | Let the map sit. Point at the two side-by-side images. |
+| 7 | 1:50 | Ranked allocation table (3 rows) | "Three configs, three genuinely distinct rows. On the mock backend: rank 1 — MAX THERMAL RELIEF at EUR 1,700 per degree Celsius, rank 2 — BALANCED at EUR 2,084/degC, rank 3 — MAX ECOLOGICAL at EUR 3,194/degC. All three use 12 trees. The optimizer found a real trade-off — the evenly-spaced naive grid would cost EUR 14,737/degC — that is 88% cheaper per degree than just scattering trees evenly across the plaza." | Scroll to or expand the ranked table. Point at the three distinct EUR/degC values in the rank column. |
+| 8 | 2:10 | Rank-1 row, cost-per-degree cell highlighted | "The headline KPI: euros per degree Celsius of UTCI relief. On the mock run the rank-1 figure is EUR 1,700/degC — labelled NOT MEASURED DATA and illustrative. On the live run, read the real number off this cell after May 27. That number is Maria's defensible answer." | Point at the cost-per-degree column in the rank-1 row. |
 
 ---
 
@@ -38,7 +38,7 @@
 
 **Narrator says:**
 
-> "The headline number: roughly 5,957 euros per degree Celsius of street-level UTCI relief, for rank-1. That is a declared estimate — the cost constants require verification against municipal procurement data. But the structure is sound and the framework runs on any city polygon.
+> "The headline number on the mock run: EUR 1,700 per degree Celsius of street-level UTCI relief for rank-1 — 88% cheaper per degree than the naive evenly-spaced grid. That is a mock/illustrative estimate — the cost constants require verification against municipal procurement data, and the live number will differ. But the structure is sound: the optimizer finds a real trade-off and the framework runs on any city polygon.
 >
 > Maria can hand this table to a budget committee. District-scale triage, any city, any planting budget. That is CoolSpend."
 

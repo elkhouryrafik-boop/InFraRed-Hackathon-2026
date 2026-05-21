@@ -56,6 +56,34 @@ A heat-mitigation budget decision-support tool: polygon + budget in, ranked tree
 
 ---
 
+---
+
+## Remediation Wave 1 — Optimizer Degeneracy (branch: remediation/optimizer-degeneracy)
+
+*See REMEDIATION-SUMMARY.md for root-cause analysis and full before/after numbers.*
+
+- **Option A — core-weighted thermal coverage** (`spatial_engine.core_weighted_coverage_fraction`): blends a SPREAD term (non-overlapping canopy union ÷ site area) with a CORE-CONCENTRATION term (radial overlap sum weighted by closeness to plaza centre). Creates a genuine thermal↔ecological trade-off so the NSGA-II Pareto front is non-degenerate.
+- **Differentiated ranking (mock backend):** Top-3 €/°C: EUR 1,700 / 2,084 / 3,194 per degC (was: identical). Naive evenly-spaced grid: EUR 14,737/degC. **Optimizer is 88% cheaper per degree of cooling than the naive grid (mock/illustrative; live numbers will differ).**
+- `naive_baseline_config` + `_build_naive_baseline`: honest reference placement for improvement_vs_naive_pct.
+- `select_top3` padding: guarantees exactly 3 entries with deterministic `*_DUP` relabelling on tiny/degenerate fronts.
+- `_result_pop_size`: dead expression fixed.
+- Tests: front-diversity, distinct €/°C, seed determinism, naive-baseline finite improvement, always-3 top3.
+
+---
+
+## Remediation Wave 2 — Honesty + Live-Path + Security (branch: remediation/optimizer-degeneracy)
+
+*6-agent review findings addressed.*
+
+- **Fix 1 — Live baseline crash** (Code Reviewer M-4, HIGH): `validate_top3_with_infrared` and `_build_naive_baseline` previously called `get_baseline_utci({})` — empty dict causes `ValueError` in `_live_utci` (no polygon key). Added `_build_baseline_geometry()` returning real site polygon_lonlat with zero coverage; mock behaviour unchanged (reads only width_m=0 → 41.0 °C). Tests added.
+- **Fix 2 — Cached provenance mislabel** (Code Reviewer H-2): on cache READ, backend is now `'cached:<origin>'` (e.g. `'cached:mock'`), not the original backend string. `'NOT MEASURED DATA'` is preserved for originally-mock cached results; `'replayed from cache'` note added to disclaimer and source. Tests added.
+- **Fix 3 — Honesty relabel** (Reality Checker): MOCKS.md live row changed from `VERIFIED (live)` to `WIRED — UNVERIFIED until real SDK confirmation (May 27)`. README and SUBMISSION live-validation claims made conditional on `INFRARED_BACKEND=live` + API key; reference to "validated in the reference project" for Plaça dels Àngels removed. No architecture description deleted.
+- **Fix 4 — DEMO_SCRIPT numbers updated**: shot 5 — mock take now says "same code path that fires real calls when live", not "real Infrared UTCI API"; shot 7 — updated to the new differentiated EUR 1,700 / 2,084 / 3,194 per degC ranking and +88% vs naive headline; shot 8 and close — EUR 1,700/degC quoted as mock/illustrative (was outdated EUR 5,957). SUBMISSION.md and CHANGELOG real-world impact updated with the new differentiated numbers + honesty caveat.
+- **Fix 5 — app.py traceback to UI** (Security L1): on_submit no longer renders `traceback.format_exc()` to the Gradio banner. Shows generic "An unexpected error occurred — see server logs." User-facing message; full traceback logged server-side via `logger.exception`.
+- **Fix 6 — live call-count documented**: README Live Infrared backend section documents that one Run makes 4 live calls (1 baseline + 3 interventions) and advises env-flag gating + rate limiting on a public Space. No functional change — documented as known limitation.
+
+---
+
 ## Test coverage
 
-Per project records: the offline pytest suite under `coolspend/tests/` reaches 122 tests passing, 1 skipped (infrastructure skip on Windows Gradio launch smoke test) as of Phase 3 completion. All tests are deterministic and offline-capable with no API key required. The test suite covers: SDK dispatch and SimBudget guard, CRS round-trip, shapely collision gate, cost model and KPI, spacing penalty and species diversity, thermal surrogate (including porosity-bug regression pin), live backend via monkeypatched fake SDK, NSGA-II hot-path SDK isolation, Top-3 selection and SimBudget enforcement, TOPSIS ranking, decision artifact JSON schema, pipeline wrapper, before/after map renderer, Gradio Blocks construction, and requirements drift guard.
+Per project records: the offline pytest suite under `coolspend/tests/` reaches 134 tests passing, 1 skipped (infrastructure skip on Windows Gradio launch smoke test) after Wave-2 remediation. All tests are deterministic and offline-capable with no API key required. The test suite covers: SDK dispatch, SimBudget guard, cached provenance labelling (wave-2), CRS round-trip, shapely collision gate, cost model and KPI, spacing penalty and species diversity, thermal surrogate (including porosity-bug regression pin), live backend via monkeypatched fake SDK, NSGA-II hot-path SDK isolation, Top-3 selection and SimBudget enforcement, baseline geometry non-empty (wave-2), TOPSIS ranking, decision artifact JSON schema, pipeline wrapper, before/after map renderer, Gradio Blocks construction, and requirements drift guard.
