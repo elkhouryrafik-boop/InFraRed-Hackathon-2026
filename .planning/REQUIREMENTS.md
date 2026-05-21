@@ -22,8 +22,10 @@ Scope for the infrared.city Buildathon (Tree Budget track). v1 = what we demo Ma
 - [ ] **RULES-02**: Species-diversity score (rewards a resilient mix; e.g. simple Shannon/count).
 
 ### Cost Model
-- [ ] **COST-01**: Per-tree cost = CapEx (planting) + OpEx (maintenance) with documented assumptions.
-- [ ] **COST-02**: Compute the headline KPI: °C of UTCI relief per euro for a configuration.
+- [x] **COST-01
+**: Per-tree cost = CapEx (planting) + OpEx (maintenance) with documented assumptions.
+- [x] **COST-02
+**: Compute the headline KPI: °C of UTCI relief per euro for a configuration.
 
 ### Optimizer
 - [ ] **OPT-01**: NSGA-II (pymoo) over a fixed-length vector of tree coordinates, 2 objectives (thermal relief + ecological coherence) under a budget constraint.
@@ -63,11 +65,11 @@ Scope for the infrared.city Buildathon (Tree Budget track). v1 = what we demo Ma
 | SDK-01 | Phase 1 — Foundation & SDK Boundary | Complete (01-01) |
 | SDK-02 | Phase 1 — Foundation & SDK Boundary | Complete (01-01) |
 | SDK-03 | Phase 1 — Foundation & SDK Boundary | Complete (01-01) |
-| SPATIAL-01 | Phase 1 — Foundation & SDK Boundary | Pending |
-| SPATIAL-02 | Phase 1 — Foundation & SDK Boundary | Pending |
-| SPATIAL-03 | Phase 1 — Foundation & SDK Boundary | Pending |
-| COST-01 | Phase 1 — Foundation & SDK Boundary | Pending |
-| COST-02 | Phase 1 — Foundation & SDK Boundary | Pending |
+| SPATIAL-01 | Phase 1 — Foundation & SDK Boundary | Complete |
+| SPATIAL-02 | Phase 1 — Foundation & SDK Boundary | Complete |
+| SPATIAL-03 | Phase 1 — Foundation & SDK Boundary | Complete |
+| COST-01 | Phase 1 — Foundation & SDK Boundary | Complete |
+| COST-02 | Phase 1 — Foundation & SDK Boundary | Complete |
 | RULES-01 | Phase 2 — Optimizer Core | Pending |
 | RULES-02 | Phase 2 — Optimizer Core | Pending |
 | OPT-01 | Phase 2 — Optimizer Core | Pending |

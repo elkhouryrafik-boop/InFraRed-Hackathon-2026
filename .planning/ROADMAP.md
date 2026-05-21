@@ -6,7 +6,7 @@ Four phases deliver a live hackathon demo: stand up a clean, offline-testable sk
 
 ## Phases
 
-- [ ] **Phase 1: Foundation & SDK Boundary** - Clean repo skeleton, deduplicated SDK client (mock/cached/live + SimBudget), spatial engine, and cost model — all offline-testable before May 27
+- [x] **Phase 1: Foundation & SDK Boundary** - Clean repo skeleton, deduplicated SDK client (mock/cached/live + SimBudget), spatial engine, and cost model — all offline-testable before May 27 (completed 2026-05-21)
 - [ ] **Phase 2: Optimizer Core** - NSGA-II on the surrogate, Top-3 Pareto validation with real/cached UTCI, ranked allocation artifact (requires May 27 API key for live validation path)
 - [ ] **Phase 3: Web App & Decision UI** - Gradio app (polygon + budget in → before/after map + allocation table out), deployed to Hugging Face Spaces with visible API calls
 - [ ] **Phase 4: Ship** - requirements.txt, README with architecture diagram, MOCKS ledger, demo video and submission description
@@ -27,7 +27,7 @@ Four phases deliver a live hackathon demo: stand up a clean, offline-testable sk
   4. `SimBudget` guard raises an error if `_evaluate()` (the NSGA-II hot path) is called with `INFRARED_BACKEND=live` — the live path is only reachable through the explicit `validate_top3_with_infrared()` function
   5. EPSG:4326 ↔ plaza-local-metres conversion is implemented at exactly one boundary and asserted by `test_coordinate_frame.py`
 
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 01-01-PLAN.md — Package skeleton, dedup SDK client (mock|cached|live), SimBudget guard, MOCKS.md seed
@@ -83,7 +83,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & SDK Boundary | 3/3 | Complete | 01-01 2026-05-21, 01-02 2026-05-21, 01-03 2026-05-21 |
+| 1. Foundation & SDK Boundary | 3/3 | Complete    | 2026-05-21 |
 | 2. Optimizer Core | 0/TBD | Not started | - |
 | 3. Web App & Decision UI | 0/TBD | Not started | - |
 | 4. Ship | 0/TBD | Not started | - |
