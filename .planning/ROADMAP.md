@@ -27,7 +27,12 @@ Four phases deliver a live hackathon demo: stand up a clean, offline-testable sk
   4. `SimBudget` guard raises an error if `_evaluate()` (the NSGA-II hot path) is called with `INFRARED_BACKEND=live` — the live path is only reachable through the explicit `validate_top3_with_infrared()` function
   5. EPSG:4326 ↔ plaza-local-metres conversion is implemented at exactly one boundary and asserted by `test_coordinate_frame.py`
 
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Package skeleton, dedup SDK client (mock|cached|live), SimBudget guard, MOCKS.md seed
+- [ ] 01-02-PLAN.md — Spatial engine: GeoJSON site load, is_valid_location collision, single CRS boundary
+- [ ] 01-03-PLAN.md — Cost model: CapEx+OpEx per-tree cost and €/°C KPI
 
 ### Phase 2: Optimizer Core
 **Goal**: Given a site polygon and budget, the pipeline produces a ranked Top-3 Pareto allocation with real (or cached) Infrared UTCI validation and a before/after UTCI delta
@@ -78,7 +83,7 @@ Four phases deliver a live hackathon demo: stand up a clean, offline-testable sk
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & SDK Boundary | 0/TBD | Not started | - |
+| 1. Foundation & SDK Boundary | 0/3 | Not started | - |
 | 2. Optimizer Core | 0/TBD | Not started | - |
 | 3. Web App & Decision UI | 0/TBD | Not started | - |
 | 4. Ship | 0/TBD | Not started | - |
