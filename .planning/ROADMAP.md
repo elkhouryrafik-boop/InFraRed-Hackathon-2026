@@ -9,7 +9,7 @@ Four phases deliver a live hackathon demo: stand up a clean, offline-testable sk
 - [x] **Phase 1: Foundation & SDK Boundary** - Clean repo skeleton, deduplicated SDK client (mock/cached/live + SimBudget), spatial engine, and cost model — all offline-testable before May 27 (completed 2026-05-21)
 - [x] **Phase 2: Optimizer Core** - NSGA-II on the surrogate, Top-3 Pareto validation with real/cached UTCI, ranked allocation artifact (requires May 27 API key for live validation path) (completed 2026-05-21)
 - [x] **Phase 3: Web App & Decision UI** - Gradio app (polygon + budget in → before/after map + allocation table out), deployed to Hugging Face Spaces with visible API calls (completed 2026-05-21)
-- [ ] **Phase 4: Ship** - requirements.txt, README with architecture diagram, MOCKS ledger, demo video and submission description
+- [x] **Phase 4: Ship** - requirements.txt, README with architecture diagram, MOCKS ledger, demo video and submission description (completed 2026-05-21)
 
 ## Phase Details
 
@@ -92,7 +92,7 @@ Plans:
 
 Plans:
 - [x] 04-01-PLAN.md — Verify requirements.txt install (SHIP-01) + augment README with architecture diagram/how-it-works/structure & fix MOCKS link + audit MOCKS.md (SHIP-02) (completed 2026-05-21)
-- [ ] 04-02-PLAN.md — Submission assets: DEMO_SCRIPT.md (shot-by-shot screencast + commands), SUBMISSION.md (four judging axes + links), CHANGELOG.md (SHIP-03)
+- [x] 04-02-PLAN.md — Submission assets: DEMO_SCRIPT.md (shot-by-shot screencast + commands), SUBMISSION.md (four judging axes + links), CHANGELOG.md (SHIP-03) (completed 2026-05-21)
 
 ## Progress
 
@@ -103,4 +103,4 @@ Plans:
 | 1. Foundation & SDK Boundary | 3/3 | Complete    | 2026-05-21 |
 | 2. Optimizer Core | 5/5 | Complete    | 2026-05-21 |
 | 3. Web App & Decision UI | 3/3 | Complete    | 2026-05-21 |
-| 4. Ship | 1/2 | In progress | - |
+| 4. Ship | 2/2 | Complete    | 2026-05-21 |

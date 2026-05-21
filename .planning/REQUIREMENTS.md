@@ -46,9 +46,9 @@ Scope for the infrared.city Buildathon (Tree Budget track). v1 = what we demo Ma
 **: Deployable to Hugging Face Spaces; real API calls visible/loggable in the demo.
 
 ### Ship
-- [ ] **SHIP-01**: `requirements.txt` pinning pymoo 0.6.1, shapely, geojson, numpy, infrared-sdk, gradio.
-- [ ] **SHIP-02**: README with architecture diagram + a MOCKS ledger documenting the surrogate and any unverified data/citations.
-- [ ] **SHIP-03**: 2.5–3 min demo video (live app, real call visible) + short submission description.
+- [x] **SHIP-01**: `requirements.txt` pinning pymoo 0.6.1, shapely, geojson, numpy, infrared-sdk, gradio.
+- [x] **SHIP-02**: README with architecture diagram + a MOCKS ledger documenting the surrogate and any unverified data/citations.
+- [x] **SHIP-03**: 2.5–3 min demo video script (live app, real call visible) + short submission description + changelog.
 
 ## v2 / Deferred
 
@@ -84,6 +84,6 @@ Scope for the infrared.city Buildathon (Tree Budget track). v1 = what we demo Ma
 | DEC-02 | Phase 2 — Optimizer Core | Complete (02-05) |
 | APP-01 | Phase 3 — Web App & Decision UI | Complete (03-02) |
 | APP-02 | Phase 3 — Web App & Decision UI | Complete |
-| SHIP-01 | Phase 4 — Ship | Pending |
-| SHIP-02 | Phase 4 — Ship | Pending |
-| SHIP-03 | Phase 4 — Ship | Pending |
+| SHIP-01 | Phase 4 — Ship | Complete (04-01) |
+| SHIP-02 | Phase 4 — Ship | Complete (04-01) |
+| SHIP-03 | Phase 4 — Ship | Complete (04-02) |
