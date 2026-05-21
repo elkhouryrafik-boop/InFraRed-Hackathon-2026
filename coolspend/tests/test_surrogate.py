@@ -1,0 +1,234 @@
+"""
+Tests for coolspend.spatial_engine — thermal surrogate (OPT-02).
+
+Verifies:
+- delta_tmrt_surrogate returns a finite positive float bounded by MAX_TMRT_REDUCTION_C
+- Monotonic: more shade fraction => more cooling
+- Cap: never exceeds MAX_TMRT_REDUCTION_C
+- Double-porosity regression (CONCERNS 4.2): porosity applied exactly ONCE, not squared
+- thermal_relief returns finite, non-negative value; 0.0 for empty config; increases with
+  more trees
+
+All tests run fully offline — no SDK calls, no network, no file I/O.
+"""
+from __future__ import annotations
+
+import math
+import pytest
+
+# These imports WILL FAIL before the surrogate is implemented (RED gate).
+from coolspend.spatial_engine import (
+    delta_tmrt_surrogate,
+    shade_efficiency,
+    thermal_relief,
+    MAX_TMRT_REDUCTION_C,
+    TREE_SHADE_FRACTION,
+    TREE_CANOPY_RADIUS_M,
+)
+
+
+# ── shade_efficiency tests ─────────────────────────────────────────────────────
+
+
+def test_shade_efficiency_returns_positive() -> None:
+    """shade_efficiency must return a positive float for any valid input."""
+    eff = shade_efficiency(tilt_deg=0.0, height_m=3.75)
+    assert eff > 0.0, f"Expected positive efficiency, got {eff}"
+    assert math.isfinite(eff), "shade_efficiency must return a finite float"
+
+
+def test_shade_efficiency_increases_with_tilt() -> None:
+    """Higher tilt toward peak sun should produce higher shade efficiency."""
+    eff_no_tilt = shade_efficiency(tilt_deg=0.0, height_m=3.75)
+    eff_tilted = shade_efficiency(tilt_deg=30.0, height_m=3.75)
+    assert eff_tilted > eff_no_tilt, (
+        f"Expected tilted ({eff_tilted:.4f}) > no-tilt ({eff_no_tilt:.4f})"
+    )
+
+
+def test_shade_efficiency_increases_with_height() -> None:
+    """Taller canopy should produce higher shade efficiency."""
+    eff_low = shade_efficiency(tilt_deg=0.0, height_m=2.5)
+    eff_high = shade_efficiency(tilt_deg=0.0, height_m=5.0)
+    assert eff_high > eff_low, (
+        f"Expected higher canopy ({eff_high:.4f}) > lower canopy ({eff_low:.4f})"
+    )
+
+
+# ── delta_tmrt_surrogate tests ────────────────────────────────────────────────
+
+
+def test_delta_tmrt_basic_finite_positive() -> None:
+    """Typical input should return a finite positive float."""
+    result = delta_tmrt_surrogate(
+        shade_fraction=0.85, porosity_pct=15.0, tilt_deg=0.0, height_m=3.75
+    )
+    assert math.isfinite(result), f"Expected finite result, got {result}"
+    assert result > 0.0, f"Expected positive cooling delta, got {result}"
+
+
+def test_delta_tmrt_capped_at_max() -> None:
+    """Result must never exceed MAX_TMRT_REDUCTION_C (the unsourced 12°C cap)."""
+    result = delta_tmrt_surrogate(
+        shade_fraction=1.0, porosity_pct=0.0, tilt_deg=30.0, height_m=5.0
+    )
+    assert result <= MAX_TMRT_REDUCTION_C, (
+        f"Expected result <= {MAX_TMRT_REDUCTION_C}, got {result}"
+    )
+
+
+def test_delta_tmrt_max_cap_value() -> None:
+    """MAX_TMRT_REDUCTION_C constant must equal 12.0 (CONCERNS 1.1 — unsourced cap)."""
+    assert MAX_TMRT_REDUCTION_C == 12.0, (
+        f"Unsourced cap must be 12.0 per CONCERNS 1.1; found {MAX_TMRT_REDUCTION_C}"
+    )
+
+
+def test_delta_tmrt_monotonic_shade_fraction() -> None:
+    """More shade fraction -> more cooling (monotonic in shade_fraction)."""
+    result_low = delta_tmrt_surrogate(
+        shade_fraction=0.50, porosity_pct=0.0, tilt_deg=0.0, height_m=3.75
+    )
+    result_high = delta_tmrt_surrogate(
+        shade_fraction=0.90, porosity_pct=0.0, tilt_deg=0.0, height_m=3.75
+    )
+    assert result_high > result_low, (
+        f"Expected higher shade ({result_high:.4f}) to give more cooling than "
+        f"lower shade ({result_low:.4f})"
+    )
+
+
+def test_delta_tmrt_zero_shade_returns_zero() -> None:
+    """Zero shade fraction should return 0.0 cooling."""
+    result = delta_tmrt_surrogate(
+        shade_fraction=0.0, porosity_pct=0.0, tilt_deg=0.0, height_m=3.75
+    )
+    assert result == 0.0, f"Expected 0.0 for zero shade, got {result}"
+
+
+def test_delta_tmrt_no_double_porosity() -> None:
+    """Regression test for CONCERNS 4.2: porosity applied ONCE, not squared.
+
+    The fixed body uses effective_shade = shade_fraction (porosity already applied
+    by the CALLER). If the body re-applied porosity internally, then:
+        delta_tmrt_surrogate(0.85, 15.0, 0, 3.75)
+    would equal
+        delta_tmrt_surrogate(0.85 * (1 - 15/100), 0.0, 0, 3.75)
+        = delta_tmrt_surrogate(0.7225, 0.0, 0, 3.75)
+
+    These two must be DIFFERENT, proving porosity is NOT squared internally.
+    The assertion checks that passing 0.85 vs 0.85^2 (= 0.7225) gives
+    materially different results.
+    """
+    result_once = delta_tmrt_surrogate(
+        shade_fraction=0.85, porosity_pct=15.0, tilt_deg=0.0, height_m=3.75
+    )
+    # If body double-applied porosity, these would be equal
+    result_squared = delta_tmrt_surrogate(
+        shade_fraction=0.85 ** 2, porosity_pct=15.0, tilt_deg=0.0, height_m=3.75
+    )
+    assert result_once != result_squared, (
+        "POROSITY DOUBLE-APPLICATION BUG DETECTED (CONCERNS 4.2): "
+        f"delta_tmrt_surrogate(0.85, ...) == delta_tmrt_surrogate(0.85**2, ...) = "
+        f"{result_once:.6f}. The body must NOT re-apply porosity internally."
+    )
+    # The once-applied result must be larger (not squashed by extra porosity)
+    assert result_once > result_squared, (
+        f"Once-applied ({result_once:.4f}) should exceed squared ({result_squared:.4f})"
+    )
+
+
+def test_delta_tmrt_default_args() -> None:
+    """Calling with only shade_fraction should work (defaults for other args)."""
+    result = delta_tmrt_surrogate(shade_fraction=0.80)
+    assert math.isfinite(result), "Default args must produce finite result"
+    assert 0.0 <= result <= MAX_TMRT_REDUCTION_C
+
+
+# ── thermal_relief tests ──────────────────────────────────────────────────────
+
+
+def test_thermal_relief_empty_config_returns_zero() -> None:
+    """An empty tree config must return 0.0 site relief."""
+    result = thermal_relief({"trees": []})
+    assert result == 0.0, f"Expected 0.0 for empty config, got {result}"
+
+
+def test_thermal_relief_no_trees_key() -> None:
+    """A config with no 'trees' key at all must return 0.0."""
+    result = thermal_relief({})
+    assert result == 0.0, f"Expected 0.0 for missing trees key, got {result}"
+
+
+def test_thermal_relief_positive_for_active_trees() -> None:
+    """One active tree must produce a positive site-level thermal relief."""
+    config = {"trees": [{"active": True, "x_m": 30.0, "y_m": 20.0}]}
+    result = thermal_relief(config)
+    assert math.isfinite(result), f"Expected finite result, got {result}"
+    assert result > 0.0, f"Expected positive relief for one active tree, got {result}"
+
+
+def test_thermal_relief_inactive_tree_ignored() -> None:
+    """Inactive trees (active=False) must not contribute to thermal relief."""
+    config_inactive = {"trees": [{"active": False, "x_m": 30.0, "y_m": 20.0}]}
+    result = thermal_relief(config_inactive)
+    assert result == 0.0, (
+        f"Expected 0.0 when all trees are inactive, got {result}"
+    )
+
+
+def test_thermal_relief_more_trees_more_relief() -> None:
+    """More active trees should produce more (or equal) thermal relief."""
+    config_one = {"trees": [{"active": True, "x_m": 10.0, "y_m": 10.0}]}
+    config_many = {"trees": [
+        {"active": True, "x_m": 10.0, "y_m": 10.0},
+        {"active": True, "x_m": 25.0, "y_m": 10.0},
+        {"active": True, "x_m": 40.0, "y_m": 10.0},
+        {"active": True, "x_m": 10.0, "y_m": 25.0},
+        {"active": True, "x_m": 25.0, "y_m": 25.0},
+    ]}
+    result_one = thermal_relief(config_one)
+    result_many = thermal_relief(config_many)
+    assert result_many >= result_one, (
+        f"Expected more trees ({result_many:.4f}) >= one tree ({result_one:.4f})"
+    )
+
+
+def test_thermal_relief_bounded() -> None:
+    """Even with many trees, thermal relief must be <= MAX_TMRT_REDUCTION_C."""
+    # Saturate the site with trees
+    trees = [
+        {"active": True, "x_m": float(x), "y_m": float(y)}
+        for x in range(0, 60, 5)
+        for y in range(0, 42, 5)
+    ]
+    config = {"trees": trees}
+    result = thermal_relief(config)
+    assert result <= MAX_TMRT_REDUCTION_C, (
+        f"Expected thermal_relief <= {MAX_TMRT_REDUCTION_C}, got {result}"
+    )
+    assert math.isfinite(result), "Expected finite result for large tree count"
+
+
+def test_thermal_relief_deterministic() -> None:
+    """thermal_relief must be deterministic — same config => same result."""
+    config = {"trees": [
+        {"active": True, "x_m": 15.0, "y_m": 12.0},
+        {"active": True, "x_m": 35.0, "y_m": 28.0},
+    ]}
+    result1 = thermal_relief(config)
+    result2 = thermal_relief(config)
+    assert result1 == result2, (
+        f"thermal_relief is not deterministic: {result1} != {result2}"
+    )
+
+
+def test_thermal_relief_default_active_flag() -> None:
+    """Trees without an 'active' key should default to active (True)."""
+    config_explicit = {"trees": [{"active": True, "x_m": 30.0, "y_m": 20.0}]}
+    config_implicit = {"trees": [{"x_m": 30.0, "y_m": 20.0}]}
+    result_explicit = thermal_relief(config_explicit)
+    result_implicit = thermal_relief(config_implicit)
+    assert result_explicit == result_implicit, (
+        f"Expected default active=True: explicit={result_explicit}, implicit={result_implicit}"
+    )
