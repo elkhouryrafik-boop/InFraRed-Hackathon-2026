@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Market-Ready CoolSpend
 status: executing
-stopped_at: "Completed 06-02: growth-horizon discount routed into EUR/degC KPI (COST-05)"
-last_updated: "2026-05-21T18:10:00.000Z"
+stopped_at: "Completed 06-03: editable per-city cost table via Gradio inputs + live KPI recompute (COST-04)"
+last_updated: "2026-05-21T19:00:00.000Z"
 last_activity: 2026-05-21 -- Phase --phase execution started
 progress:
   total_phases: 9
@@ -75,6 +75,7 @@ Progress: [████████░░] 78%
 | Phase 05-surrogate-ground-truth-honesty-reset P05 | 8m | 2 tasks | 7 files |
 | Phase 06-cost-model-credibility P01 | 4 | 3 tasks | 3 files |
 | Phase 06-cost-model-credibility P02 | 20m | 2 tasks | 2 files |
+| Phase 06-cost-model-credibility P03 | 20m | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -141,6 +142,7 @@ Recent decisions affecting current work:
 - DEFAULT_COST_TABLE: CapEx=3000 EUR/tree (5 itemized lines), OpEx=180 EUR/tree/yr; label='illustrative European mid-range — verify locally'
 - 06-02: cost_per_utci_degree routes denominator through discounted_lifetime_degc() (25yr linear ramp, 3.5% discount, 40yr horizon) and numerator through discounted_total_cost() (PV of OpEx); growth_discount=None default preserves backward compat; optimizer total_cost() path unchanged
 - 06-02: new param-echo keys (discount_rate, ramp_years, horizon_years, growth_note) additive — no Phase 5 key removed from result dict
+- 06-03: load_cost_table/cost_table_from_dict fail-open to DEFAULT_* on missing/invalid JSON; on_submit receives cost+gd inputs as *varargs; Stage 4b in _run_pipeline recomputes KPI post-topsis_rank when non-None; optimizer total_cost() path unchanged
 
 ### Pending Todos
 
@@ -167,8 +169,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-21T18:10:00.000Z
-Stopped at: Completed 06-02: growth-horizon discount routed into EUR/degC KPI (COST-05)
+Last session: 2026-05-21T19:00:00.000Z
+Stopped at: Completed 06-03: editable per-city cost table via Gradio inputs + live KPI recompute (COST-04)
 Resume file: None
 
 **Planned Phase:** 6 (Cost-Model Credibility) — 3 plans — 2026-05-21T17:42:27.847Z
