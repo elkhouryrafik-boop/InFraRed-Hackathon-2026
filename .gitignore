@@ -4,5 +4,6 @@ __pycache__/
 .planning/spikes/*/audit_record.json
 coolspend/outputs/
 coolspend/cache/
+outputs/
 .venv/
 *.egg-info/
