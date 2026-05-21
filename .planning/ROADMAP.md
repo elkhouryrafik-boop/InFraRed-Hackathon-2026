@@ -88,7 +88,11 @@ Plans:
   3. MOCKS ledger in README lists every surrogate, mock value, and DECLARED/PENDING data item (at minimum: `delta_tmrt_surrogate` ±4°C uncertainty, `MAX_TMRT_REDUCTION=12°C` unsourced cap, TOPSIS weights as user-adjustable)
   4. The demo video (2.5–3 min) shows the live Gradio app, a real Infrared API call completing visibly, and the ranked allocation output — uploaded and linked from the submission description
 
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+- [x] 04-01-PLAN.md — Verify requirements.txt install (SHIP-01) + augment README with architecture diagram/how-it-works/structure & fix MOCKS link + audit MOCKS.md (SHIP-02) (completed 2026-05-21)
+- [ ] 04-02-PLAN.md — Submission assets: DEMO_SCRIPT.md (shot-by-shot screencast + commands), SUBMISSION.md (four judging axes + links), CHANGELOG.md (SHIP-03)
 
 ## Progress
 
@@ -99,4 +103,4 @@ Plans:
 | 1. Foundation & SDK Boundary | 3/3 | Complete    | 2026-05-21 |
 | 2. Optimizer Core | 5/5 | Complete    | 2026-05-21 |
 | 3. Web App & Decision UI | 3/3 | Complete    | 2026-05-21 |
-| 4. Ship | 0/TBD | Not started | - |
+| 4. Ship | 1/2 | In progress | - |
