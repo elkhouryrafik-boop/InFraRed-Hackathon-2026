@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: in_progress
-stopped_at: Completed 03-02-PLAN.md — Gradio Blocks UI (app.py + test_app.py), 102 tests green, APP-01 delivered
-last_updated: "2026-05-21T01:48:22Z"
+status: executing
+stopped_at: Completed 03-03-PLAN.md — requirements.txt pinned, README Spaces header, 15+122 tests green, APP-02 deploy-ready
+last_updated: "2026-05-21T01:55:56.204Z"
 last_activity: 2026-05-21
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 11
-  completed_plans: 9
-  percent: 38
+  completed_plans: 11
+  percent: 100
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-21)
 ## Current Position
 
 Phase: 03
-Plan: 02 complete, 03 next
+Plan: 03 complete, Phase 03 done — Phase 04 next
 Status: In progress
 Last activity: 2026-05-21
 
-Progress: [█████████░] 90% (Phase 02 complete + Phase 03 Plan 01 complete)
+Progress: [█████████░] 95% (Phase 03 complete — requirements.txt, README, deploy-ready)
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Progress: [█████████░] 90% (Phase 02 complete + Phase 03 Pla
 | Phase 02-optimizer-core P02-05 | 25m | 3 tasks | 6 files |
 | Phase 03-web-app-decision-ui P03-01 | 5m | 2 tasks | 4 files |
 | Phase 03-web-app-decision-ui P03-02 | 4m | 2 tasks | 2 files |
+| Phase 03-web-app-decision-ui P03-03 | 8m | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -109,6 +110,8 @@ Recent decisions affecting current work:
 - 03-02: build_demo() factory separates Blocks construction from launch — tests import without side effects
 - 03-02: gradio 4.44.1 requires huggingface_hub <1.0 (HfFolder removed in 1.x) — pinned to 0.36.2
 - 03-02: test_headless_launch_smoke skips on httpx.ConnectError (Gradio 4.x health-check ping fails on Windows with server_port=0)
+- 03-03: huggingface_hub==0.36.2 pin required for gradio 4.44.1 (HfFolder removed in 1.x)
+- 03-03: app_file: coolspend/app.py in HF Spaces header — no root shim needed
 
 ### Pending Todos
 
@@ -131,8 +134,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-21T11:00:00.000Z
-Stopped at: Completed 03-01-PLAN.md — app_pipeline.run_decision + app_viz.render_before_after, 99 tests green, APP-01 call-log capture
+Last session: 2026-05-21T01:55:56.193Z
+Stopped at: Completed 03-03-PLAN.md — requirements.txt pinned, README Spaces header, 15+122 tests green, APP-02 deploy-ready
 Resume file: None
 
 **Planned Phase:** 1 (Foundation & SDK Boundary) — 3 plans — 2026-05-21T00:07:58.203Z

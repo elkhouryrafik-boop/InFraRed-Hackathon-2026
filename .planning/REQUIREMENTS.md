@@ -42,7 +42,8 @@ Scope for the infrared.city Buildathon (Tree Budget track). v1 = what we demo Ma
 
 ### Web App
 - [x] **APP-01**: Gradio app takes a polygon + budget and returns the allocation table + before/after map.
-- [ ] **APP-02**: Deployable to Hugging Face Spaces; real API calls visible/loggable in the demo.
+- [x] **APP-02
+**: Deployable to Hugging Face Spaces; real API calls visible/loggable in the demo.
 
 ### Ship
 - [ ] **SHIP-01**: `requirements.txt` pinning pymoo 0.6.1, shapely, geojson, numpy, infrared-sdk, gradio.
