@@ -1,0 +1,65 @@
+{
+  "label": "illustrative European mid-range — verify locally",
+  "lines": [
+    {
+      "key": "tree_stock",
+      "label": "Tree stock (large-caliper nursery)",
+      "value": 900.0,
+      "unit": "EUR/tree",
+      "kind": "capex",
+      "source": "Australian street-tree lifetime cost models (whole-life €/$2,800–5,300/tree range); large-caliper nursery stock portion",
+      "confidence": "DECLARED"
+    },
+    {
+      "key": "pit_excavation",
+      "label": "Pit excavation and preparation",
+      "value": 450.0,
+      "unit": "EUR/tree",
+      "kind": "capex",
+      "source": "reviewer-cited fully-loaded CapEx synthesis (NYC ~$3,300/tree, region US — PENDING EU confirmation)",
+      "confidence": "PENDING"
+    },
+    {
+      "key": "structural_soil",
+      "label": "Structural soil / soil cells (installed)",
+      "value": 750.0,
+      "unit": "EUR/tree",
+      "kind": "capex",
+      "source": "structural soil / soil cells ~$79.5/yd³ installed (3-review synthesis)",
+      "confidence": "DECLARED"
+    },
+    {
+      "key": "guarding",
+      "label": "Guarding, staking, and irrigation rig",
+      "value": 300.0,
+      "unit": "EUR/tree",
+      "kind": "capex",
+      "source": "guarding/staking/irrigation rig — illustrative European mid-range",
+      "confidence": "DECLARED"
+    },
+    {
+      "key": "planting_labour",
+      "label": "Planting labour",
+      "value": 600.0,
+      "unit": "EUR/tree",
+      "kind": "capex",
+      "source": "planting labour portion of Australian lifetime cost models",
+      "confidence": "DECLARED"
+    },
+    {
+      "key": "annual_opex",
+      "label": "Annual maintenance (watering, pruning, inspection)",
+      "value": 180.0,
+      "unit": "EUR/tree/yr",
+      "kind": "opex",
+      "source": "Boston ~$900/tree/yr OpEx anchor (reviewer-cited, US, PENDING EU) scaled to EU mid-range; pruning = 28–30% of municipal tree budgets",
+      "confidence": "PENDING"
+    }
+  ],
+  "growth_discount": {
+    "ramp_years": 25.0,
+    "initial_fraction": 0.20,
+    "discount_rate": 0.035,
+    "horizon_years": 40
+  }
+}

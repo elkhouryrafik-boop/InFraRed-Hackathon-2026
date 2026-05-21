@@ -92,8 +92,14 @@ Key functions:
 """
 from __future__ import annotations
 
+import json
+import logging
+import warnings
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
+
+_log = logging.getLogger(__name__)
 
 # ── Confidence constants ──────────────────────────────────────────────────────
 HIGH = "HIGH"
@@ -348,6 +354,205 @@ DEFAULT_GROWTH_DISCOUNT: "GrowthDiscountParams" = GrowthDiscountParams()
 # growth_discount=None (backward-compat default).
 
 
+# ── JSON config helpers (COST-04 / D-05) — load + validate ───────────────────
+
+_VALID_CONFIDENCE = {"VERIFIED", "DECLARED", "PENDING"}
+_REQUIRED_LINE_KEYS = {"key", "label", "value", "unit", "kind", "source", "confidence"}
+_VALID_KINDS = {"capex", "opex"}
+
+_DEFAULT_CONFIG_PATH = Path(__file__).parent / "cost_config.json"
+
+
+def cost_table_from_dict(d: dict) -> "tuple[CostTable, GrowthDiscountParams]":
+    """Build a CostTable + GrowthDiscountParams from a parsed JSON dict.
+
+    Falls back to DEFAULT_COST_TABLE / DEFAULT_GROWTH_DISCOUNT for any
+    missing or malformed field (fail-open — D-05 / T-06-07).
+
+    Validates:
+      - Each line has all required keys: key, label, value, unit, kind, source, confidence
+      - confidence in {VERIFIED, DECLARED, PENDING}
+      - value is a finite positive number (negative/zero gets replaced with default)
+      - kind in {capex, opex}
+
+    Parameters
+    ----------
+    d : dict  Parsed JSON dict (from cost_config.json or user-edited dict).
+
+    Returns
+    -------
+    (CostTable, GrowthDiscountParams)  Validated pair; any missing/invalid
+    fields fall back to DEFAULT_COST_TABLE / DEFAULT_GROWTH_DISCOUNT values.
+    """
+    # Build a lookup from the default table so we can fall back per-line
+    default_by_key = {line.key: line for line in DEFAULT_COST_TABLE.lines}
+
+    raw_lines = d.get("lines", [])
+    built_lines: list[CostLine] = []
+
+    for i, raw in enumerate(raw_lines):
+        if not isinstance(raw, dict):
+            _log.warning("cost_table_from_dict: line[%d] is not a dict — skipping", i)
+            continue
+
+        missing = _REQUIRED_LINE_KEYS - raw.keys()
+        if missing:
+            _log.warning(
+                "cost_table_from_dict: line[%d] missing keys %s — skipping", i, missing
+            )
+            continue
+
+        key = str(raw["key"])
+        label = str(raw["label"])
+        source = str(raw["source"])
+
+        # confidence validation (T-06-07)
+        confidence = str(raw["confidence"])
+        if confidence not in _VALID_CONFIDENCE:
+            _log.warning(
+                "cost_table_from_dict: line '%s' confidence '%s' not in %s — "
+                "falling back to default line",
+                key, confidence, _VALID_CONFIDENCE,
+            )
+            if key in default_by_key:
+                built_lines.append(default_by_key[key])
+                continue
+            confidence = "DECLARED"  # safe fallback if key not in defaults
+
+        # kind validation
+        kind = str(raw["kind"])
+        if kind not in _VALID_KINDS:
+            _log.warning(
+                "cost_table_from_dict: line '%s' kind '%s' not in %s — skipping",
+                key, kind, _VALID_KINDS,
+            )
+            continue
+
+        # value validation: must be a finite positive number
+        try:
+            value = float(raw["value"])
+        except (TypeError, ValueError):
+            _log.warning(
+                "cost_table_from_dict: line '%s' value %r is not numeric — "
+                "falling back to default",
+                key, raw["value"],
+            )
+            value = default_by_key[key].value if key in default_by_key else 0.0
+
+        if value <= 0:
+            _log.warning(
+                "cost_table_from_dict: line '%s' value %.4f is non-positive — "
+                "falling back to default",
+                key, value,
+            )
+            value = default_by_key[key].value if key in default_by_key else 0.0
+
+        unit = str(raw["unit"])
+
+        built_lines.append(
+            CostLine(
+                key=key,
+                label=label,
+                value=value,
+                unit=unit,
+                kind=kind,
+                source=source,
+                confidence=confidence,
+            )
+        )
+
+    # If no lines were successfully parsed, fall back entirely to defaults
+    if not built_lines:
+        _log.warning(
+            "cost_table_from_dict: no valid lines parsed — returning DEFAULT_COST_TABLE"
+        )
+        built_lines = list(DEFAULT_COST_TABLE.lines)
+
+    table_label = d.get("label", DEFAULT_COST_TABLE.label)
+    cost_table = CostTable(lines=built_lines, label=str(table_label))
+
+    # ── GrowthDiscountParams ────────────────────────────────────────────────────
+    raw_gd = d.get("growth_discount", {})
+    if not isinstance(raw_gd, dict):
+        raw_gd = {}
+
+    def _float_or(val, default: float) -> float:
+        try:
+            result = float(val)
+            return result if result > 0 else default
+        except (TypeError, ValueError):
+            return default
+
+    def _int_or(val, default: int) -> int:
+        try:
+            result = int(float(val))
+            return result if result > 0 else default
+        except (TypeError, ValueError):
+            return default
+
+    gd = GrowthDiscountParams(
+        ramp_years=_float_or(raw_gd.get("ramp_years"), DEFAULT_GROWTH_DISCOUNT.ramp_years),
+        initial_fraction=_float_or(
+            raw_gd.get("initial_fraction"), DEFAULT_GROWTH_DISCOUNT.initial_fraction
+        ),
+        discount_rate=_float_or(raw_gd.get("discount_rate"), DEFAULT_GROWTH_DISCOUNT.discount_rate),
+        horizon_years=_int_or(raw_gd.get("horizon_years"), DEFAULT_GROWTH_DISCOUNT.horizon_years),
+    )
+
+    return cost_table, gd
+
+
+def load_cost_table(path: str | None = None) -> "tuple[CostTable, GrowthDiscountParams]":
+    """Load coolspend/cost_config.json (or *path*) and return (CostTable, GrowthDiscountParams).
+
+    Fail-open: on missing or invalid file, logs a warning and returns
+    (DEFAULT_COST_TABLE, DEFAULT_GROWTH_DISCOUNT) — never raises (D-05 / T-06-08).
+
+    Parameters
+    ----------
+    path : str | None
+        Path to a JSON config file.  If None, uses the bundled
+        ``cost_config.json`` next to this module file.
+
+    Returns
+    -------
+    (CostTable, GrowthDiscountParams)
+    """
+    config_path = Path(path) if path is not None else _DEFAULT_CONFIG_PATH
+    try:
+        text = config_path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        _log.warning(
+            "load_cost_table: config file not found at '%s' — using DEFAULT_COST_TABLE",
+            config_path,
+        )
+        return DEFAULT_COST_TABLE, DEFAULT_GROWTH_DISCOUNT
+    except OSError as exc:
+        _log.warning(
+            "load_cost_table: cannot read '%s' (%s) — using DEFAULT_COST_TABLE",
+            config_path, exc,
+        )
+        return DEFAULT_COST_TABLE, DEFAULT_GROWTH_DISCOUNT
+
+    try:
+        d = json.loads(text)
+    except json.JSONDecodeError as exc:
+        _log.warning(
+            "load_cost_table: invalid JSON in '%s' (%s) — using DEFAULT_COST_TABLE",
+            config_path, exc,
+        )
+        return DEFAULT_COST_TABLE, DEFAULT_GROWTH_DISCOUNT
+
+    if not isinstance(d, dict):
+        _log.warning(
+            "load_cost_table: JSON root in '%s' is not an object — using DEFAULT_COST_TABLE",
+            config_path,
+        )
+        return DEFAULT_COST_TABLE, DEFAULT_GROWTH_DISCOUNT
+
+    return cost_table_from_dict(d)
+
+
 # ── Growth-ramp + discount functions (COST-05 / D-07..D-10) ──────────────────
 
 def growth_cooling_fraction(year: float, p: GrowthDiscountParams) -> float:
@@ -410,7 +615,11 @@ def discounted_lifetime_degc(full_canopy_degc: float, p: GrowthDiscountParams) -
     return full_canopy_degc * (total_weight / total_disc)
 
 
-def discounted_total_cost(config: dict, p: GrowthDiscountParams) -> float:
+def discounted_total_cost(
+    config: dict,
+    p: GrowthDiscountParams,
+    cost_table: "CostTable | None" = None,
+) -> float:
     """
     Present value of the full lifecycle cost for all trees in *config*.
 
@@ -423,8 +632,11 @@ def discounted_total_cost(config: dict, p: GrowthDiscountParams) -> float:
 
     Parameters
     ----------
-    config : dict  Must contain tree_count.
-    p      : GrowthDiscountParams
+    config      : dict  Must contain tree_count.
+    p           : GrowthDiscountParams
+    cost_table  : CostTable | None
+        Edited cost table to use for the KPI numerator.  If None, falls back
+        to DEFAULT_COST_TABLE (backward-compat — D-15 / COST-04).
 
     Returns
     -------
@@ -433,9 +645,10 @@ def discounted_total_cost(config: dict, p: GrowthDiscountParams) -> float:
     tree_count = int(config.get("tree_count", 0))
     if tree_count <= 0:
         return 0.0
-    capex = DEFAULT_COST_TABLE.capex_total()  # year-0, undiscounted
+    ct = cost_table if cost_table is not None else DEFAULT_COST_TABLE
+    capex = ct.capex_total()  # year-0, undiscounted
     opex_pv = sum(
-        DEFAULT_COST_TABLE.opex_per_year() / (1.0 + p.discount_rate) ** y
+        ct.opex_per_year() / (1.0 + p.discount_rate) ** y
         for y in range(p.horizon_years)
     )
     return tree_count * (capex + opex_pv)
@@ -478,6 +691,7 @@ def cost_per_utci_degree(  # noqa: C901 (complexity OK — linear decision tree)
     config: dict[str, Any],
     band_c: float | None = None,
     growth_discount: "GrowthDiscountParams | None" = None,
+    cost_table: "CostTable | None" = None,
 ) -> dict[str, Any]:
     """
     Return the headline euro-per-degC KPI for *config* as a standard metric dict.
@@ -530,6 +744,11 @@ def cost_per_utci_degree(  # noqa: C901 (complexity OK — linear decision tree)
         uses DEFAULT_GROWTH_DISCOUNT (ramp_years=25, initial_fraction=0.20,
         discount_rate=3.5%, horizon_years=40).  Pass a custom instance to
         override any parameter (Plan 06-03 / COST-04 exposes these via Gradio).
+    cost_table : CostTable | None
+        Edited per-city cost table (COST-04 / D-05).  When supplied, both
+        the CapEx and OpEx from this table are used in the KPI numerator
+        (via discounted_total_cost).  When None, falls back to DEFAULT_COST_TABLE
+        (backward-compat — existing callers unchanged).
 
     Zero / negative delta guard (T-01-10 / Rule 6 honest framing):
         If the UTCI-hours reduction is None, zero, or negative (no comfort gain),
@@ -545,6 +764,8 @@ def cost_per_utci_degree(  # noqa: C901 (complexity OK — linear decision tree)
     """
     # ── Growth-discount params ─────────────────────────────────────────────────
     gd: GrowthDiscountParams = growth_discount if growth_discount is not None else DEFAULT_GROWTH_DISCOUNT
+    # ── Cost table (COST-04 / D-05) — None → DEFAULT_COST_TABLE (backward compat)
+    ct: CostTable = cost_table if cost_table is not None else DEFAULT_COST_TABLE
 
     # ── Band setup ─────────────────────────────────────────────────────────────
     if band_c is None:
@@ -658,7 +879,9 @@ def cost_per_utci_degree(  # noqa: C901 (complexity OK — linear decision tree)
     # Numerator: present value of lifecycle cost (discounted OpEx, D-08).
     # NOTE: total_cost() (nominal, no discounting) is preserved for the
     # optimizer's NSGA-II budget constraint — do NOT change that path.
-    cost = discounted_total_cost(config, gd)
+    # Pass ct (edited or default CostTable) so the KPI numerator uses the
+    # same table as the Gradio inputs (COST-04 / D-05).
+    cost = discounted_total_cost(config, gd, cost_table=ct)
     value = round(cost / degc_drop, 2)
 
     # Interval propagation: band on °C drop (D-10)
@@ -701,8 +924,8 @@ def cost_per_utci_degree(  # noqa: C901 (complexity OK — linear decision tree)
         "Both units: EUR/degC (primary) and EUR/annual-UTCI-hour (secondary, D-09). "
         "Interval is never a bare point estimate (D-10/VALID-04). "
         "Cost uses itemized fully-loaded lifecycle CostTable (Phase 6 / COST-03): "
-        f"CapEx={CAPEX_PER_TREE_EUR:.0f} EUR/tree, OpEx={OPEX_PER_TREE_YEAR_EUR:.0f} EUR/tree/yr "
-        f"over {OPEX_HORIZON_YEARS} yr horizon (DECLARED/PENDING — illustrative European mid-range, verify locally). "
+        f"CapEx={ct.capex_total():.0f} EUR/tree, OpEx={ct.opex_per_year():.0f} EUR/tree/yr "
+        f"over {gd.horizon_years} yr horizon (DECLARED/PENDING — illustrative European mid-range, verify locally). "
         f"{growth_note}"
     )
 
