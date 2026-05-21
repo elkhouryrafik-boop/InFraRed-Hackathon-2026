@@ -62,12 +62,16 @@ from coolspend.spatial_engine import DEFAULT_SITE
 _DEFAULT_POLYGON_TEXT: str = Path(DEFAULT_SITE).read_text(encoding="utf-8")
 
 # ── Table headers ─────────────────────────────────────────────────────────────
+# D-15: surface the KPI interval [lo, hi] + band_source; never a bare point estimate.
+# Dual unit: primary EUR/degC + secondary EUR/UTCI-hr (D-09).
 _TABLE_HEADERS = [
     "Rank",
     "Label",
     "Trees",
     "Cost EUR",
-    "EUR/degC",
+    "EUR/degC [lo–hi]",
+    "EUR/UTCI-hr",
+    "Band source",
     "delta UTCI degC",
     "TOPSIS",
     "Provenance",
@@ -152,12 +156,31 @@ def on_submit(
         img_path = None
         banner_md += f"\n\n_Warning: Could not render before/after map: {exc}_"
 
-    # Allocation table rows
+    # Allocation table rows — D-15: always show interval [lo,hi] + band_source,
+    # never a bare point estimate. Dual unit: EUR/degC (primary) + EUR/UTCI-hr (D-09).
     table_rows = []
     for cfg in result.get("configurations", []):
         kpi = cfg.get("cost_per_utci_degree", {})
-        kpi_val = kpi.get("value") if isinstance(kpi, dict) else None
-        eur_per_deg = f"{kpi_val:.2f}" if kpi_val is not None else "N/A"
+        if not isinstance(kpi, dict):
+            kpi = {}
+
+        # Primary KPI: EUR/degC as interval [lo–hi] (D-10 / D-15)
+        kpi_val = kpi.get("value")
+        value_lo = kpi.get("value_lo")
+        value_hi = kpi.get("value_hi")
+        if kpi_val is not None:
+            lo_str = f"{value_lo:.2f}" if value_lo is not None else "?"
+            hi_str = f"{value_hi:.2f}" if value_hi is not None else "∞"
+            eur_per_deg = f"{kpi_val:.2f} [{lo_str}–{hi_str}]"
+        else:
+            eur_per_deg = "N/A"
+
+        # Secondary KPI: EUR per annual UTCI-hour reduced (D-09)
+        cost_per_utci_hour = kpi.get("cost_per_utci_hour")
+        eur_per_hour = f"{cost_per_utci_hour:.2f}" if cost_per_utci_hour is not None else "N/A"
+
+        # Band source label (D-15 — reads from KPI dict, never hardcoded)
+        band_source = kpi.get("band_source", "")
 
         # Provenance: per-row disclaimer (truncated to 60 chars to fit column)
         provenance_full = cfg.get("disclaimer", cfg.get("validated_disclaimer", ""))
@@ -169,6 +192,8 @@ def on_submit(
             cfg.get("tree_count", 0),
             f"{cfg.get('cost_eur', 0.0):,.0f}",
             eur_per_deg,
+            eur_per_hour,
+            band_source,
             f"{cfg.get('delta_utci_c', 0.0):.3f}",
             f"{cfg.get('topsis_score', 0.0):.4f}",
             provenance,
