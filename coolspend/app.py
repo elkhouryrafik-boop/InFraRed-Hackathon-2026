@@ -265,4 +265,12 @@ def build_demo() -> gr.Blocks:
 demo = build_demo()
 
 if __name__ == "__main__":
-    demo.launch()
+    import os
+
+    # Configurable launch. If loopback is blocked in your environment, set
+    # GRADIO_SHARE=1 to get a temporary public link instead.
+    demo.launch(
+        server_name=os.environ.get("GRADIO_SERVER_NAME", "127.0.0.1"),
+        server_port=int(os.environ.get("GRADIO_SERVER_PORT", "7860")),
+        share=os.environ.get("GRADIO_SHARE", "").lower() in ("1", "true", "yes"),
+    )
