@@ -10,6 +10,24 @@ It is a clean extraction of the proven optimization + simulation pieces from a p
 
 Given a polygon and a budget, output a defensible **ranked tree-planting allocation maximizing UTCI relief per euro** — and prove it with a real Infrared UTCI before/after on the top picks. If everything else fails, this must work.
 
+## Current Milestone: v2.0 Market-Ready CoolSpend
+
+**Goal:** Convert the hackathon prototype from a credible *framework* into a defensible *product* — ground-truth the model, fix the cost denominator, ingest real multi-site geometry, and reframe from "trees only" to a multi-intervention urban-heat **budget allocator** positioned as an optimization + grant-compliance layer on top of city GIS.
+
+**Why now (3-review synthesis, 2026-05-21):** Three independent reviews (market, product, science — see `docs/review/`) converged: the headline KPI is currently *assumption ÷ assumption*; the surrogate optimizes ΔTmrt but sells "UTCI relief" (unit substitution); the cost model is ~10× too low; and the trees-only framing competes with free incumbents (i-Tree, Boston Right-Place-Right-Tree). The durable moat is the honesty contract + the surrogate-optimize-then-validate loop. Full direction in `docs/review/SYNTHESIS-market-ready.md`.
+
+**Target features:**
+- **Validation (keystone):** surrogate-vs-Infrared calibration study across varied configs; Tmrt→UTCI conversion; €/°C as an uncertainty interval; single CRS end-to-end.
+- **Cost credibility:** fully-loaded, sourced, per-city-configurable lifecycle cost with growth-horizon discounting.
+- **Real geometry & multi-site:** OSM/cadastre ingestion; footprint/footway collision; N-site data model.
+- **Multi-intervention allocator:** intervention type as a parameter (trees + cool roofs as the v2 proof pair); allocate one budget across types by €/°C.
+- **District/portfolio triage:** rank N sites citywide; equity weighting for heat-vulnerable areas.
+- **Workflow integration:** GeoPackage/Shapefile + procurement-cost export; GIS layer interop.
+- **Grant-compliance packaging:** allocation appendix mapped to EU LIFE / European Urban Initiative reporting.
+- **Defensibility:** per-run audit manifest; stakeholder-elicited weights; honesty relabeling (align CONCEPT_REPORT down, re-anchor citations, scope-out unmodeled siting constraints).
+
+**Keystone first:** the surrogate ground-truth study (VALID-01/02/03) is the existential test — if surrogate rankings don't hold against measured UTCI, the product is wrong. Everything else is downstream.
+
 ## Requirements
 
 ### Validated
@@ -89,4 +107,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-21 after initialization*
+*Last updated: 2026-05-21 — milestone v2.0 (Market-Ready CoolSpend) started*

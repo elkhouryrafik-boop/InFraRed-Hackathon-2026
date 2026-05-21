@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: milestone_complete
-stopped_at: Completed 04-02-PLAN.md — DEMO_SCRIPT.md, SUBMISSION.md, CHANGELOG.md created; submission assets ready
+milestone: v2.0
+milestone_name: Market-Ready CoolSpend
+status: defining_requirements
+stopped_at: Milestone v2.0 started — requirements defined, roadmap pending
 last_updated: "2026-05-21T02:15:37Z"
 last_activity: 2026-05-21
 progress:
-  total_phases: 4
-  completed_phases: 5
-  total_plans: 13
-  completed_plans: 13
-  percent: 125
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-21)
 
 **Core value:** Given a polygon and a budget, output a defensible ranked tree-planting allocation maximizing UTCI relief per euro — proved with a real Infrared UTCI before/after on the top picks
-**Current focus:** Phase --phase — 1
+**Current focus:** Milestone v2.0 — Market-Ready CoolSpend (defining requirements → roadmap)
 
 ## Current Position
 
-Phase: 4
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-05-21
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-21 — Milestone v2.0 started
 
-Progress: [██████████] 100% (Phase 04 complete — DEMO_SCRIPT.md, SUBMISSION.md, CHANGELOG.md shipped)
+Progress: v1.0 complete (4 phases / 13 plans, hackathon submission shipped). v2.0 scoping in progress — seeded by 3-review synthesis in docs/review/.
 
 ## Performance Metrics
 
