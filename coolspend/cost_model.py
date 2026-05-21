@@ -477,6 +477,7 @@ def total_cost(config: dict[str, Any]) -> float:
 def cost_per_utci_degree(  # noqa: C901 (complexity OK — linear decision tree)
     config: dict[str, Any],
     band_c: float | None = None,
+    growth_discount: "GrowthDiscountParams | None" = None,
 ) -> dict[str, Any]:
     """
     Return the headline euro-per-degC KPI for *config* as a standard metric dict.
@@ -505,6 +506,13 @@ def cost_per_utci_degree(  # noqa: C901 (complexity OK — linear decision tree)
         The same proportional band is applied to cost_per_utci_hour_lo/hi via
         HOURS_PER_DEGC_REF scaling.
 
+    Growth-horizon discount (COST-05 / D-07..D-10):
+        The °C denominator is routed through discounted_lifetime_degc() so the
+        KPI reflects the equivalent discounted-lifetime °C drop (not day-one full
+        canopy).  The cost numerator uses discounted_total_cost() (PV of OpEx).
+        The optimizer's NSGA-II budget constraint uses total_cost() (nominal) and
+        is NOT affected by this parameter.
+
     Parameters
     ----------
     config : dict
@@ -517,6 +525,11 @@ def cost_per_utci_degree(  # noqa: C901 (complexity OK — linear decision tree)
     band_c : float | None
         Empirical calibration RMSE (°C) from Plan 05-03.  If None, falls back to
         PRE_CALIBRATION_BAND_C (4.0°C) labelled "pre-calibration, assumed ±4°C".
+    growth_discount : GrowthDiscountParams | None
+        Growth-curve + discount parameters (COST-05 / D-07..D-09).  If None,
+        uses DEFAULT_GROWTH_DISCOUNT (ramp_years=25, initial_fraction=0.20,
+        discount_rate=3.5%, horizon_years=40).  Pass a custom instance to
+        override any parameter (Plan 06-03 / COST-04 exposes these via Gradio).
 
     Zero / negative delta guard (T-01-10 / Rule 6 honest framing):
         If the UTCI-hours reduction is None, zero, or negative (no comfort gain),
@@ -527,7 +540,12 @@ def cost_per_utci_degree(  # noqa: C901 (complexity OK — linear decision tree)
         value, value_lo, value_hi, unit, confidence, sources, note, metric_id,
         utci_hours_reduced, cost_per_utci_hour, cost_per_utci_hour_lo,
         cost_per_utci_hour_hi, utci_hours_unit, band_c, band_source.
+        New keys (additive, COST-05): discount_rate, ramp_years, horizon_years,
+        growth_note.
     """
+    # ── Growth-discount params ─────────────────────────────────────────────────
+    gd: GrowthDiscountParams = growth_discount if growth_discount is not None else DEFAULT_GROWTH_DISCOUNT
+
     # ── Band setup ─────────────────────────────────────────────────────────────
     if band_c is None:
         band = PRE_CALIBRATION_BAND_C
@@ -617,10 +635,30 @@ def cost_per_utci_degree(  # noqa: C901 (complexity OK — linear decision tree)
             "utci_hours_unit": "EUR / annual UTCI-hour above 32°C reduced",
             "band_c": band,
             "band_source": band_source,
+            # Growth-discount param echo (COST-05) — additive, does not remove existing keys
+            "discount_rate": gd.discount_rate,
+            "ramp_years": gd.ramp_years,
+            "horizon_years": gd.horizon_years,
+            "growth_note": (
+                f"Benefit ramped over {gd.ramp_years:.0f}yr growth curve and discounted at "
+                f"{gd.discount_rate:.1%} over {gd.horizon_years}yr (COST-05/D-07..D-10); "
+                "denominator is discounted-lifetime equivalent degC, not day-one full canopy."
+            ),
         }
 
+    # ── Apply growth-horizon discount to °C denominator (COST-05 / D-07..D-10) ─
+    # Route degc_drop through discounted_lifetime_degc() BEFORE computing any
+    # KPI values.  This makes the °C an equivalent discounted-lifetime drop
+    # (not day-one full canopy).  The band propagation, interval math, dual-unit
+    # cost_per_utci_hour, and zero-guard ALL remain structurally identical —
+    # only the cost and degc_drop magnitudes change.
+    degc_drop = discounted_lifetime_degc(degc_drop, gd)
+
     # ── Compute primary KPI (€/°C) ────────────────────────────────────────────
-    cost = total_cost(config)
+    # Numerator: present value of lifecycle cost (discounted OpEx, D-08).
+    # NOTE: total_cost() (nominal, no discounting) is preserved for the
+    # optimizer's NSGA-II budget constraint — do NOT change that path.
+    cost = discounted_total_cost(config, gd)
     value = round(cost / degc_drop, 2)
 
     # Interval propagation: band on °C drop (D-10)
@@ -651,6 +689,11 @@ def cost_per_utci_degree(  # noqa: C901 (complexity OK — linear decision tree)
             cost_per_utci_hour_hi = round(cost / hours_lo, 2)
 
     # ── Build note ────────────────────────────────────────────────────────────
+    growth_note = (
+        f"Benefit ramped over {gd.ramp_years:.0f}yr growth curve and discounted at "
+        f"{gd.discount_rate:.1%} over {gd.horizon_years}yr (COST-05/D-07..D-10); "
+        "denominator is discounted-lifetime equivalent degC, not day-one full canopy."
+    )
     note_parts.append(
         f"KPI interval [value_lo={value_lo}, value={value}, value_hi={value_hi}] "
         f"EUR/degC; band={band_source}. "
@@ -659,7 +702,8 @@ def cost_per_utci_degree(  # noqa: C901 (complexity OK — linear decision tree)
         "Interval is never a bare point estimate (D-10/VALID-04). "
         "Cost uses itemized fully-loaded lifecycle CostTable (Phase 6 / COST-03): "
         f"CapEx={CAPEX_PER_TREE_EUR:.0f} EUR/tree, OpEx={OPEX_PER_TREE_YEAR_EUR:.0f} EUR/tree/yr "
-        f"over {OPEX_HORIZON_YEARS} yr horizon (DECLARED/PENDING — illustrative European mid-range, verify locally)."
+        f"over {OPEX_HORIZON_YEARS} yr horizon (DECLARED/PENDING — illustrative European mid-range, verify locally). "
+        f"{growth_note}"
     )
 
     return {
@@ -678,6 +722,11 @@ def cost_per_utci_degree(  # noqa: C901 (complexity OK — linear decision tree)
         "utci_hours_unit": "EUR / annual UTCI-hour above 32°C reduced",
         "band_c": band,
         "band_source": band_source,
+        # Growth-discount param echo (COST-05) — additive, does not remove existing keys
+        "discount_rate": gd.discount_rate,
+        "ramp_years": gd.ramp_years,
+        "horizon_years": gd.horizon_years,
+        "growth_note": growth_note,
     }
 
 
