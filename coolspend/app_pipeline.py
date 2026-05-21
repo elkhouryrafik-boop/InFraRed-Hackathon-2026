@@ -27,6 +27,13 @@ import os
 import tempfile
 from pathlib import Path
 
+from coolspend.cost_model import (
+    CostTable,
+    GrowthDiscountParams,
+    cost_per_utci_degree,
+    load_cost_table,
+    cost_table_from_dict,
+)
 from coolspend.optimizer import (
     DEFAULT_BUDGET_EUR,
     run_optimisation,
@@ -152,21 +159,29 @@ def run_decision(
     weights: tuple[float, float] = (0.6, 0.4),
     geojson_text: str | None = None,
     backend: str = "mock",
+    cost_table: "CostTable | None" = None,
+    growth_discount: "GrowthDiscountParams | None" = None,
 ) -> dict:
     """Drive the full CoolSpend pipeline and return a structured result dict.
 
     Pipeline: optimize (NSGA-II) -> validate Top-3 (mock/live) -> TOPSIS rank
 
     Args:
-        budget_eur:   Planting budget in EUR (default: 1 000 000).
-        weights:      TOPSIS weight tuple (w_thermal, w_ecological). These are
-                      user-adjustable sliders per CONCERNS 1.6 / APP-01 — not
-                      calibrated constants.
-        geojson_text: Optional GeoJSON string from user UI. None -> use default
-                      bundled site fixture (angels_site.geojson).
-        backend:      "mock" | "cached" | "live". Sets INFRARED_BACKEND env var
-                      for the duration of this call only. Never reads/sets
-                      INFRARED_API_KEY (T-03-03).
+        budget_eur:       Planting budget in EUR (default: 1 000 000).
+        weights:          TOPSIS weight tuple (w_thermal, w_ecological). These are
+                          user-adjustable sliders per CONCERNS 1.6 / APP-01 — not
+                          calibrated constants.
+        geojson_text:     Optional GeoJSON string from user UI. None -> use default
+                          bundled site fixture (angels_site.geojson).
+        backend:          "mock" | "cached" | "live". Sets INFRARED_BACKEND env var
+                          for the duration of this call only. Never reads/sets
+                          INFRARED_API_KEY (T-03-03).
+        cost_table:       Optional edited CostTable (COST-04 / D-05). When supplied,
+                          the cost_per_utci_degree KPI is recomputed using this table
+                          after TOPSIS rank. When None, falls back to DEFAULT_COST_TABLE.
+        growth_discount:  Optional edited GrowthDiscountParams (COST-05 / D-07..D-09).
+                          When supplied, the KPI is recomputed with these params.
+                          When None, falls back to DEFAULT_GROWTH_DISCOUNT.
 
     Returns:
         {
@@ -232,6 +247,8 @@ def run_decision(
             site_path=site_path,
             backend=backend,
             call_log=call_log,
+            cost_table=cost_table,
+            growth_discount=growth_discount,
         )
     finally:
         # Always remove capture handler and restore logger level + env regardless of outcome
@@ -249,6 +266,8 @@ def _run_pipeline(
     site_path: str | None,
     backend: str,
     call_log: list[str],
+    cost_table: "CostTable | None" = None,
+    growth_discount: "GrowthDiscountParams | None" = None,
 ) -> dict:
     """Internal pipeline runner. Wrapped in try/except by run_decision caller.
 
@@ -268,6 +287,18 @@ def _run_pipeline(
 
         # Stage 4: TOPSIS rank by EUR/degC KPI
         top3 = topsis_rank(top3, weights=weights)
+
+        # Stage 4b: Recompute cost_per_utci_degree with edited cost_table + growth_discount
+        # (COST-04 / D-05 / D-06): when the user edits cost line items or growth/discount
+        # params via Gradio, we overwrite each config's KPI dict with the recomputed values.
+        # When both are None, behavior is unchanged (shipped defaults used everywhere).
+        if cost_table is not None or growth_discount is not None:
+            for cfg in top3:
+                cfg["cost_per_utci_degree"] = cost_per_utci_degree(
+                    cfg,
+                    cost_table=cost_table,
+                    growth_discount=growth_discount,
+                )
 
         # Stage 5: Build structured result
         rank1 = top3[0]  # best EUR/degC after topsis_rank
