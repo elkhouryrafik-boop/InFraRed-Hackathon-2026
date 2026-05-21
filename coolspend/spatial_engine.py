@@ -13,14 +13,22 @@ Key functions:
   - is_valid_location(x, y) : returns False for points in buildings / on streets / outside boundary
   - latlon_to_local_m(lon, lat) : THE ONLY CRS conversion in coolspend (EPSG:4326 -> local m)
   - local_m_to_latlon(x, y)    : THE ONLY inverse CRS conversion (local m -> EPSG:4326)
+  - shade_efficiency(tilt_deg, height_m) : sun-path alignment bonus (analytical, OPT-02)
+  - delta_tmrt_surrogate(shade_fraction, ...) : fast analytical ΔTmrt proxy (OPT-02 hot path)
+  - thermal_relief(config)  : site-averaged ΔTmrt for a tree config (OPT-02)
 
 SPATIAL-03 compliance: no other module may convert CRS. All callers must import
 these two functions from this module.
+
+SURROGATE HONESTY (OPT-02 / CONCERNS 1.1):
+  delta_tmrt_surrogate is an ANALYTICAL PROXY, NOT a measured or simulated result.
+  Uncertainty ±4°C. MAX_TMRT_REDUCTION_C=12°C is an UNSOURCED cap — see MOCKS.md.
+  Use for optimizer hot-path only; validate Top-3 with real Infrared SDK UTCI calls.
 """
 from __future__ import annotations
 
 import json
-from math import cos, radians
+from math import cos, pi, radians
 from pathlib import Path
 from typing import Any
 
@@ -244,6 +252,162 @@ def is_valid_location(
             return False
 
     return True
+
+
+# ── THERMAL SURROGATE (OPT-02) ────────────────────────────────────────────────
+#
+# Fast, pure-math analytical proxy for ΔTmrt used in the NSGA-II hot path.
+# ZERO SDK calls. ZERO file I/O. Fully deterministic.
+#
+# HONESTY NOTICE (CONCERNS 1.1 / T-02-04):
+#   This is NOT a measured or simulated Tmrt result. It is a linear surrogate
+#   derived from Garcia-Nevado 2020 (pavement IR thermography — surface temp,
+#   NOT Tmrt at 1.1 m pedestrian height) + Vanos 2020 shade-component lower bound.
+#   Citation mismatch is documented. Uncertainty: ±4°C.
+#   MAX_TMRT_REDUCTION_C = 12.0°C is an UNSOURCED hard-coded cap — see MOCKS.md.
+#   Replace with Ladybug lookup table when available (D1-04 / CONCERNS 1.1).
+#
+# POROSITY BUG (CONCERNS 4.2 / T-02-06 — FIXED):
+#   The original nature_nsga2_coolstock.py body applied porosity twice (squared).
+#   Porosity is now applied EXACTLY ONCE by the CALLER before passing shade_fraction.
+#   The body uses shade_fraction as-is (effective_shade = shade_fraction).
+#   Test test_delta_tmrt_no_double_porosity pins this fix permanently.
+
+# SOURCE: nature_nsga2_coolstock.py lines 81-83 (Barcelona July peak sun geometry,
+# analytical geometry at 41.38°N latitude)
+PEAK_SUN_ALTITUDE_DEG: float = 63.0   # degrees above horizon at solar noon — Barcelona July
+PEAK_SUN_AZIMUTH_DEG: float = 215.0   # SW afternoon peak — Barcelona July
+
+# SOURCE: nature_nsga2_coolstock.py lines 138-146 (UNSOURCED operational cap — see CONCERNS 1.1)
+# MOCK: unsourced conservative estimate, no error bar, no Ladybug/Infrared validation
+MAX_TMRT_REDUCTION_C: float = 12.0    # °C — UNSOURCED cap — see MOCKS.md / CONCERNS 1.1
+
+# SOURCE: DECLARED — mature street-tree typical canopy shade fraction assumption
+# REQUIRES_VERIFICATION: not from Barcelona Arbrat Viari data
+TREE_SHADE_FRACTION: float = 0.80     # fraction of solar radiation blocked by a mature canopy
+
+# SOURCE: DECLARED — typical effective shaded radius per street tree
+# REQUIRES_VERIFICATION: not from surveyed Barcelona tree inventory
+TREE_CANOPY_RADIUS_M: float = 3.0     # metres — effective shaded ground radius per tree
+
+
+def shade_efficiency(tilt_deg: float, height_m: float) -> float:
+    """Sun-path alignment bonus: canopy tilt/height modifies shade quality.
+
+    Analytical geometry: tilt toward peak sun azimuth (SW, 215°) increases
+    effective shade length by ~15% per 30° of tilt. Taller canopies slightly
+    reduce reflected longwave from the ground (+5% per 2.5 m above 2.5 m base).
+
+    Source: analytical geometry — adapted from Garcia-Nevado 2020 tilt analysis
+    (nature_nsga2_coolstock.py lines 91-103). Uses math (not numpy) to keep the
+    module numpy-light and usable in the NSGA-II hot path without array overhead.
+
+    Args:
+        tilt_deg: Canopy tilt angle in degrees toward peak sun azimuth (0 = flat).
+        height_m: Canopy base height above ground in metres.
+
+    Returns:
+        Efficiency multiplier (>= 1.0 for tilt/height > baseline).
+    """
+    # Projected horizontal shade length increases with tilt aligned to sun
+    tilt_factor = 1.0 + 0.15 * (tilt_deg / 30.0)
+    # Height factor: higher canopy slightly reduces reflected longwave from ground
+    height_factor = 1.0 + 0.05 * ((height_m - 2.5) / 2.5)
+    return tilt_factor * height_factor
+
+
+def delta_tmrt_surrogate(
+    shade_fraction: float,
+    porosity_pct: float = 0.0,
+    tilt_deg: float = 0.0,
+    height_m: float = 3.0,
+) -> float:
+    """Analytical proxy for mean radiant temperature reduction (ΔTmrt) at 1.1 m height.
+
+    NOT MEASURED — analytical surrogate only. Use in the NSGA-II hot path.
+    Validate Top-3 configs with real Infrared SDK UTCI calls (Plan 02-04).
+
+    HONESTY FLAGS:
+    - MAX_TMRT_REDUCTION_C = 12°C is an UNSOURCED hard-coded cap (CONCERNS 1.1).
+    - Sources (Garcia-Nevado 2020, Vanos 2020) measure surface temperature and
+      1.1 m shade component respectively — NOT a calibrated Tmrt model.
+    - Uncertainty: ±4°C per parent audit_record.json.
+
+    POROSITY FIX (CONCERNS 4.2 / T-02-06):
+    Callers must pass shade_fraction = (1 - porosity_pct/100) * base_shade_fraction.
+    The body does NOT re-apply porosity — effective_shade = shade_fraction exactly.
+    The porosity_pct parameter is retained in the signature for call-site
+    compatibility but is intentionally unused in the body (see CONCERNS 1.1 / 4.2).
+
+    Args:
+        shade_fraction: Effective fraction of solar radiation blocked, after any
+                        porosity adjustment applied by the CALLER (0.0–1.0).
+                        Do NOT pass raw shade fraction and expect this body to
+                        apply porosity reduction — that was the bug.
+        porosity_pct: Canopy porosity percentage (retained for signature compatibility;
+                      NOT used in the body — porosity must be applied by caller).
+        tilt_deg: Canopy tilt angle in degrees (0 = flat, 30 = toward SW peak sun).
+        height_m: Canopy base height above ground in metres.
+
+    Returns:
+        Estimated ΔTmrt (°C cooling), capped at MAX_TMRT_REDUCTION_C. 0.0 for
+        zero shade. Never negative (min 0.0 by construction for valid inputs).
+    """
+    # CONCERNS 1.1 / 4.2: porosity is applied ONCE by the caller; the body treats
+    # shade_fraction as already-corrected effective shade. Do NOT multiply by
+    # (1 - porosity_pct/100) here — that would square the porosity penalty.
+    effective_shade = shade_fraction  # porosity already applied by caller (CONCERNS 4.2)
+    eff = shade_efficiency(tilt_deg, height_m)
+    return min(MAX_TMRT_REDUCTION_C * effective_shade * eff, MAX_TMRT_REDUCTION_C)
+
+
+def thermal_relief(config: dict) -> float:
+    """Estimate site-averaged ΔTmrt (°C) for a tree configuration.
+
+    Aggregates per-tree surrogate cooling into a single site-level relief value
+    the NSGA-II optimizer (Plan 02-03) maximises as objective F1 (thermal).
+    Zero SDK calls — pure math, fully offline, deterministic.
+
+    Method:
+    1. Count active trees (trees with active=True or no 'active' key — defaults True).
+    2. Per-tree under-canopy ΔTmrt = delta_tmrt_surrogate(TREE_SHADE_FRACTION).
+    3. Each tree shades area = π × TREE_CANOPY_RADIUS_M².
+    4. Total shaded area is summed and capped at the site area.
+    5. site_coverage_fraction = min(total_shaded / site_area, 0.90).
+    6. Return per_tree_delta × site_coverage_fraction (site-averaged relief).
+
+    The 0.90 cap on coverage fraction prevents unrealistic 100% site shading from
+    a dense tree count exceeding physical limits.
+
+    Args:
+        config: Dict with a "trees" list. Each tree may have:
+                - "active": bool (default True if absent)
+                - "x_m", "y_m": coordinates (unused in this aggregation — future
+                  spatial weighting hook)
+                Other keys are ignored.
+
+    Returns:
+        Site-averaged ΔTmrt in °C, rounded to 3 decimal places. 0.0 for zero
+        active trees. Always non-negative and <= MAX_TMRT_REDUCTION_C.
+    """
+    active_trees = [
+        t for t in config.get("trees", [])
+        if t.get("active", True)
+    ]
+
+    if not active_trees:
+        return 0.0
+
+    # Per-tree surrogate ΔTmrt — using canonical TREE_SHADE_FRACTION (DECLARED)
+    per_tree_delta = delta_tmrt_surrogate(TREE_SHADE_FRACTION)
+
+    # Site coverage fraction (capped at 0.90 — no site is 100% canopy-covered)
+    tree_shade_area_m2 = pi * TREE_CANOPY_RADIUS_M ** 2
+    total_shaded_m2 = len(active_trees) * tree_shade_area_m2
+    site_area_m2 = SITE_WIDTH_M * SITE_DEPTH_M  # constants from site section above
+    site_coverage_fraction = min(total_shaded_m2 / site_area_m2, 0.90)
+
+    return round(per_tree_delta * site_coverage_fraction, 3)
 
 
 # ── SMOKE TEST ────────────────────────────────────────────────────────────────
