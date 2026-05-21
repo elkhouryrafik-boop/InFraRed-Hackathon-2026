@@ -30,7 +30,6 @@ from __future__ import annotations
 
 import json
 import logging
-import math
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -48,6 +47,7 @@ from pymoo.termination import get_termination
 from pymoo.optimize import minimize
 
 from coolspend.spatial_engine import (
+    core_weighted_coverage_fraction,
     is_valid_location,
     local_m_to_latlon,
     thermal_relief,
@@ -250,12 +250,24 @@ def select_top3(result) -> list[dict]:
     # Deduplicate to 3 distinct indices
     indices: list[int] = list(dict.fromkeys([idx1, idx2, idx3]))
     sorted_by_utopia = list(np.argsort(np.linalg.norm(F_norm, axis=1)))
+
+    # First pass: fill from distinct Pareto points (closest-to-utopia order).
     ptr = 0
-    while len(indices) < 3 and len(indices) < len(F):
+    while len(indices) < 3 and ptr < len(sorted_by_utopia):
         candidate = int(sorted_by_utopia[ptr])
         ptr += 1
         if candidate not in indices:
             indices.append(candidate)
+
+    # GUARANTEE EXACTLY 3 (REMEDIATION fix #4): if the unique Pareto front is
+    # smaller than 3 distinct points (e.g. a near-degenerate run), pad
+    # DETERMINISTICALLY by repeating the best-thermal index. Padded slots are
+    # relabelled with an explicit "(duplicate of …)" note so the artifact never
+    # silently presents a repeated config as a genuinely distinct alternative.
+    padded_slots: set[int] = set()
+    while len(indices) < 3:
+        padded_slots.add(len(indices))
+        indices.append(idx1)
 
     labels = ["MAX_THERMAL_RELIEF", "MAX_ECOLOGICAL", "BALANCED"]
     configs = []
@@ -265,7 +277,17 @@ def select_top3(result) -> list[dict]:
         eco = ecological_score(cfg)
 
         cfg["rank"] = rank_zero + 1
-        cfg["label"] = labels[rank_zero]
+        if rank_zero in padded_slots:
+            # Distinct, honest label for a padded (duplicate) slot.
+            cfg["label"] = f"{labels[rank_zero]}_DUP{rank_zero + 1}"
+            cfg["padded_duplicate"] = True
+            cfg["padding_note"] = (
+                "Pareto front had < 3 distinct points; this slot duplicates the "
+                "best-thermal config to guarantee exactly 3 entries (REMEDIATION fix #4)."
+            )
+        else:
+            cfg["label"] = labels[rank_zero]
+            cfg["padded_duplicate"] = False
         cfg["delta_tmrt_c"] = round(thermal, 3)
         cfg["delta_tmrt_uncertainty_c"] = 4.0
         cfg["delta_tmrt_source"] = (
@@ -283,14 +305,121 @@ def select_top3(result) -> list[dict]:
     return configs
 
 
+# ── NAIVE BASELINE (REMEDIATION fix #3) ───────────────────────────────────────
+
+
+def naive_baseline_config() -> dict:
+    """Build a DETERMINISTIC naive tree placement for honest before/after framing.
+
+    The naive strategy is what a planner might do WITHOUT the optimizer: drop
+    N_TREES on an evenly-spaced rectangular grid spanning the site, keeping only
+    the grid points that pass is_valid_location (inside boundary, not in a building,
+    off the street buffer). Species are assigned round-robin from SPECIES, exactly
+    as decode() does, so the comparison is apples-to-apples on the SAME backend.
+
+    Fully deterministic (no RNG): the grid is a fixed function of N_TREES and the
+    site dimensions. This is the "do-nothing-clever" reference the optimizer is
+    measured against (improvement_vs_naive_pct), NOT a competing recommendation.
+
+    Returns:
+        A config dict in the same shape as decode():
+        {"trees": [...], "tree_count": int}.
+    """
+    # Choose a near-square grid covering N_TREES slots.
+    n_cols = int(np.ceil(np.sqrt(N_TREES)))
+    n_rows = int(np.ceil(N_TREES / n_cols))
+
+    # Evenly space grid points with a margin so points are not on the boundary.
+    margin_x = SITE_WIDTH_M / (n_cols + 1)
+    margin_y = SITE_DEPTH_M / (n_rows + 1)
+
+    trees: list[dict] = []
+    for i in range(N_TREES):
+        col = i % n_cols
+        row = i // n_cols
+        x_m = margin_x * (col + 1)
+        y_m = margin_y * (row + 1)
+        species = SPECIES[i % len(SPECIES)]
+        active = is_valid_location(x_m, y_m)
+        trees.append(
+            {"x_m": float(x_m), "y_m": float(y_m), "species": species, "active": active}
+        )
+
+    tree_count = sum(1 for t in trees if t["active"])
+    return {"trees": trees, "tree_count": tree_count}
+
+
+def _build_naive_baseline(budget: "SimBudget | None" = None) -> dict:  # type: ignore[name-defined]
+    """Validate the naive placement and return its baseline block for the artifact.
+
+    Computes the naive placement (naive_baseline_config), runs the SAME mock/live
+    UTCI validation path used for the Top-3 (so the comparison is honest and on the
+    same backend), and computes its euro/°C KPI.
+
+    A separate SimBudget is used so the naive validation does not consume the
+    Top-3 SimBudget cap (the headline 3 live slots remain the 3 Top-3 calls).
+
+    Returns:
+        {
+          "label": "NAIVE_GRID",
+          "tree_count": int,
+          "delta_utci_c": float,
+          "validated_utci_c": float,
+          "baseline_utci_c": float,
+          "cost_eur": float,
+          "cost_per_utci_degree": float | None,
+          "validated_backend": str,
+          "note": str,
+        }
+    """
+    from coolspend.sdk_client import get_baseline_utci, get_intervention_utci, SimBudget  # noqa: PLC0415
+    from coolspend.cost_model import cost_per_utci_degree, total_cost  # noqa: PLC0415
+
+    if budget is None:
+        budget = SimBudget(max_live_calls=1)
+
+    cfg = naive_baseline_config()
+    cfg["delta_tmrt_c"] = round(thermal_relief(cfg), 3)
+    cfg["ecological_score"] = round(ecological_score(cfg), 4)
+
+    baseline = get_baseline_utci({})
+    budget.record("intervention NAIVE_GRID")
+    geom = _config_to_geometry(cfg)
+    intervention = get_intervention_utci(geom)
+
+    cfg["baseline_utci_c"] = baseline.utci_c
+    cfg["validated_utci_c"] = intervention.utci_c
+    cfg["delta_utci_c"] = round(baseline.utci_c - intervention.utci_c, 2)
+    cfg["validated_backend"] = intervention.backend
+
+    kpi = cost_per_utci_degree(cfg)
+    return {
+        "label": "NAIVE_GRID",
+        "tree_count": cfg["tree_count"],
+        "delta_utci_c": cfg["delta_utci_c"],
+        "validated_utci_c": cfg["validated_utci_c"],
+        "baseline_utci_c": cfg["baseline_utci_c"],
+        "cost_eur": round(total_cost(cfg), 2),
+        "cost_per_utci_degree": kpi.get("value"),
+        "validated_backend": cfg["validated_backend"],
+        "note": (
+            "Deterministic evenly-spaced grid placement (no optimizer). Honest "
+            "reference for improvement_vs_naive_pct; SAME backend as Top-3."
+        ),
+    }
+
+
 # ── GEOMETRY BUILDER FOR SDK ──────────────────────────────────────────────────
 
 
 def _config_to_geometry(cfg: dict) -> dict:
     """Build the SDK geometry payload for a tree configuration.
 
-    Computes coverage_fraction from active-tree canopy footprints (capped at 0.9)
-    and includes width_m so the mock intervention model applies cooling.
+    Computes coverage_fraction from the SAME core-weighted non-overlapping canopy
+    union used by thermal_relief (core_weighted_coverage_fraction, capped at
+    MAX_SITE_COVERAGE) and includes width_m so the mock intervention model applies
+    cooling. Using the IDENTICAL coverage model keeps the mock UTCI consistent with
+    the surrogate objective (REMEDIATION Option A).
     Includes polygon_lonlat for the live path via local_m_to_latlon (SPATIAL-03).
 
     Args:
@@ -300,12 +429,13 @@ def _config_to_geometry(cfg: dict) -> dict:
         Geometry dict suitable for get_intervention_utci(geometry).
     """
     active = [t for t in cfg.get("trees", []) if t.get("active", True)]
-    site_area_m2 = SITE_WIDTH_M * SITE_DEPTH_M
 
-    # Coverage fraction: sum of canopy footprints, capped at 0.9
-    tree_shade_area_m2 = math.pi * TREE_CANOPY_RADIUS_M ** 2
-    total_shaded_m2 = len(active) * tree_shade_area_m2
-    coverage_fraction = min(total_shaded_m2 / site_area_m2, 0.9)
+    # Coverage fraction: SAME core-weighted canopy union used by thermal_relief
+    # (spatial_engine.core_weighted_coverage_fraction). This makes the mock UTCI —
+    # which reads coverage_fraction — placement-sensitive AND consistent with the
+    # surrogate objective, so the Top-3 configs differ on mock instead of
+    # collapsing to one value (REMEDIATION Option A).
+    coverage_fraction = core_weighted_coverage_fraction(active)
 
     # width_m: representative width of the canopy cluster (bounding box EW span)
     if active:
@@ -520,6 +650,23 @@ def _build_before_after(top3: list[dict]) -> dict:
 # ── SAVE OUTPUTS (DEC-01 + DEC-02 / Plan 02-05) ──────────────────────────────
 
 
+def _result_pop_size(result) -> int:
+    """Return the configured NSGA-II population size for run_metadata.
+
+    Reads the real population size off the pymoo Result's algorithm
+    (result.algorithm.pop_size) when available, falling back to the module
+    POP_SIZE constant. Replaces the previous dead expression
+    `int(getattr(result, "algorithm", None) and 0 or POP_SIZE)`, which always
+    evaluated to POP_SIZE because the `and 0` short-circuited to 0 → `0 or POP_SIZE`
+    (REMEDIATION fix #5 — dead expression).
+    """
+    algorithm = getattr(result, "algorithm", None)
+    pop_size = getattr(algorithm, "pop_size", None)
+    if isinstance(pop_size, int) and pop_size > 0:
+        return pop_size
+    return POP_SIZE
+
+
 def save_outputs(
     top3: list[dict],
     result,
@@ -568,12 +715,24 @@ def save_outputs(
             else:
                 cfg["disclaimer"] = surrogate_disclaimer
 
+    # ── Naive baseline + improvement_vs_naive (REMEDIATION fix #3) ────────────
+    baseline_naive = _build_naive_baseline()
+    rank1 = top3[0]
+    rank1_kpi = rank1.get("cost_per_utci_degree", {}).get("value")
+    naive_kpi = baseline_naive.get("cost_per_utci_degree")
+    if rank1_kpi is not None and naive_kpi not in (None, 0):
+        # Lower euro/°C is better; positive pct = optimizer is cheaper per degree.
+        improvement_vs_naive_pct = round((naive_kpi - rank1_kpi) / naive_kpi * 100.0, 2)
+    else:
+        improvement_vs_naive_pct = None
+    rank1["improvement_vs_naive_pct"] = improvement_vs_naive_pct
+
     # ── Build artifact JSON ───────────────────────────────────────────────────
     artifact = {
         "run_metadata": {
             "algorithm": "NSGA-II (pymoo 0.6.1)",
             "site": "Plaça dels Àngels, Barcelona",
-            "population": int(getattr(result, "algorithm", None) and 0 or POP_SIZE),
+            "population": _result_pop_size(result),
             "generations": N_GEN,
             "seed": SEED,
             "pareto_front_size": len(F),
@@ -585,6 +744,8 @@ def save_outputs(
         },
         "configurations": top3,
         "before_after": _build_before_after(top3),
+        "baseline_naive": baseline_naive,
+        "improvement_vs_naive_pct": improvement_vs_naive_pct,
     }
 
     json_path = out_dir / "top3_configurations.json"
