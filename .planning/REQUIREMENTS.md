@@ -12,7 +12,8 @@ Derived from the 3-review synthesis (`docs/review/SYNTHESIS-market-ready.md`). G
 - [ ] **VALID-02**: The optimizer's ΔTmrt surrogate is converted to a true UTCI-hours delta (via the existing `utci_hours_above()` / ladybug path) before the €/°C KPI is formed — the KPI reports UTCI, not raw Tmrt.
 - [ ] **VALID-03**: A user can verify ranking stability — the Top-3 picks chosen on the surrogate remain the Top-3 (or report rank shift) when each is re-simulated with real Infrared UTCI.
 - [ ] **VALID-04**: The €/°C KPI is reported as an uncertainty interval (surrogate ±band propagated), never a bare point estimate.
-- [ ] **VALID-05**: Geometry is handled in one projected metric CRS (UTM 31N) end-to-end, with a round-trip consistency assertion before any live SDK call.
+- [x] **VALID-05
+**: Geometry is handled in one projected metric CRS (UTM 31N) end-to-end, with a round-trip consistency assertion before any live SDK call.
 
 ### Cost Model Credibility
 - [ ] **COST-03**: Per-tree cost is a fully-loaded lifecycle figure (pit excavation, structural soil, guarding, multi-year establishment OpEx) anchored to a cited procurement source — replacing the €350/€35 placeholders.

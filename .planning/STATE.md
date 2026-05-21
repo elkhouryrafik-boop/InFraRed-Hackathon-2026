@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Market-Ready CoolSpend
-status: planning
-stopped_at: Phase 5 context gathered
-last_updated: "2026-05-21T15:55:29.974Z"
-last_activity: 2026-05-21 — v2.0 roadmap created (Phases 5–9, 25 requirements mapped)
+status: executing
+stopped_at: "Completed 05-01: UTM-31N CRS migration + fail-closed guard"
+last_updated: "2026-05-21T16:26:26.315Z"
+last_activity: 2026-05-21 -- Phase --phase execution started
 progress:
   total_phases: 9
   completed_phases: 4
-  total_plans: 13
-  completed_plans: 13
-  percent: 100
+  total_plans: 18
+  completed_plans: 14
+  percent: 78
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-21)
 
 **Core value:** Given a polygon and a budget, output a defensible ranked tree-planting allocation maximizing UTCI relief per euro — proved with a real Infrared UTCI before/after on the top picks
-**Current focus:** Milestone v2.0 — Market-Ready CoolSpend (roadmap complete → plan Phase 5, the validation keystone)
+**Current focus:** Phase --phase — 5
 
 ## Current Position
 
-Phase: 5 — Surrogate Ground-Truth & Honesty Reset (not started)
-Plan: —
-Status: Roadmap complete; ready to plan Phase 5
-Last activity: 2026-05-21 — v2.0 roadmap created (Phases 5–9, 25 requirements mapped)
+Phase: --phase (5) — EXECUTING
+Plan: 1 of --name
+Status: Executing Phase --phase
+Last activity: 2026-05-21 -- Phase --phase execution started
 
-Progress: v1.0 complete (4 phases / 13 plans, hackathon submission shipped). v2.0 roadmapped into 5 phases (5–9). Phase 5 is the existential keystone — surrogate ground-truth + honesty reset — and gates the entire milestone. Execution order: 5 → {6, 7} → 8 → 9.
+Progress: [████████░░] 78%
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Progress: v1.0 complete (4 phases / 13 plans, hackathon submission shipped). v2.
 | Phase 03-web-app-decision-ui P03-03 | 8m | 2 tasks | 3 files |
 | Phase 04-ship P04-01 | 15m | 3 tasks | 2 files |
 | Phase 04-ship P04-02 | 3m | 3 tasks | 3 files |
+| Phase 05-surrogate-ground-truth-honesty-reset P01 | 15m | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -120,6 +121,8 @@ Recent decisions affecting current work:
 - 03-02: test_headless_launch_smoke skips on httpx.ConnectError (Gradio 4.x health-check ping fails on Windows with server_port=0)
 - 03-03: huggingface_hub==0.36.2 pin required for gradio 4.44.1 (HfFolder removed in 1.x)
 - 03-03: app_file: coolspend/app.py in HF Spaces header — no root shim needed
+- D-06: pyproj UTM-31N (EPSG:32631) with always_xy=True, per-site SW UTM corner origin from polygon bbox, [0,width]x[0,depth] local frame preserved
+- D-07: assert_crs_roundtrip measures UTM metres euclidean distance, raises CRSConsistencyError >= 1m, wired in _live_utci before InfraredClient call — fail-closed
 
 ### Pending Todos
 
@@ -146,8 +149,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: --stopped-at
-Stopped at: Phase 5 context gathered
-Resume file: --resume-file
+Last session: 2026-05-21T16:26:26.291Z
+Stopped at: Completed 05-01: UTM-31N CRS migration + fail-closed guard
+Resume file: None
 
-**Planned Phase:** 5 (Surrogate Ground-Truth & Honesty Reset) — keystone — next: `/gsd-plan-phase 5`
+**Planned Phase:** 5 (Surrogate Ground-Truth & Honesty Reset) — 5 plans — 2026-05-21T16:15:19.750Z
