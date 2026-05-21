@@ -121,6 +121,13 @@ def main(budget_eur: float = DEFAULT_BUDGET_EUR) -> Path:
     print(f"           Written: {json_path}")
     print()
 
+    # Read back the naive-baseline + improvement block written by save_outputs
+    # (computed there so the artifact and this summary stay consistent).
+    import json as _json
+    artifact = _json.loads(Path(json_path).read_text(encoding="utf-8"))
+    baseline_naive = artifact.get("baseline_naive", {})
+    improvement_pct = artifact.get("improvement_vs_naive_pct")
+
     # ── Human summary ─────────────────────────────────────────────────────────
     before_after = {
         "baseline_utci_c": top3[0].get("baseline_utci_c"),
@@ -142,6 +149,22 @@ def main(budget_eur: float = DEFAULT_BUDGET_EUR) -> Path:
     )
     print(f"  Best allocation:         {best['label']} ({best['tree_count']} trees)")
     print(f"  EUR/degC KPI:            {kpi_str}")
+
+    # ── Naive-baseline comparison (REMEDIATION fix #3) ────────────────────────
+    naive_kpi = baseline_naive.get("cost_per_utci_degree")
+    naive_kpi_str = f"EUR {naive_kpi:,.0f}/degC" if naive_kpi is not None else "N/A"
+    print(
+        f"  Naive grid baseline:     {naive_kpi_str} "
+        f"({baseline_naive.get('tree_count', '?')} trees, "
+        f"delta_utci={baseline_naive.get('delta_utci_c', '?')} degC)"
+    )
+    if improvement_pct is not None:
+        print(
+            f"  Improvement vs naive:    {improvement_pct:+.2f}% cheaper per degC "
+            f"(optimizer vs evenly-spaced grid, same backend)"
+        )
+    else:
+        print("  Improvement vs naive:    N/A (naive KPI undefined)")
     print()
     print(
         "DISCLAIMER: all surrogate metrics (delta_tmrt_c, topsis_score) carry "
