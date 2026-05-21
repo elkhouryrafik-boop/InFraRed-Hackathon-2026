@@ -46,12 +46,14 @@ Derived from the 3-review synthesis (`docs/review/SYNTHESIS-market-ready.md`). G
 - [ ] **AUDIT-02**: Objective weights are stakeholder-elicited and recorded in the audit trail (replacing developer-default TOPSIS 0.6/0.4).
 
 ### Honesty Relabeling
-- [ ] **HONEST-01**: `CONCEPT_REPORT.md` is aligned down to match `MOCKS.md` — overclaims removed ("professional-grade CFD", "permaculture engine", "energy exchange").
+- [x] **HONEST-01
+**: `CONCEPT_REPORT.md` is aligned down to match `MOCKS.md` — overclaims removed ("professional-grade CFD", "permaculture engine", "energy exchange").
 - [x] **HONEST-02
 **: The surrogate's Tmrt ceiling is re-anchored to a tree + pedestrian-Tmrt source (Schrodi 2023 / Rahman 2022); Garcia-Nevado demoted to a shade-structure/surface-temp analogue.
 - [x] **HONEST-03
 **: "Validated with Infrared" and the "88% vs naive" figure are removed from external copy and replaced with accurate phrasing ("final picks re-simulated with Infrared UTCI").
-- [ ] **HONEST-04**: Unmodeled siting constraints (subsurface utilities, soil volume, irrigation/water demand, sightlines, solar access to buildings, root-vs-pavement) are documented as explicit out-of-scope exclusions.
+- [x] **HONEST-04
+**: Unmodeled siting constraints (subsurface utilities, soil volume, irrigation/water demand, sightlines, solar access to buildings, root-vs-pavement) are documented as explicit out-of-scope exclusions.
 
 ## v1 Requirements
 
