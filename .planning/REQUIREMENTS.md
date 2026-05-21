@@ -148,11 +148,11 @@ Derived from the 3-review synthesis (`docs/review/SYNTHESIS-market-ready.md`). G
 | VALID-02 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Complete (05-02) |
 | VALID-03 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Complete (05-03) |
 | VALID-04 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Complete (05-02) |
-| VALID-05 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Pending |
-| HONEST-01 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Pending |
-| HONEST-02 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Pending |
-| HONEST-03 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Pending |
-| HONEST-04 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Pending |
+| VALID-05 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Complete |
+| HONEST-01 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Complete |
+| HONEST-02 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Complete |
+| HONEST-03 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Complete |
+| HONEST-04 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Complete |
 | COST-03 | Phase 6 — Cost-Model Credibility | Pending |
 | COST-04 | Phase 6 — Cost-Model Credibility | Pending |
 | COST-05 | Phase 6 — Cost-Model Credibility | Pending |
