@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: ready_to_plan
-stopped_at: Completed 01-03-PLAN.md — cost_model CapEx/OpEx constants + EUR/degC KPI + tests
-last_updated: "2026-05-21T00:26:08.648Z"
+status: planning
+stopped_at: Completed 02-01-PLAN.md — rules_engine spacing_penalty + species_diversity_score + 31 tests
+last_updated: "2026-05-21T00:57:09.077Z"
 last_activity: 2026-05-21
 progress:
   total_phases: 4
-  completed_phases: 2
-  total_plans: 3
-  completed_plans: 3
+  completed_phases: 1
+  total_plans: 8
+  completed_plans: 4
   percent: 50
 ---
 
@@ -30,7 +30,7 @@ Plan: Not started
 Status: Ready to plan
 Last activity: 2026-05-21
 
-Progress: [██████████] 100%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -54,6 +54,7 @@ Progress: [██████████] 100%
 *Updated after each plan completion*
 | Phase 01-foundation-sdk-boundary P01-02 | 5m | 3 tasks | 4 files |
 | Phase 01-foundation-sdk-boundary P01-03 | 10m | 2 tasks | 3 files |
+| Phase 02-optimizer-core P02-01 | 3m | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,10 @@ Recent decisions affecting current work:
 - load_site() caches by resolved path in _SITE_CACHE — avoids repeated disk reads in NSGA-II hot path
 - 01-03: DECLARED assumptions CAPEX_PER_TREE_EUR=350/OPEX_PER_TREE_YEAR_EUR=35/OPEX_HORIZON_YEARS=10 tagged REQUIRES_VERIFICATION — no fabricated citation
 - 01-03: Non-positive delta returns value=None (T-01-10 mitigated) — zero-delta guard in cost_per_utci_degree
+- RULES-01 min-spacing penalty uses linear violation depth (min_spacing_m - dist) / min_spacing_m — smooth gradient for NSGA-II
+- RULES-02 Shannon index normalised by ln(n_distinct) — monoculture=0.0, balanced N-species=1.0 exactly
+- Pollinator corridor objective explicitly excluded (CONCERNS 1.2) — documented in module docstring
+- MIN_SPACING_M=4.0 and SPECIES_PALETTE tagged SOURCE: DECLARED + REQUIRES_VERIFICATION — no fabricated citation
 
 ### Pending Todos
 
@@ -98,8 +103,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-21T00:26:08.638Z
-Stopped at: Completed 01-03-PLAN.md — cost_model CapEx/OpEx constants + EUR/degC KPI + tests
+Last session: 2026-05-21T00:57:09.068Z
+Stopped at: Completed 02-01-PLAN.md — rules_engine spacing_penalty + species_diversity_score + 31 tests
 Resume file: None
 
 **Planned Phase:** 1 (Foundation & SDK Boundary) — 3 plans — 2026-05-21T00:07:58.203Z

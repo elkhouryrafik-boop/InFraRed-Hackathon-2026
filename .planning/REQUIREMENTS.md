@@ -18,8 +18,10 @@ Scope for the infrared.city Buildathon (Tree Budget track). v1 = what we demo Ma
 **: Coordinates handled consistently (document EPSG:4326 ↔ plaza-local-meters conversion at one boundary).
 
 ### Rules Engine
-- [ ] **RULES-01**: Minimum-spacing penalty (trees too close are penalized).
-- [ ] **RULES-02**: Species-diversity score (rewards a resilient mix; e.g. simple Shannon/count).
+- [x] **RULES-01
+**: Minimum-spacing penalty (trees too close are penalized).
+- [x] **RULES-02
+**: Species-diversity score (rewards a resilient mix; e.g. simple Shannon/count).
 
 ### Cost Model
 - [x] **COST-01
