@@ -93,6 +93,18 @@ belong to Phases 6–9).
   access to buildings, root-vs-pavement. Frame as "geometric feasibility, not engineering
   siting sign-off."
 
+### Production Bar (milestone-wide directive, applies from Phase 5)
+- **D-15:** No mocks, hardcodes, or unsourced assumptions may survive into shipped output —
+  the product must deliver **data-driven results from real computation**. The only
+  acceptable external stand-in is the real Infrared API itself (live key available).
+  In Phase 5 this means: calibration runs **live** (D-01, cached-from-live counts as real,
+  not mock); the surrogate's unsourced 12 °C cap and the mock-vs-mock naive figure (D-12)
+  are removed/re-anchored; the KPI is formed from real converted UTCI (D-08), not raw
+  surrogate proxy. Remaining mock surfaces outside this phase's scope (hand-authored site
+  fixture → Phase 7; hardcoded cost constants → Phase 6) must be **flagged** by the planner
+  as known mock debt with a phase owner, never silently accepted. Default the SDK to a
+  real backend path; `mock` is for offline dev only, not demo/production results.
+
 ### Claude's Discretion
 - Exact KPI math for converting UTCI-hours-above-threshold reduction → equivalent mean
   °C drop (D-09), and how [lo, hi] propagates through the division (D-10).
