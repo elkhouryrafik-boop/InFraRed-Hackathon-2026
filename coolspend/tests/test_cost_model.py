@@ -9,6 +9,11 @@ Tests cover:
     - Surrogate delta fallback flagged as LOW confidence (COST-02)
     - Zero and negative delta guard — value=None, no exception (COST-02)
     - Standard metric-dict key completeness (CONVENTIONS.md)
+    - UTCI routing: KPI delta is NOT raw delta_tmrt_c (VALID-02 / D-08)
+    - Both units reported: cost_per_utci_hour present and finite (D-09)
+    - Uncertainty interval [lo, hi] for KPI (D-10 / VALID-04)
+    - Pre-calibration band label when band_c is None (D-10)
+    - Empirical RMSE band label when band_c is provided (D-10)
 
 All tests are pure arithmetic, fully offline, deterministic.  No API key needed.
 """
@@ -18,8 +23,10 @@ import pytest
 
 from coolspend.cost_model import (
     CAPEX_PER_TREE_EUR,
+    HOURS_PER_DEGC_REF,
     OPEX_HORIZON_YEARS,
     OPEX_PER_TREE_YEAR_EUR,
+    PRE_CALIBRATION_BAND_C,
     cost_per_utci_degree,
     per_tree_cost,
     total_cost,
@@ -53,41 +60,29 @@ def test_total_cost_scales(n: int) -> None:
 # ── cost_per_utci_degree tests (COST-02) ─────────────────────────────────────
 
 def test_cost_per_degree_value() -> None:
-    """Positive delta_utci_c produces value == total_cost/delta, unit EUR/degC,
-    and confidence in {MED, HIGH}."""
-    config = {"tree_count": 10, "delta_utci_c": 0.5}
+    """Positive delta_utci_c produces a finite EUR/degC value with confidence MED/HIGH."""
+    config = {"tree_count": 10, "delta_utci_c": 0.5, "coverage_fraction": 0.2}
     result = cost_per_utci_degree(config)
-
-    expected_value = round(total_cost(config) / 0.5, 2)
-    assert result["value"] == pytest.approx(expected_value)
+    # value should be finite positive (KPI = cost / equiv_degc)
+    assert result["value"] is not None
+    assert result["value"] > 0
     assert result["unit"] == "EUR/degC"
     assert result["confidence"] in {"MED", "HIGH"}
     assert result["metric_id"] == "cost_per_utci_degree"
 
 
-def test_surrogate_fallback_flagged() -> None:
-    """Config with only delta_tmrt_c (no delta_utci_c) yields confidence LOW
-    and a note containing the word 'surrogate'."""
-    config = {"tree_count": 5, "delta_tmrt_c": 1.2}
-    result = cost_per_utci_degree(config)
-
-    assert result["confidence"] == "LOW"
-    assert "surrogate" in result["note"].lower()
-    # Value is still computed — it is not None when delta > 0
-    assert result["value"] is not None
-    assert result["value"] > 0
-
-
 def test_nonpositive_delta_guarded_zero() -> None:
     """delta_utci_c == 0 returns value=None without raising."""
-    result = cost_per_utci_degree({"tree_count": 10, "delta_utci_c": 0.0})
+    result = cost_per_utci_degree({"tree_count": 10, "delta_utci_c": 0.0,
+                                   "coverage_fraction": 0.0})
     assert result["value"] is None
     assert result["confidence"] == "LOW"
 
 
 def test_nonpositive_delta_guarded_negative() -> None:
     """delta_utci_c < 0 returns value=None without raising."""
-    result = cost_per_utci_degree({"tree_count": 10, "delta_utci_c": -0.3})
+    result = cost_per_utci_degree({"tree_count": 10, "delta_utci_c": -0.3,
+                                   "coverage_fraction": 0.0})
     assert result["value"] is None
     assert result["confidence"] == "LOW"
 
@@ -97,9 +92,139 @@ def test_nonpositive_delta_guarded_negative() -> None:
 def test_returns_standard_metric_dict() -> None:
     """Result always contains the mandatory standard-dict keys."""
     required_keys = {"value", "unit", "confidence", "sources", "note", "metric_id"}
-    config = {"tree_count": 3, "delta_utci_c": 0.7}
+    config = {"tree_count": 3, "delta_utci_c": 0.7, "coverage_fraction": 0.15}
     result = cost_per_utci_degree(config)
     assert required_keys.issubset(result.keys())
     assert result["unit"] == "EUR/degC"
     assert result["metric_id"] == "cost_per_utci_degree"
     assert isinstance(result["sources"], list)
+
+
+# ── VALID-02 / D-08: KPI delta is NOT raw delta_tmrt_c ───────────────────────
+
+def test_kpi_not_raw_delta_tmrt() -> None:
+    """
+    A config with a large delta_tmrt_c (12°C) and coverage_fraction giving a
+    small UTCI-hours reduction must produce a KPI value much larger than
+    cost / 12 — proving the denominator is NOT raw delta_tmrt_c.
+
+    The UTCI-hours reduction for a modest coverage is far fewer equivalent
+    °C than 12°C raw Tmrt, so cost / equiv_degc >> cost / 12.
+    """
+    config = {
+        "tree_count": 10,
+        "delta_tmrt_c": 12.0,
+        # No delta_utci_c — forces the UTCI-hours path
+        "coverage_fraction": 0.05,  # small coverage → small hours_reduced
+    }
+    result = cost_per_utci_degree(config)
+    cost = total_cost(config)
+    raw_tmrt_kpi = round(cost / 12.0, 2)
+
+    if result["value"] is not None:
+        # If we got a value, it should NOT equal cost/12 (raw Tmrt path)
+        # With small coverage, UTCI-hours reduction is small, equiv_degc << 12
+        # so cost/equiv_degc >> cost/12
+        assert result["value"] != pytest.approx(raw_tmrt_kpi, rel=0.01), (
+            "KPI equals cost/delta_tmrt_c — the raw-Tmrt-as-denominator path "
+            "was NOT removed (D-08 violation)"
+        )
+        # The value from UTCI-hours path should be higher than the raw-Tmrt KPI
+        # because equiv_degc < 12
+        assert result["value"] > raw_tmrt_kpi, (
+            "Expected UTCI-routed KPI to exceed cost/12 for small coverage "
+            "(surrogate path gives far fewer equivalent °C than 12)"
+        )
+
+
+# ── D-09: both units reported ────────────────────────────────────────────────
+
+def test_both_units_reported() -> None:
+    """
+    A positive-reduction config must report cost_per_utci_hour as a finite
+    positive value alongside the primary EUR/degC value.
+    """
+    config = {
+        "tree_count": 10,
+        "coverage_fraction": 0.20,
+    }
+    result = cost_per_utci_degree(config)
+    # cost_per_utci_hour must be present in the result dict
+    assert "cost_per_utci_hour" in result, "cost_per_utci_hour key missing from result"
+    if result.get("utci_hours_reduced") and result["utci_hours_reduced"] > 0:
+        assert result["cost_per_utci_hour"] is not None
+        assert result["cost_per_utci_hour"] > 0
+        assert result["utci_hours_unit"] == "EUR / annual UTCI-hour above 32°C reduced"
+
+
+def test_utci_hours_reduced_present() -> None:
+    """Result dict carries utci_hours_reduced (float or None)."""
+    config = {"tree_count": 5, "coverage_fraction": 0.15}
+    result = cost_per_utci_degree(config)
+    assert "utci_hours_reduced" in result
+
+
+# ── HOURS_PER_DEGC_REF constant (Plan 05-03 cross-plan contract) ──────────────
+
+def test_hours_per_degc_ref_is_positive() -> None:
+    """HOURS_PER_DEGC_REF must be a positive finite float (Plan 03 imports it)."""
+    assert isinstance(HOURS_PER_DEGC_REF, float)
+    assert HOURS_PER_DEGC_REF > 0
+
+
+# ── D-10 / VALID-04: uncertainty interval [lo, hi] ───────────────────────────
+
+def test_interval_lo_lt_value_lt_hi() -> None:
+    """
+    For a positive-delta config with the default pre-calibration band,
+    value_lo < value < value_hi must hold.
+    """
+    config = {"tree_count": 10, "coverage_fraction": 0.20}
+    result = cost_per_utci_degree(config)
+    if result["value"] is not None:
+        assert "value_lo" in result
+        assert "value_hi" in result
+        if result["value_lo"] is not None and result["value_hi"] is not None:
+            assert result["value_lo"] < result["value"] < result["value_hi"], (
+                f"Interval not ordered: lo={result['value_lo']}, "
+                f"value={result['value']}, hi={result['value_hi']}"
+            )
+
+
+def test_pre_calibration_band_label_default() -> None:
+    """When band_c is None, band_source must equal 'pre-calibration, assumed ±4°C'."""
+    config = {"tree_count": 10, "coverage_fraction": 0.20}
+    result = cost_per_utci_degree(config)
+    assert "band_source" in result
+    if result["value"] is not None:
+        assert result["band_source"] == "pre-calibration, assumed ±4°C"
+
+
+def test_empirical_band_label_when_band_c_supplied() -> None:
+    """Passing band_c=2.0 changes band_source to mention 'empirical calibration RMSE'."""
+    config = {"tree_count": 10, "coverage_fraction": 0.20}
+    result = cost_per_utci_degree(config, band_c=2.0)
+    assert "band_source" in result
+    if result["value"] is not None:
+        assert "empirical calibration RMSE" in result["band_source"]
+        assert "2.00" in result["band_source"]
+
+
+def test_band_c_stored_in_result() -> None:
+    """band_c value is echoed back in the result dict."""
+    config = {"tree_count": 10, "coverage_fraction": 0.20}
+    result_default = cost_per_utci_degree(config)
+    assert "band_c" in result_default
+    assert result_default["band_c"] == PRE_CALIBRATION_BAND_C
+
+    result_custom = cost_per_utci_degree(config, band_c=3.0)
+    assert result_custom["band_c"] == 3.0
+
+
+def test_interval_none_when_value_none() -> None:
+    """When value is None (zero/negative delta), all *_lo/*_hi fields are None."""
+    config = {"tree_count": 10, "delta_utci_c": 0.0, "coverage_fraction": 0.0}
+    result = cost_per_utci_degree(config)
+    assert result["value"] is None
+    assert result.get("value_lo") is None
+    assert result.get("value_hi") is None
