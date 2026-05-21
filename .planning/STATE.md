@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Market-Ready CoolSpend
 status: executing
-stopped_at: "Completed 05-03: Calibration study (RMSE/R2/band + rank stability both ways)"
-last_updated: "2026-05-21T18:00:00.000Z"
-last_activity: 2026-05-21 -- Phase 05 Plan 03 execution complete
+stopped_at: "Completed 05-04: Code-side honesty reset (D-12 naive-baseline deleted, D-13 citation re-anchored, D-11 artifact strings fixed)"
+last_updated: "2026-05-21T16:53:44.206Z"
+last_activity: 2026-05-21 -- Phase --phase execution started
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 18
-  completed_plans: 15
-  percent: 83
+  completed_plans: 17
+  percent: 94
 ---
 
 # Project State
@@ -70,6 +70,7 @@ Progress: [████████░░] 78%
 | Phase 05-surrogate-ground-truth-honesty-reset P01 | 15m | 2 tasks | 4 files |
 | Phase 05-surrogate-ground-truth-honesty-reset P02 | 25m | 2 tasks | 2 files |
 | Phase 05-surrogate-ground-truth-honesty-reset P03 | 25m | 2 tasks | 2 files |
+| Phase 05 P04 | 5m | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -126,6 +127,8 @@ Recent decisions affecting current work:
 - D-06: pyproj UTM-31N (EPSG:32631) with always_xy=True, per-site SW UTM corner origin from polygon bbox, [0,width]x[0,depth] local frame preserved
 - D-07: assert_crs_roundtrip measures UTM metres euclidean distance, raises CRSConsistencyError >= 1m, wired in _live_utci before InfraredClient call — fail-closed
 - D-08/D-09/D-10: HOURS_PER_DEGC_REF=200.0 (Barcelona EPW strong heat stress mean UTCI excess ~3°C; 600h/yr / 3°C = 200h/°C); cost_per_utci_degree now routes through utci_hours_above — never raw Tmrt; reports both EUR/degC and EUR/UTCI-hour; always interval [lo,hi] with PRE_CALIBRATION_BAND_C=4.0 until Plan 05-03 RMSE available
+- D-12: naive_baseline_config/_build_naive_baseline/improvement_vs_naive_pct deleted from optimizer.py — mock-vs-mock overclaim removed
+- D-13: surrogate ceiling re-anchored to Schrodi 2023 (arXiv:2310.05691, venue PENDING, ML magnitude only) + Rahman 2022 (DOI PENDING); Garcia-Nevado 2020 demoted to surface-temp analogue; 12C cap REQUIRES_VERIFICATION preserved
 
 ### Pending Todos
 
@@ -152,8 +155,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-21T18:00:00.000Z
-Stopped at: Completed 05-03: Calibration study (RMSE/R2/band + rank stability both ways)
+Last session: 2026-05-21T16:53:44.195Z
+Stopped at: Completed 05-04: Code-side honesty reset (D-12 naive-baseline deleted, D-13 citation re-anchored, D-11 artifact strings fixed)
 Resume file: None
 
 **Planned Phase:** 5 (Surrogate Ground-Truth & Honesty Reset) — 5 plans — 2026-05-21T16:15:19.750Z
