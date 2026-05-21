@@ -279,6 +279,14 @@ def _live_utci(metric_key: str, geometry: dict) -> "UTCIResult":
         ring.append(ring[0])
     polygon = {"type": "Polygon", "coordinates": [ring]}
 
+    # ── CRS round-trip guard (D-07, T-05-01) ─────────────────────────────────
+    # Assert <1 m WGS84->UTM->WGS84 round-trip before calling the live API.
+    # Fails closed: CRSConsistencyError propagates out — SDK call is unreachable.
+    # Touches only geometry; INFRARED_API_KEY is never read, logged, or formatted
+    # in this code path (T-05-02).
+    from coolspend.spatial_engine import assert_crs_roundtrip  # noqa: PLC0415
+    assert_crs_roundtrip(ring)
+
     # ── Infrared SDK call ─────────────────────────────────────────────────────
     # TODO (May-27 wiring): confirm the exact UTCI request class and AnalysesName
     # member against the installed infrared_sdk version. The single variable
