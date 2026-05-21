@@ -112,6 +112,12 @@ _SITE_ORIGIN_N: float | None = None   # UTM-31N northing of SW corner (metres)
 
 _ORIGIN_INITIALIZED: bool = False  # True once _ensure_origin_initialized() has run
 
+# Active-site override (D-06 "scan anywhere"). When set, is_valid_location() uses
+# THIS site dict instead of lazily loading the bundled angels_site.geojson — so
+# retargeting to an arbitrary Barcelona polygon is not silently clobbered by the
+# default-site loader. None -> default behaviour (load bundled fixture).
+_ACTIVE_SITE: dict[str, Any] | None = None
+
 
 def set_site_origin_from_polygon(
     ring_lonlat: list[tuple[float, float]],
@@ -173,13 +179,62 @@ def reset_site_origin() -> None:
     every test (coolspend/tests/conftest.py) to guarantee deterministic test isolation.
     """
     global _SITE_ORIGIN_E, _SITE_ORIGIN_N, SITE_WIDTH_M, SITE_DEPTH_M, _ORIGIN_INITIALIZED
+    global _ACTIVE_SITE
     _SITE_ORIGIN_E = None
     _SITE_ORIGIN_N = None
     SITE_WIDTH_M = _DEFAULT_SITE_WIDTH_M
     SITE_DEPTH_M = _DEFAULT_SITE_DEPTH_M
     _ORIGIN_INITIALIZED = False
+    _ACTIVE_SITE = None
     _SITE_RECT_CACHE.clear()
     _CORE_RECT_CACHE.clear()
+
+
+def set_active_site(site: dict[str, Any] | None) -> None:
+    """Set (or clear with None) the active site dict used by is_valid_location.
+
+    Use with set_site_origin_from_polygon when scanning an arbitrary location so the
+    valid-location check uses the chosen site instead of the bundled default fixture.
+    """
+    global _ACTIVE_SITE
+    _ACTIVE_SITE = site
+
+
+def open_square_site(width_m: float, depth_m: float) -> dict[str, Any]:
+    """Build a synthetic open-ground site: the full [0,width]x[0,depth] rectangle.
+
+    No building/street exclusions — every point in the square is plantable. Used for
+    "scan anywhere" surrogate placement when we have not (yet) fetched real building
+    footprints for the polygon. The LIVE Infrared UTCI run still uses the REAL
+    buildings fetched for the polygon, so the measured cooling reflects true geometry;
+    only the surrogate's pre-screen treats the square as open. Building-aware
+    placement for arbitrary sites is a planned refinement.
+    """
+    boundary = Polygon([(0.0, 0.0), (width_m, 0.0), (width_m, depth_m), (0.0, depth_m)])
+    return {"boundary": boundary, "buildings": [], "streets": []}
+
+
+def square_ring_lonlat(lon: float, lat: float, side_m: float) -> list[list[float]]:
+    """Build a closed square WGS84 ring of side `side_m` centred on (lon, lat).
+
+    Squared in UTM-31N (EPSG:32631) metres so it is a true metric square anywhere
+    in Barcelona, then converted back to lon/lat. This is the "scan any location"
+    primitive: pass the result to set_site_origin_from_polygon() to retarget the
+    optimizer to that site, and as polygon_lonlat to the live Infrared UTCI call.
+
+    Args:
+        lon, lat: centre in WGS84 degrees.
+        side_m:   square side length in metres.
+
+    Returns:
+        A closed ring [[lon,lat], ...] (5 points, first == last), CCW.
+    """
+    e, n = _TO_UTM.transform(lon, lat)
+    h = side_m / 2.0
+    corners_utm = [
+        (e - h, n - h), (e + h, n - h), (e + h, n + h), (e - h, n + h), (e - h, n - h),
+    ]
+    return [list(_TO_WGS.transform(ee, nn)) for ee, nn in corners_utm]
 
 
 def ensure_site_origin() -> None:
@@ -475,7 +530,10 @@ def is_valid_location(
         True if the location is open and plantable; False otherwise.
     """
     if site is None:
-        site = load_site()
+        # Active-site override (scan anywhere) takes precedence over the default
+        # fixture; load_site() is only called when neither is set. This prevents
+        # the default-site loader from clobbering an explicit per-site origin.
+        site = _ACTIVE_SITE if _ACTIVE_SITE is not None else load_site()
 
     p = Point(x_m, y_m)
 

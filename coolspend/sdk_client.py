@@ -99,12 +99,16 @@ class UTCIResult:
     geometry_hash: str
     disclaimer: str
     source: str
-    # Spatial value primitive (live grid only; None for mock/scalar backends).
-    # heat_stress_area_m2: ground area (m², 1 m² per cell) where UTCI exceeds the
-    # strong-heat-stress threshold (32 °C). Baseline minus intervention = the
-    # m² of heat-stress pavement a placement removes — the headline value metric.
+    # Spatial value primitives (live grid only; None for mock/scalar backends).
+    # heat_stress_area_m2: ground area (m², 1 m²/cell) above the moderate-heat-stress
+    #   threshold (UTCI_HEAT_STRESS_C) — conservative, official-boundary metric.
+    # merged_grid: the full UTCI grid (rounded, NaN outside polygon) so a caller can
+    #   diff baseline vs intervention CELL-WISE for the cooled-footprint headline
+    #   (cooled_footprint_m2). Kept on the result + cache so cached replay reproduces
+    #   the footprint offline. Not propagated into the public result dict.
     heat_stress_area_m2: float | None = None
     grid_cells_total: int | None = None  # non-NaN cells in the merged grid
+    merged_grid: list | None = None      # 2D list of UTCI °C (None outside polygon)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialise to a JSON-safe dict."""
@@ -230,6 +234,40 @@ _VALID_GROUND_MATERIALS: frozenset[str] = frozenset(
 # dimensionally-matched live validation is the TCS (thermal-comfort-statistics)
 # per-cell hour count — documented as the rigorous upgrade (MOCKS.md).
 UTCI_HEAT_STRESS_C: float = 26.0
+
+# Minimum per-cell UTCI drop (°C) counted as "meaningfully cooled" for the
+# cooled-footprint headline metric. 0.5 °C is a perceptible comfort change and
+# is well above the model's numerical noise. Threshold-independent of absolute
+# UTCI, so it does NOT saturate on already-hot sites (unlike heat_stress_area).
+COOLED_MIN_DROP_C: float = 0.5
+
+
+def cooled_footprint_m2(
+    baseline_grid: list | None,
+    intervention_grid: list | None,
+    min_drop_c: float = COOLED_MIN_DROP_C,
+) -> float | None:
+    """m² of ground the trees measurably cool: cells where baseline − intervention
+    >= min_drop_c. 1 m pitch -> 1 m²/cell. Returns None if either grid is missing
+    (mock/scalar backend) or shapes differ.
+
+    The headline value metric: 'these trees cool N m² of ground by >= min_drop_c'.
+    Robust on hot sites where every cell is already in heat stress.
+    """
+    if baseline_grid is None or intervention_grid is None:
+        return None
+    try:
+        import numpy as np  # noqa: PLC0415
+    except ImportError:
+        return None
+    b = np.asarray(baseline_grid, dtype=float)
+    i = np.asarray(intervention_grid, dtype=float)
+    if b.shape != i.shape:
+        return None
+    drop = b - i  # positive where the intervention is cooler
+    # NaN (outside polygon) propagates to NaN in drop; (NaN >= x) is False -> excluded.
+    cooled_cells = int(np.count_nonzero(drop >= min_drop_c))
+    return float(cooled_cells)  # 1 m²/cell
 
 # Fallback crown diameter (m) when a tree's species is not in the BCN species
 # table — pinned to 2 × TREE_CANOPY_RADIUS_M (surrogate's representative footprint).
@@ -457,6 +495,9 @@ def _live_utci(metric_key: str, geometry: dict) -> "UTCIResult":
         ),
         heat_stress_area_m2=round(heat_stress_area_m2, 1),
         grid_cells_total=grid_cells_total,
+        # Rounded grid for the cooled-footprint diff (NaN preserved; our cache
+        # round-trips NaN via json allow_nan). Cheap for single-tile sites.
+        merged_grid=np.round(grid, 2).tolist(),
     )
 
 

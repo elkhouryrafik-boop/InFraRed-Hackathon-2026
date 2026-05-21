@@ -459,7 +459,12 @@ def validate_top3_with_infrared(
         RuntimeError: if more than 3 intervention calls are attempted (SimBudget).
     """
     # SDK imports here only — never at module top level (hot-path isolation)
-    from coolspend.sdk_client import get_baseline_utci, get_intervention_utci, SimBudget  # noqa: PLC0415
+    from coolspend.sdk_client import (  # noqa: PLC0415
+        get_baseline_utci,
+        get_intervention_utci,
+        SimBudget,
+        cooled_footprint_m2,
+    )
 
     if budget is None:
         budget = SimBudget(max_live_calls=3)
@@ -483,6 +488,24 @@ def validate_top3_with_infrared(
         cfg["delta_utci_c"] = round(baseline.utci_c - intervention.utci_c, 2)
         cfg["validated_backend"] = intervention.backend
         cfg["validated_disclaimer"] = intervention.disclaimer
+
+        # Heat-stress AREA removed (live grid only; None on mock/scalar backends).
+        # The headline value metric: m² of moderate-heat-stress ground the placement
+        # eliminates (baseline area above UTCI threshold − intervention area).
+        base_area = baseline.heat_stress_area_m2
+        int_area = intervention.heat_stress_area_m2
+        cfg["baseline_heat_stress_area_m2"] = base_area
+        cfg["validated_heat_stress_area_m2"] = int_area
+        if base_area is not None and int_area is not None:
+            cfg["heat_stress_area_removed_m2"] = round(base_area - int_area, 1)
+        else:
+            cfg["heat_stress_area_removed_m2"] = None
+
+        # Cooled footprint: m² the trees cool by >= 0.5 °C (cell-wise grid diff).
+        # The headline value metric — does not saturate on already-hot sites.
+        cfg["cooled_footprint_m2"] = cooled_footprint_m2(
+            baseline.merged_grid, intervention.merged_grid
+        )
 
     return top3
 

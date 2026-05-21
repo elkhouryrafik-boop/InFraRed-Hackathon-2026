@@ -161,6 +161,8 @@ def run_decision(
     backend: str = "mock",
     cost_table: "CostTable | None" = None,
     growth_discount: "GrowthDiscountParams | None" = None,
+    center_lonlat: tuple[float, float] | None = None,
+    site_size_m: float = 120.0,
 ) -> dict:
     """Drive the full CoolSpend pipeline and return a structured result dict.
 
@@ -249,6 +251,8 @@ def run_decision(
             call_log=call_log,
             cost_table=cost_table,
             growth_discount=growth_discount,
+            center_lonlat=center_lonlat,
+            site_size_m=site_size_m,
         )
     finally:
         # Always remove capture handler and restore logger level + env regardless of outcome
@@ -258,6 +262,11 @@ def run_decision(
             os.environ.pop("INFRARED_BACKEND", None)
         else:
             os.environ["INFRARED_BACKEND"] = prior_backend
+        # Reset per-site origin + active-site override so an "anywhere" run does not
+        # leak its frame into a later default-site run in the same process.
+        if center_lonlat is not None:
+            from coolspend.spatial_engine import reset_site_origin  # noqa: PLC0415
+            reset_site_origin()
 
 
 def _run_pipeline(
@@ -268,6 +277,8 @@ def _run_pipeline(
     call_log: list[str],
     cost_table: "CostTable | None" = None,
     growth_discount: "GrowthDiscountParams | None" = None,
+    center_lonlat: tuple[float, float] | None = None,
+    site_size_m: float = 120.0,
 ) -> dict:
     """Internal pipeline runner. Wrapped in try/except by run_decision caller.
 
@@ -275,6 +286,24 @@ def _run_pipeline(
     Never raises (all exceptions are caught and returned as error strings).
     """
     try:
+        # Stage 0: retarget to ANY Barcelona location (center_lonlat = (lon, lat)).
+        # Builds a metric-square site there and points the optimizer's local frame
+        # at it (set_site_origin_from_polygon). This is the "scan anywhere" path —
+        # no hardcoded site. When None, the default site origin is used.
+        if center_lonlat is not None:
+            from coolspend.spatial_engine import (  # noqa: PLC0415
+                square_ring_lonlat,
+                set_site_origin_from_polygon,
+                set_active_site,
+                open_square_site,
+            )
+            lon, lat = center_lonlat
+            ring = square_ring_lonlat(lon, lat, site_size_m)
+            w, d = set_site_origin_from_polygon([(p[0], p[1]) for p in ring])
+            # Use an open-ground site so is_valid_location does NOT reload the
+            # bundled default fixture (which would clobber this origin).
+            set_active_site(open_square_site(w, d))
+
         # Stage 1: NSGA-II on surrogate (seed 42, zero live SDK calls)
         result = run_optimisation(budget_eur=budget_eur)
 
@@ -300,6 +329,17 @@ def _run_pipeline(
                     growth_discount=growth_discount,
                 )
 
+        # Stage 4c: Capture WGS84 geometry in the CURRENT site frame (before any
+        # post-run origin reset) so the result is self-contained for the map UI,
+        # the live validation, and reproducibility. site_polygon_lonlat = the scanned
+        # site boundary; each config gains trees_lonlat (per-tree lon/lat + species).
+        from coolspend.optimizer import _config_to_geometry  # noqa: PLC0415
+        site_polygon_lonlat = None
+        for cfg in top3:
+            geom = _config_to_geometry(cfg)
+            cfg["trees_lonlat"] = geom["trees_lonlat"]
+            site_polygon_lonlat = geom["polygon_lonlat"]
+
         # Stage 5: Build structured result
         rank1 = top3[0]  # best EUR/degC after topsis_rank
 
@@ -315,6 +355,8 @@ def _run_pipeline(
             "disclaimer": disclaimer,
             "call_log": list(call_log),  # snapshot of captured log entries
             "site_path": site_path,
+            "site_polygon_lonlat": site_polygon_lonlat,
+            "center_lonlat": center_lonlat,
             "error": None,
         }
 
@@ -340,13 +382,22 @@ def _build_before_after(rank1: dict) -> dict:
 
     All values read directly from validated config fields — nothing fabricated.
     """
+    cooled = rank1.get("cooled_footprint_m2")
+    cost_eur = rank1.get("cost_eur") or 0.0
+    eur_per_m2_cooled = (
+        round(cost_eur / cooled, 1) if cooled else None
+    )
     return {
         "baseline_utci_c": rank1.get("baseline_utci_c"),
         "chosen_label": rank1.get("label"),
         "chosen_validated_utci_c": rank1.get("validated_utci_c"),
         "headline_delta_utci_c": rank1.get("delta_utci_c"),
+        "cooled_footprint_m2": cooled,
+        "eur_per_m2_cooled": eur_per_m2_cooled,
+        "heat_stress_area_removed_m2": rank1.get("heat_stress_area_removed_m2"),
         "source": rank1.get("validated_disclaimer", rank1.get("validated_backend", "")),
-        "note": "before = baseline UTCI; after = rank-1 intervention validated UTCI",
+        "note": "before = baseline UTCI; after = rank-1 intervention validated UTCI; "
+                "cooled_footprint_m2 = ground cooled >=0.5C (cell-wise grid diff)",
     }
 
 
@@ -362,7 +413,17 @@ def _build_headline(rank1: dict, before_after: dict) -> str:
     delta = before_after.get("headline_delta_utci_c") or 0.0
     n = rank1.get("tree_count", 0)
     kpi = rank1.get("cost_per_utci_degree", {}).get("value")
+    cooled = before_after.get("cooled_footprint_m2")
+    eur_m2 = before_after.get("eur_per_m2_cooled")
 
+    # Live runs lead with the cooled-footprint headline (real m² cooled per euro);
+    # mock/scalar runs fall back to the site-mean delta phrasing.
+    if cooled:
+        base = (
+            f"Spend EUR {cost_eur:,.0f} -> {n} trees cool {cooled:,.0f} m2 of ground "
+            f"by >=0.5C (EUR {eur_m2:,.0f}/m2), validated by real Infrared UTCI."
+        )
+        return base
     base = f"Spend EUR {cost_eur:,.0f} -> cools the plaza {delta:.2f} degC -- plant these {n} locations."
     if kpi is None:
         base += " (KPI unavailable: non-positive delta)"
