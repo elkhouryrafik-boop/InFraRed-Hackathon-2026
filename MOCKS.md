@@ -8,3 +8,4 @@ The pre-merge check is: every `# MOCK:` or `# SURROGATE:` comment must map to a 
 | Item | Location | Status | Reason | Replacement Path |
 |------|----------|--------|--------|-----------------|
 | mock UTCI delta | coolspend/sdk_client.py | MOCK | synthetic scalar UTCI delta returned offline before May 27 API key; NOT MEASURED DATA | INFRARED_BACKEND=live after May 27 |
+| angels_site.geojson fixture | coolspend/data/angels_site.geojson | MOCK | hand-authored offline site geometry (site boundary + 2 buildings + 1 street) for deterministic spatial tests; not surveyed OSM data | real OSM export for Placa dels Angels |
