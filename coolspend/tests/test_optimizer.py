@@ -26,12 +26,15 @@ from coolspend.optimizer import (
     DEFAULT_BUDGET_EUR,
     TreeBudgetProblem,
     decode,
+    naive_baseline_config,
     run_optimisation,
+    save_outputs,
     select_top3,
+    topsis_rank,
     validate_top3_with_infrared,
 )
 from coolspend.sdk_client import SimBudget
-from coolspend.spatial_engine import load_site
+from coolspend.spatial_engine import is_valid_location, load_site
 
 
 # ── FIXTURES ─────────────────────────────────────────────────────────────────
@@ -212,3 +215,141 @@ def test_budget_constraint_active():
     else:
         # All slots invalid (unlikely for centre coordinate), cost = 0 => G1 <= 0
         assert g1 <= 0, f"Expected G1 <= 0 for zero active trees, got {g1}"
+
+
+# ── REMEDIATION TESTS (Option A — non-degeneracy, determinism, naive baseline) ─
+
+
+@pytest.fixture(scope="module")
+def real_result():
+    """A realistic NSGA-II run (seed 42) used to assert a non-degenerate front.
+
+    Smaller than the production 60×60 to keep the suite fast, but large enough that
+    the core-weighted thermal↔ecological trade-off (Option A) spreads the front.
+    """
+    return run_optimisation(n_gen=40, pop_size=40, seed=42)
+
+
+def test_pareto_front_is_non_degenerate(real_result):
+    """REMEDIATION root-cause fix: the Pareto front has > 1 UNIQUE objective row.
+
+    Before Option A the front collapsed to a single point (thermal and ecological
+    objectives were correlated). Core-weighted thermal coverage creates a genuine
+    trade-off, so distinct objective vectors must now appear on the front.
+    """
+    F = np.atleast_2d(real_result.F)
+    n_unique = np.unique(F, axis=0).shape[0]
+    assert n_unique > 1, (
+        f"Pareto front is DEGENERATE: only {n_unique} unique objective row(s). "
+        "Option A core-weighting must produce a spread front."
+    )
+
+
+def test_top3_configs_differ_in_delta_and_cost(real_result):
+    """Top-3 configs differ in delta_utci_c AND euro/°C — not just their labels.
+
+    A degenerate front would yield three configs with identical thermal/cost
+    values distinguished only by label. After Option A the validated UTCI deltas
+    and the euro/°C KPIs must take more than one distinct value.
+    """
+    top3 = select_top3(real_result)
+    budget = SimBudget(max_live_calls=3)
+    top3 = validate_top3_with_infrared(top3, budget=budget)
+    top3 = topsis_rank(top3)
+
+    deltas = {c["delta_utci_c"] for c in top3}
+    kpis = {c["cost_per_utci_degree"]["value"] for c in top3}
+
+    assert len(deltas) > 1, (
+        f"Top-3 delta_utci_c values are not distinct: {deltas} — front is degenerate."
+    )
+    assert len(kpis) > 1, (
+        f"Top-3 euro/°C KPIs are not distinct: {kpis} — ranking is degenerate."
+    )
+
+
+def test_seed_determinism_same_seed_identical():
+    """TRUE seed determinism: seed 42 twice → identical F AND X matrices."""
+    r1 = run_optimisation(n_gen=20, pop_size=30, seed=42)
+    r2 = run_optimisation(n_gen=20, pop_size=30, seed=42)
+
+    F1, F2 = np.atleast_2d(r1.F), np.atleast_2d(r2.F)
+    X1, X2 = np.atleast_2d(r1.X), np.atleast_2d(r2.X)
+
+    assert F1.shape == F2.shape, f"F shapes differ: {F1.shape} vs {F2.shape}"
+    assert np.array_equal(F1, F2), "seed 42 produced different F across runs"
+    assert X1.shape == X2.shape, f"X shapes differ: {X1.shape} vs {X2.shape}"
+    assert np.array_equal(X1, X2), "seed 42 produced different X across runs"
+
+
+def test_seed_determinism_different_seed_differs():
+    """Different seed (7) must produce a DIFFERENT front than seed 42.
+
+    Proves the seed actually drives the RNG (not a hard-coded result).
+    """
+    r_a = run_optimisation(n_gen=20, pop_size=30, seed=42)
+    r_b = run_optimisation(n_gen=20, pop_size=30, seed=7)
+
+    F_a, F_b = np.atleast_2d(r_a.F), np.atleast_2d(r_b.F)
+    # Different shape OR different contents both prove divergence.
+    differs = (F_a.shape != F_b.shape) or (not np.array_equal(F_a, F_b))
+    assert differs, "seed 7 produced an identical front to seed 42 — seed is ignored"
+
+
+def test_naive_baseline_is_valid_and_deterministic():
+    """naive_baseline_config: deterministic, valid placements, round-robin species."""
+    cfg1 = naive_baseline_config()
+    cfg2 = naive_baseline_config()
+
+    # Deterministic
+    coords1 = [(t["x_m"], t["y_m"]) for t in cfg1["trees"]]
+    coords2 = [(t["x_m"], t["y_m"]) for t in cfg2["trees"]]
+    assert coords1 == coords2, "naive_baseline_config is not deterministic"
+
+    # Exactly N_TREES slots, at least one active, all active ones valid
+    assert len(cfg1["trees"]) == N_TREES
+    assert cfg1["tree_count"] >= 1, "naive grid produced zero valid trees"
+    for t in cfg1["trees"]:
+        if t["active"]:
+            assert is_valid_location(t["x_m"], t["y_m"]), (
+                f"active naive tree at ({t['x_m']:.1f}, {t['y_m']:.1f}) is not valid"
+            )
+
+
+def test_naive_baseline_present_and_improvement_finite(tmp_path, real_result):
+    """Artifact carries baseline_naive + a finite improvement_vs_naive_pct on rank-1."""
+    import json
+    import math
+
+    top3 = select_top3(real_result)
+    budget = SimBudget(max_live_calls=3)
+    top3 = validate_top3_with_infrared(top3, budget=budget)
+    top3 = topsis_rank(top3)
+
+    json_path = save_outputs(top3, real_result, out_dir=tmp_path)
+    artifact = json.loads(json_path.read_text(encoding="utf-8"))
+
+    assert "baseline_naive" in artifact, "artifact missing baseline_naive block"
+    naive = artifact["baseline_naive"]
+    assert naive.get("label") == "NAIVE_GRID"
+    assert naive.get("tree_count", 0) >= 1
+    assert naive.get("delta_utci_c") is not None
+
+    assert "improvement_vs_naive_pct" in artifact, "missing improvement_vs_naive_pct"
+    improvement = artifact["improvement_vs_naive_pct"]
+    assert improvement is not None, "improvement_vs_naive_pct is None"
+    assert math.isfinite(improvement), f"improvement not finite: {improvement}"
+
+    # rank-1 config also carries the field
+    assert artifact["configurations"][0].get("improvement_vs_naive_pct") == improvement
+
+
+def test_select_top3_always_returns_three():
+    """select_top3 returns exactly 3 entries even on a tiny/near-degenerate run."""
+    result = run_optimisation(n_gen=3, pop_size=6, seed=42)
+    top3 = select_top3(result)
+    assert len(top3) == 3, f"Expected exactly 3 configs, got {len(top3)}"
+    ranks = [c["rank"] for c in top3]
+    assert ranks == [1, 2, 3], f"Ranks must be 1,2,3: {ranks}"
+    labels = [c["label"] for c in top3]
+    assert len(set(labels)) == 3, f"Labels must be distinct (incl. padded): {labels}"
