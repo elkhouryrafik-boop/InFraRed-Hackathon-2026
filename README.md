@@ -73,6 +73,15 @@ confirmed end-to-end against the real API in this repository.
 mock = NOT MEASURED DATA (surrogate values, synthetic, for integration only)
 live = real Infrared UTCI API calls (wired; unverified until May 27 key confirmation)
 
+**Known limitation — live call count (Security M1):** one "Run" with
+`INFRARED_BACKEND=live` makes 4 live Infrared SDK calls (1 baseline + 3 Top-3
+interventions). On a public Hugging Face Space this can be abused. Recommendations:
+guard the live backend behind an additional server-side environment flag (e.g.
+`LIVE_BACKEND_ENABLED=1`) checked in `app_pipeline.run_decision` before flipping
+`INFRARED_BACKEND`, and add a per-IP or per-session rate limit at the Space level.
+The current implementation does not enforce either — treat this as a pre-production
+limitation before opening the Space to the public.
+
 ## Honesty / MOCKS note
 
 The thermal surrogate (`delta_tmrt_surrogate`) carries approximately +/-4 degC uncertainty
