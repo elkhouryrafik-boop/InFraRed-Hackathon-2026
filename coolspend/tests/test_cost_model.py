@@ -228,3 +228,115 @@ def test_interval_none_when_value_none() -> None:
     assert result["value"] is None
     assert result.get("value_lo") is None
     assert result.get("value_hi") is None
+
+
+# ── CostTable / CostLine tests (COST-03 / Phase 6) ──────────────────────────
+
+from coolspend.cost_model import (  # noqa: E402
+    DEFAULT_COST_TABLE,
+    CostLine,
+    CostTable,
+    VERIFIED,
+    DECLARED,
+    PENDING,
+)
+
+
+class TestCostLineDataclass:
+    """CostLine is a frozen dataclass with the required fields."""
+
+    def test_costline_is_frozen(self) -> None:
+        """CostLine instances are immutable."""
+        line = CostLine(
+            key="test",
+            label="Test line",
+            value=100.0,
+            unit="EUR/tree",
+            kind="capex",
+            source="test source",
+            confidence=DECLARED,
+        )
+        with pytest.raises((AttributeError, TypeError)):
+            line.value = 999.0  # type: ignore[misc]
+
+    def test_costline_fields_present(self) -> None:
+        """CostLine has all required fields."""
+        line = CostLine(
+            key="tree_stock",
+            label="Tree stock",
+            value=900.0,
+            unit="EUR/tree",
+            kind="capex",
+            source="Some source",
+            confidence=DECLARED,
+        )
+        assert line.key == "tree_stock"
+        assert line.label == "Tree stock"
+        assert line.value == 900.0
+        assert line.unit == "EUR/tree"
+        assert line.kind == "capex"
+        assert isinstance(line.source, str) and line.source
+        assert line.confidence == DECLARED
+
+
+class TestDefaultCostTable:
+    """DEFAULT_COST_TABLE has exactly 6 sourced lines with correct totals."""
+
+    def test_has_exactly_six_lines(self) -> None:
+        """DEFAULT_COST_TABLE must have exactly 6 cost lines."""
+        assert len(DEFAULT_COST_TABLE.lines) == 6
+
+    def test_has_all_required_keys(self) -> None:
+        """All six required line keys must be present."""
+        keys = {line.key for line in DEFAULT_COST_TABLE.lines}
+        required_keys = {
+            "tree_stock",
+            "pit_excavation",
+            "structural_soil",
+            "guarding",
+            "planting_labour",
+            "annual_opex",
+        }
+        assert keys == required_keys
+
+    def test_capex_total_equals_3000(self) -> None:
+        """CapEx lines sum to exactly 3000.0 EUR/tree."""
+        assert DEFAULT_COST_TABLE.capex_total() == pytest.approx(3000.0)
+
+    def test_opex_per_year_equals_180(self) -> None:
+        """OpEx lines sum to exactly 180.0 EUR/tree/yr."""
+        assert DEFAULT_COST_TABLE.opex_per_year() == pytest.approx(180.0)
+
+    def test_per_tree_cost_horizon_zero(self) -> None:
+        """per_tree_cost(0) == 3000.0 (CapEx only, no OpEx)."""
+        assert DEFAULT_COST_TABLE.per_tree_cost(0) == pytest.approx(3000.0)
+
+    def test_per_tree_cost_horizon_40(self) -> None:
+        """per_tree_cost(40) == 3000 + 180*40 == 10200.0."""
+        assert DEFAULT_COST_TABLE.per_tree_cost(40) == pytest.approx(10200.0)
+
+    def test_every_line_has_non_empty_source(self) -> None:
+        """Every CostLine in DEFAULT_COST_TABLE has a non-empty source string."""
+        for line in DEFAULT_COST_TABLE.lines:
+            assert isinstance(line.source, str) and line.source.strip(), (
+                f"CostLine '{line.key}' has empty source"
+            )
+
+    def test_every_line_has_valid_confidence(self) -> None:
+        """Every CostLine confidence must be VERIFIED, DECLARED, or PENDING."""
+        valid = {VERIFIED, DECLARED, PENDING}
+        for line in DEFAULT_COST_TABLE.lines:
+            assert line.confidence in valid, (
+                f"CostLine '{line.key}' has invalid confidence '{line.confidence}'"
+            )
+
+    def test_label_says_verify_locally(self) -> None:
+        """DEFAULT_COST_TABLE.label must include 'verify locally'."""
+        assert "verify locally" in DEFAULT_COST_TABLE.label
+
+    def test_five_capex_lines_one_opex_line(self) -> None:
+        """Must have exactly 5 capex lines and 1 opex line."""
+        capex_lines = [l for l in DEFAULT_COST_TABLE.lines if l.kind == "capex"]
+        opex_lines = [l for l in DEFAULT_COST_TABLE.lines if l.kind == "opex"]
+        assert len(capex_lines) == 5
+        assert len(opex_lines) == 1

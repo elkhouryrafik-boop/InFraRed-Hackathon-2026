@@ -8,11 +8,22 @@ Purpose:
     degree Celsius of UTCI street-comfort relief.  This KPI drives the NSGA-II
     ranking in Phase 2 and the allocation display cards in Phase 3.
 
-Constant status:
-    CAPEX_PER_TREE_EUR, OPEX_PER_TREE_YEAR_EUR, and OPEX_HORIZON_YEARS are
-    DECLARED assumptions (urban street-tree midrange estimates).  They are
-    NOT independently verified figures.  Each carries a
-    # SOURCE: REQUIRES_VERIFICATION comment.  See MOCKS.md for the ledger row.
+Constant status (Phase 6 / COST-03 — itemized CostTable):
+    CAPEX_PER_TREE_EUR, OPEX_PER_TREE_YEAR_EUR, and OPEX_HORIZON_YEARS are now
+    DERIVED from DEFAULT_COST_TABLE (single source of truth — D-15).  They are
+    preserved as module-level names for backward compatibility; do NOT redefine
+    them independently.  See MOCKS.md cost-line ledger for per-line source tags.
+
+    Default values: CapEx ≈ €3,000/tree (fully loaded — vs old €350 which was
+    ~10× too low); OpEx ≈ €180/tree/yr; horizon = 40 yr (D-09: tree functional
+    lifespan, urban sealed-site context).
+
+    Lifecycle cost literature context (PENDING — paywalled, cited venue only):
+    German 5-city life-cycle study (Riegel / ScienceDirect 2025) — sealed-pit
+    payback ≈34 yrs, discount-rate-sensitive.  Barcelona-specific procurement =
+    PENDING; defaults are labelled "illustrative European mid-range, verify
+    locally".  User supplies local figures via the editable CostTable (Plan 06-03
+    / COST-04).
 
     HOURS_PER_DEGC_REF is a documented conversion factor: the number of annual
     UTCI-hours-above-32°C that are considered equivalent to 1°C of mean-UTCI drop.
@@ -40,6 +51,7 @@ Key functions:
 """
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import Any
 
 # ── Confidence constants ──────────────────────────────────────────────────────
@@ -47,28 +59,167 @@ HIGH = "HIGH"
 MED  = "MED"
 LOW  = "LOW"
 
-# ── CapEx / OpEx constants (DECLARED assumptions — COST-01) ──────────────────
+# Phase 6 / COST-03 confidence tags for cost-line audit trail (D-04)
+VERIFIED = "VERIFIED"  # cited, independently confirmed
+DECLARED = "DECLARED"  # named source anchor + reasonable magnitude, not locally verified
+PENDING  = "PENDING"   # source identified but unconfirmed / paywalled / region-mismatch
+
+
+# ── CostLine / CostTable dataclasses (COST-03 / D-01..D-04) ─────────────────
+
+@dataclass(frozen=True)
+class CostLine:
+    """One itemized lifecycle cost line (CapEx or OpEx)."""
+
+    key: str          # machine key, e.g. "tree_stock"
+    label: str        # human label, e.g. "Tree stock (large-caliper nursery)"
+    value: float      # EUR (CapEx lines) or EUR/yr (opex line)
+    unit: str         # "EUR/tree" | "EUR/tree/yr"
+    kind: str         # "capex" | "opex"
+    source: str       # named source anchor — NO fabricated DOIs
+    confidence: str   # VERIFIED | DECLARED | PENDING
+
+
+@dataclass
+class CostTable:
+    """
+    Editable per-tree lifecycle cost table (COST-03 / D-05).
+
+    Plan 06-03 (COST-04) loads and edits this via a JSON config and Gradio
+    inputs; the KPI recomputes live from the edited values.
+
+    label describes the default provenance — "illustrative European mid-range —
+    verify locally" — so it is never mistaken for verified local procurement.
+    """
+
+    lines: list[CostLine]
+    label: str = "illustrative European mid-range — verify locally"
+
+    def capex_total(self) -> float:
+        """Sum of all CapEx line values (EUR/tree)."""
+        return sum(l.value for l in self.lines if l.kind == "capex")
+
+    def opex_per_year(self) -> float:
+        """Sum of all OpEx line values (EUR/tree/yr)."""
+        return sum(l.value for l in self.lines if l.kind == "opex")
+
+    def per_tree_cost(self, horizon_years: int) -> float:
+        """
+        Total lifecycle cost per tree over *horizon_years*.
+
+        = capex_total() + opex_per_year() * horizon_years.
+        horizon_years=0 returns CapEx only.
+        """
+        return self.capex_total() + self.opex_per_year() * horizon_years
+
+
+# ── DEFAULT_COST_TABLE — itemized European mid-range defaults (D-02/D-03) ────
 #
-# These are midrange estimates for urban street-tree planting programmes.
-# Each value is a DECLARED assumption pending sourcing from municipal data.
-# Do NOT present these as verified figures.
+# Values are DECLARED anchors. NOT verified Barcelona procurement.
+# Each line's source quotes a named literature anchor — NO fabricated DOIs.
+# Lines with US-region anchors are tagged PENDING EU confirmation.
+# Barcelona/EU procurement figures = PENDING — supply via the editable table
+# (Plan 06-03 / COST-04).
 #
-# SOURCE: REQUIRES_VERIFICATION — no municipal procurement data confirmed yet.
-# See MOCKS.md row "CapEx/OpEx tree cost constants".
-# COST MAGNITUDE FIX: Phase 6 / COST-03 (owner: Phase 6).
+# CapEx lines (5 lines, sum = 3000.0 EUR/tree):
+#   tree_stock       900.0  DECLARED  Australian lifetime cost models
+#   pit_excavation   450.0  PENDING   NYC ~$3,300 fully-loaded anchor (US, PENDING EU)
+#   structural_soil  750.0  DECLARED  ~$79.5/yd³ installed (3-review synthesis)
+#   guarding         300.0  DECLARED  illustrative European mid-range
+#   planting_labour  600.0  DECLARED  Australian lifetime cost models
+#
+# OpEx line (1 line, sum = 180.0 EUR/tree/yr):
+#   annual_opex      180.0  PENDING   Boston ~$900/tree/yr anchor (US, PENDING EU)
 
-CAPEX_PER_TREE_EUR: float = 350.0
-# planting: nursery stock + labour + initial irrigation (DECLARED assumption,
-# urban street-tree midrange, e.g. Madrid / Barcelona municipal programmes)
-# UNIT: EUR per tree   SOURCE: REQUIRES_VERIFICATION
+DEFAULT_COST_TABLE: CostTable = CostTable(
+    label="illustrative European mid-range — verify locally",
+    lines=[
+        CostLine(
+            key="tree_stock",
+            label="Tree stock (large-caliper nursery)",
+            value=900.0,
+            unit="EUR/tree",
+            kind="capex",
+            source=(
+                "Australian street-tree lifetime cost models (whole-life €/$2,800–5,300/tree range); "
+                "large-caliper nursery stock portion"
+            ),
+            confidence=DECLARED,
+        ),
+        CostLine(
+            key="pit_excavation",
+            label="Pit excavation and preparation",
+            value=450.0,
+            unit="EUR/tree",
+            kind="capex",
+            source=(
+                "reviewer-cited fully-loaded CapEx synthesis (NYC ~$3,300/tree, "
+                "region US — PENDING EU confirmation)"
+            ),
+            confidence=PENDING,
+        ),
+        CostLine(
+            key="structural_soil",
+            label="Structural soil / soil cells (installed)",
+            value=750.0,
+            unit="EUR/tree",
+            kind="capex",
+            source="structural soil / soil cells ~$79.5/yd³ installed (3-review synthesis)",
+            confidence=DECLARED,
+        ),
+        CostLine(
+            key="guarding",
+            label="Guarding, staking, and irrigation rig",
+            value=300.0,
+            unit="EUR/tree",
+            kind="capex",
+            source="guarding/staking/irrigation rig — illustrative European mid-range",
+            confidence=DECLARED,
+        ),
+        CostLine(
+            key="planting_labour",
+            label="Planting labour",
+            value=600.0,
+            unit="EUR/tree",
+            kind="capex",
+            source="planting labour portion of Australian lifetime cost models",
+            confidence=DECLARED,
+        ),
+        CostLine(
+            key="annual_opex",
+            label="Annual maintenance (watering, pruning, inspection)",
+            value=180.0,
+            unit="EUR/tree/yr",
+            kind="opex",
+            source=(
+                "Boston ~$900/tree/yr OpEx anchor (reviewer-cited, US, PENDING EU) "
+                "scaled to EU mid-range; pruning = 28–30% of municipal tree budgets"
+            ),
+            confidence=PENDING,
+        ),
+    ],
+)
 
-OPEX_PER_TREE_YEAR_EUR: float = 35.0
-# annual maintenance: watering, pruning, inspection (DECLARED assumption)
-# UNIT: EUR per tree per year   SOURCE: REQUIRES_VERIFICATION
+# ── CapEx / OpEx constants (D-15 backward-compat — DERIVED from CostTable) ──
+#
+# These names are preserved for all existing callers (optimizer.py, tests, app).
+# They are NOT independent constants — they mirror DEFAULT_COST_TABLE so there
+# is ONE source of truth.  Do NOT hardcode new values here; edit CostTable.
 
-OPEX_HORIZON_YEARS: int = 10
-# amortisation horizon for OpEx in the headline KPI (DECLARED assumption)
-# UNIT: years   SOURCE: REQUIRES_VERIFICATION
+CAPEX_PER_TREE_EUR: float = DEFAULT_COST_TABLE.capex_total()
+# DERIVED from DEFAULT_COST_TABLE.capex_total() — now 3000.0 EUR/tree
+# (was 350.0 — that figure covered only stock+labour, ~10× low fully-loaded)
+# UNIT: EUR per tree   SOURCE: see DEFAULT_COST_TABLE lines
+
+OPEX_PER_TREE_YEAR_EUR: float = DEFAULT_COST_TABLE.opex_per_year()
+# DERIVED from DEFAULT_COST_TABLE.opex_per_year() — now 180.0 EUR/tree/yr
+# (was 35.0 — replaced by itemized fully-loaded annual maintenance)
+# UNIT: EUR per tree per year   SOURCE: see DEFAULT_COST_TABLE "annual_opex" line
+
+OPEX_HORIZON_YEARS: int = 40
+# Tree functional lifespan in urban sealed-site context (D-09).
+# CHANGED from 10 yr (was: amortisation shorthand) to 40 yr (documented lifespan).
+# UNIT: years   SOURCE: D-09 functional lifespan convention
 
 # ── UTCI-hours → equivalent mean-°C conversion factor (Plan 05-03 contract) ──
 #
@@ -110,7 +261,10 @@ PRE_CALIBRATION_BAND_C: float = 4.0
 _EPS: float = 1e-6
 
 # ── Internal source tag used in every result dict ─────────────────────────────
-_COST_SOURCE = "DECLARED: CapEx/OpEx assumptions (REQUIRES_VERIFICATION)"
+_COST_SOURCE = (
+    "DECLARED/PENDING: itemized CostTable lifecycle cost (Phase 6 / COST-03); "
+    "see DEFAULT_COST_TABLE lines for per-item source anchors and MOCKS.md ledger"
+)
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -119,15 +273,16 @@ def per_tree_cost(horizon_years: int = OPEX_HORIZON_YEARS) -> float:
     """
     Return the total lifecycle cost per tree over *horizon_years*.
 
-    Cost = CAPEX_PER_TREE_EUR + OPEX_PER_TREE_YEAR_EUR * horizon_years.
-
+    Delegates to DEFAULT_COST_TABLE.per_tree_cost(horizon_years).
     With horizon_years=0 only the CapEx (planting cost) is returned; no OpEx
-    is amortised.  Uses the module-level DECLARED constants — see module
-    docstring for honesty status.
+    is amortised.
+
+    Backward-compatible: callers that used CAPEX_PER_TREE_EUR / OPEX_PER_TREE_YEAR_EUR
+    directly still work because those constants are now derived from the same table.
 
     Returns a finite positive float in EUR.
     """
-    return CAPEX_PER_TREE_EUR + OPEX_PER_TREE_YEAR_EUR * horizon_years
+    return DEFAULT_COST_TABLE.per_tree_cost(horizon_years)
 
 
 def total_cost(config: dict[str, Any]) -> float:
@@ -328,8 +483,9 @@ def cost_per_utci_degree(  # noqa: C901 (complexity OK — linear decision tree)
         "Delta is UTCI (routed through utci_hours_above), never raw Tmrt (D-08). "
         "Both units: EUR/degC (primary) and EUR/annual-UTCI-hour (secondary, D-09). "
         "Interval is never a bare point estimate (D-10/VALID-04). "
-        "KNOWN MOCK DEBT: CAPEX_PER_TREE_EUR=350/OPEX placeholders — "
-        "magnitude fix is Phase 6 / COST-03."
+        "Cost uses itemized fully-loaded lifecycle CostTable (Phase 6 / COST-03): "
+        f"CapEx={CAPEX_PER_TREE_EUR:.0f} EUR/tree, OpEx={OPEX_PER_TREE_YEAR_EUR:.0f} EUR/tree/yr "
+        f"over {OPEX_HORIZON_YEARS} yr horizon (DECLARED/PENDING — illustrative European mid-range, verify locally)."
     )
 
     return {
