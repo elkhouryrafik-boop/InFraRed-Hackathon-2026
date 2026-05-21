@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Roadmap created; REQUIREMENTS.md traceability updated; ready to run /gsd-plan-phase 1
-last_updated: "2026-05-21T00:07:58.212Z"
-last_activity: 2026-05-21 — Roadmap created; codebase concerns, architecture, and structure audited; port verdicts confirmed
+status: executing
+stopped_at: Completed 01-01-PLAN.md (sdk boundary + SimBudget + MOCKS.md)
+last_updated: "2026-05-21T00:12:20Z"
+last_activity: 2026-05-21 -- Phase 01 Plan 01 completed
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 8
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-21)
 
 **Core value:** Given a polygon and a budget, output a defensible ranked tree-planting allocation maximizing UTCI relief per euro — proved with a real Infrared UTCI before/after on the top picks
-**Current focus:** Phase 1 — Foundation & SDK Boundary
+**Current focus:** Phase --phase — 1
 
 ## Current Position
 
-Phase: 1 of 4 (Foundation & SDK Boundary)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-05-21 — Roadmap created; codebase concerns, architecture, and structure audited; port verdicts confirmed
+Phase: 01-foundation-sdk-boundary (1) — EXECUTING
+Plan: 2 of 3 (01-01 COMPLETE; 01-02 next)
+Status: Executing Phase 01
+Last activity: 2026-05-21 -- Phase 01 Plan 01 completed
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 8%
 
 ## Performance Metrics
 
@@ -60,6 +60,9 @@ Progress: [░░░░░░░░░░] 0%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- 01-01: mock backend returns scalar UTCI delta (not field grid) — coolspend needs a scalar, not NatureGooddest's 24x24 grid
+- 01-01: cached miss raises FileNotFoundError, no silent fallthrough — CONCERNS 6.1 stale-cache risk mitigated
+- 01-01: SimBudget RuntimeError guards NSGA-II hot path from live Infrared calls
 - Pre-build: Two identical Infrared mock files (infrared_client_v2.py / nature_infrared_client.py) must be collapsed to a single sdk_client.py — do not import either for live paths
 - Pre-build: surrogate `delta_tmrt_surrogate()` porosity-squared bug fixed upstream (2026-05-20, audit C10) — port the fixed version only; add regression test
 - Pre-build: F3 corridor objective degenerates under heritage-buffer y-clamp — ship as 2-objective (thermal + ecological) per PROJECT.md decision
@@ -89,7 +92,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-21
-Stopped at: Roadmap created; REQUIREMENTS.md traceability updated; ready to run /gsd-plan-phase 1
+Stopped at: Completed 01-01-PLAN.md — coolspend package + sdk_client + tests + MOCKS.md
 Resume file: None
 
 **Planned Phase:** 1 (Foundation & SDK Boundary) — 3 plans — 2026-05-21T00:07:58.203Z

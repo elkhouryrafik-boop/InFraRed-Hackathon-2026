@@ -5,9 +5,9 @@ Scope for the infrared.city Buildathon (Tree Budget track). v1 = what we demo Ma
 ## v1 Requirements
 
 ### SDK Boundary
-- [ ] **SDK-01**: A single `sdk_client` exposes `mock | cached | live` backends selected by `INFRARED_BACKEND`; `live` reads `INFRARED_API_KEY`.
-- [ ] **SDK-02**: The app runs end-to-end offline on the `mock`/`cached` backend (no key required before May 27).
-- [ ] **SDK-03**: A `SimBudget` guard caps the number of real (`live`) UTCI calls per run and logs each call.
+- [x] **SDK-01**: A single `sdk_client` exposes `mock | cached | live` backends selected by `INFRARED_BACKEND`; `live` reads `INFRARED_API_KEY`.
+- [x] **SDK-02**: The app runs end-to-end offline on the `mock`/`cached` backend (no key required before May 27).
+- [x] **SDK-03**: A `SimBudget` guard caps the number of real (`live`) UTCI calls per run and logs each call.
 
 ### Spatial Engine
 - [ ] **SPATIAL-01**: Load a site as OSM/GeoJSON (buildings, streets, site boundary).
@@ -57,9 +57,9 @@ Scope for the infrared.city Buildathon (Tree Budget track). v1 = what we demo Ma
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SDK-01 | Phase 1 — Foundation & SDK Boundary | Pending |
-| SDK-02 | Phase 1 — Foundation & SDK Boundary | Pending |
-| SDK-03 | Phase 1 — Foundation & SDK Boundary | Pending |
+| SDK-01 | Phase 1 — Foundation & SDK Boundary | Complete (01-01) |
+| SDK-02 | Phase 1 — Foundation & SDK Boundary | Complete (01-01) |
+| SDK-03 | Phase 1 — Foundation & SDK Boundary | Complete (01-01) |
 | SPATIAL-01 | Phase 1 — Foundation & SDK Boundary | Pending |
 | SPATIAL-02 | Phase 1 — Foundation & SDK Boundary | Pending |
 | SPATIAL-03 | Phase 1 — Foundation & SDK Boundary | Pending |
