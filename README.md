@@ -70,7 +70,79 @@ live = real Infrared UTCI API calls with real measured data
 ## Honesty / MOCKS note
 
 The thermal surrogate (`delta_tmrt_surrogate`) carries approximately +/-4 degC uncertainty
-and the 12 degC cap (`MAX_TMRT_REDUCTION`) is unsourced (no validated citation).
+and the 12 degC cap (`MAX_TMRT_REDUCTION_C`) is unsourced (no validated citation).
 Full details, data-source tags, and the complete MOCKS ledger are documented in
-[MOCKS.md](coolspend/MOCKS.md) (Phase 4 / SHIP-02). Do not interpret mock results as
+[MOCKS.md](MOCKS.md) (Phase 4 / SHIP-02). Do not interpret mock results as
 measured data.
+
+## Architecture
+
+```mermaid
+flowchart TD
+    A["sdk_client.py\nget_baseline_utci()"] -->|"UTCI baseline (mock|cached|live)"| B
+
+    subgraph B["optimizer.py — NSGA-II (pymoo 0.6.1)"]
+        direction TB
+        B1["TreeBudgetProblem\nN_TREES=12, chromosome=24 floats\n(x_m, y_m per tree)"]
+        B2["spatial_engine.py\ndelta_tmrt_surrogate()\nthermal_relief()\n— surrogate, no SDK call in hot path —"]
+        B3["rules_engine.py\necological_score()\nspacing_penalty() + species_diversity_score()"]
+        B1 --> B2
+        B1 --> B3
+    end
+
+    B -->|"Pareto front"| C["select_top3()\nLabels: MAX_THERMAL_RELIEF\nMAX_ECOLOGICAL / BALANCED"]
+
+    C -->|"Top-3 configs"| D["validate_top3_with_infrared()\nreal Infrared UTCI — Top-3 only\nSimBudget cap = 3 live calls\nsdk_client.py"]
+
+    D -->|"validated_utci_c"| E["cost_model.py\ncost_per_utci_degree()\ntopsis_rank()\nprimary: euros per °C ascending\nTOPSIS tie-break (weights 0.6/0.4)"]
+
+    E -->|"ranked allocation"| F["save_outputs()\noutputs/top3_configurations.json\noutputs/audit_record.json\noutputs/pareto_front.png"]
+
+    F -->|"decision artifact"| G["app.py / app_pipeline.py\nGradio Blocks UI\nrun_decision() + render_before_after()"]
+```
+
+Six modules: `sdk_client`, `spatial_engine`, `rules_engine`, `cost_model`, `optimizer`, `app`.
+The NSGA-II hot path calls only the analytical surrogate — zero SDK calls during optimization.
+The real Infrared SDK is called exactly three times (Top-3 validation, SimBudget-guarded).
+
+## How it works
+
+CoolSpend takes a site polygon and a planting budget, then runs a three-stage pipeline.
+First, it fetches a baseline UTCI thermal-comfort score for the open site via `sdk_client`
+(mock by default; real Infrared SDK when `INFRARED_BACKEND=live`).
+Second, an NSGA-II multi-objective optimizer (`pymoo 0.6.1`) searches over 12-tree
+planting configurations — each chromosome encodes 24 floats (x_m, y_m per tree slot) —
+maximising two objectives simultaneously: thermal relief (via an analytical surrogate of
+delta mean-radiant-temperature, `delta_tmrt_surrogate`, with ±4 degC uncertainty) and
+ecological coherence (spacing + species diversity from `rules_engine`).
+The analytical surrogate runs with zero SDK calls, keeping the hot path fast.
+Third, the Top-3 Pareto candidates are validated with real Infrared UTCI calls (SimBudget
+cap = 3), ranked by the headline KPI — euros per degree Celsius of UTCI relief
+(`cost_per_utci_degree`) — and emitted as a ranked decision artifact.
+
+**Honesty contract:** all mock numbers are NOT MEASURED DATA; the €/°C cost constants
+(CAPEX_PER_TREE_EUR=350, OPEX_PER_TREE_YEAR_EUR=35) are DECLARED assumptions that
+REQUIRE_VERIFICATION against municipal procurement data.
+The 12 degC surrogate cap (`MAX_TMRT_REDUCTION_C`) is unsourced; see [MOCKS.md](MOCKS.md).
+
+## Project structure
+
+```
+coolspend/
+  sdk_client.py       — UTCIResult, SimBudget; mock|cached|live UTCI dispatch
+  spatial_engine.py   — site loader (GeoJSON), collision gate, delta_tmrt_surrogate (analytical proxy)
+  rules_engine.py     — spacing_penalty, species_diversity_score, ecological_score
+  cost_model.py       — per_tree_cost, total_cost, cost_per_utci_degree (euros/degC KPI)
+  optimizer.py        — TreeBudgetProblem (NSGA-II), select_top3, validate_top3_with_infrared,
+                        topsis_rank, save_outputs, write_audit_record, plot_pareto
+  app.py              — Gradio Blocks UI entry point (build_demo)
+  app_pipeline.py     — run_decision() — orchestrates baseline → optimize → validate → rank
+  app_viz.py          — render_before_after() — before/after UTCI map panel
+  main.py             — CLI entry point (python -m coolspend.main)
+  data/
+    angels_site.geojson  — hand-authored site fixture (MOCK — see MOCKS.md)
+  cache/              — disk cache for INFRARED_BACKEND=cached replay
+  tests/              — full pytest suite (offline, deterministic)
+outputs/              — top3_configurations.json, audit_record.json, pareto_front.png
+MOCKS.md              — honesty ledger: every mock/surrogate/DECLARED constant
+```
