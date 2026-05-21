@@ -27,7 +27,6 @@ from coolspend.optimizer import (
     TreeBudgetProblem,
     _build_baseline_geometry,
     decode,
-    naive_baseline_config,
     run_optimisation,
     save_outputs,
     select_top3,
@@ -297,30 +296,15 @@ def test_seed_determinism_different_seed_differs():
     assert differs, "seed 7 produced an identical front to seed 42 — seed is ignored"
 
 
-def test_naive_baseline_is_valid_and_deterministic():
-    """naive_baseline_config: deterministic, valid placements, round-robin species."""
-    cfg1 = naive_baseline_config()
-    cfg2 = naive_baseline_config()
+def test_no_naive_baseline_in_artifact(tmp_path, real_result):
+    """Regression: artifact must NOT contain 'baseline_naive' or 'improvement_vs_naive_pct'.
 
-    # Deterministic
-    coords1 = [(t["x_m"], t["y_m"]) for t in cfg1["trees"]]
-    coords2 = [(t["x_m"], t["y_m"]) for t in cfg2["trees"]]
-    assert coords1 == coords2, "naive_baseline_config is not deterministic"
-
-    # Exactly N_TREES slots, at least one active, all active ones valid
-    assert len(cfg1["trees"]) == N_TREES
-    assert cfg1["tree_count"] >= 1, "naive grid produced zero valid trees"
-    for t in cfg1["trees"]:
-        if t["active"]:
-            assert is_valid_location(t["x_m"], t["y_m"]), (
-                f"active naive tree at ({t['x_m']:.1f}, {t['y_m']:.1f}) is not valid"
-            )
-
-
-def test_naive_baseline_present_and_improvement_finite(tmp_path, real_result):
-    """Artifact carries baseline_naive + a finite improvement_vs_naive_pct on rank-1."""
+    D-12: the entire naive-baseline machinery (_build_naive_baseline,
+    naive_baseline_config, improvement_vs_naive_pct) was deleted because the
+    "88% vs naive" figure was mock-vs-mock and misleading. This test pins their
+    permanent absence from the emitted artifact JSON.
+    """
     import json
-    import math
 
     top3 = select_top3(real_result)
     budget = SimBudget(max_live_calls=3)
@@ -330,19 +314,17 @@ def test_naive_baseline_present_and_improvement_finite(tmp_path, real_result):
     json_path = save_outputs(top3, real_result, out_dir=tmp_path)
     artifact = json.loads(json_path.read_text(encoding="utf-8"))
 
-    assert "baseline_naive" in artifact, "artifact missing baseline_naive block"
-    naive = artifact["baseline_naive"]
-    assert naive.get("label") == "NAIVE_GRID"
-    assert naive.get("tree_count", 0) >= 1
-    assert naive.get("delta_utci_c") is not None
-
-    assert "improvement_vs_naive_pct" in artifact, "missing improvement_vs_naive_pct"
-    improvement = artifact["improvement_vs_naive_pct"]
-    assert improvement is not None, "improvement_vs_naive_pct is None"
-    assert math.isfinite(improvement), f"improvement not finite: {improvement}"
-
-    # rank-1 config also carries the field
-    assert artifact["configurations"][0].get("improvement_vs_naive_pct") == improvement
+    assert "baseline_naive" not in artifact, (
+        "D-12: artifact must NOT contain 'baseline_naive' key (mock-vs-mock overclaim deleted)"
+    )
+    assert "improvement_vs_naive_pct" not in artifact, (
+        "D-12: artifact must NOT contain 'improvement_vs_naive_pct' key (88%-vs-naive deleted)"
+    )
+    # Also verify rank-1 config does not carry the field
+    rank1 = artifact["configurations"][0]
+    assert "improvement_vs_naive_pct" not in rank1, (
+        "D-12: rank-1 config must NOT carry 'improvement_vs_naive_pct' (deleted per D-12)"
+    )
 
 
 def test_select_top3_always_returns_three():
