@@ -12,7 +12,8 @@ Four phases deliver a live hackathon demo: stand up a clean, offline-testable sk
 - [x] **Phase 2: Optimizer Core** - NSGA-II on the surrogate, Top-3 Pareto validation with real/cached UTCI, ranked allocation artifact (requires May 27 API key for live validation path) (completed 2026-05-21)
 - [x] **Phase 3: Web App & Decision UI** - Gradio app (polygon + budget in → before/after map + allocation table out), deployed to Hugging Face Spaces with visible API calls (completed 2026-05-21)
 - [x] **Phase 4: Ship** - requirements.txt, README with architecture diagram, MOCKS ledger, demo video and submission description (completed 2026-05-21)
-- [x] **Phase 5: Surrogate Ground-Truth & Honesty Reset** - Validate the ΔTmrt surrogate against real Infrared UTCI across varied configs, convert to UTCI before the KPI, single CRS end-to-end, and relabel every overclaim down to what is actually proven (v2.0 keystone) (completed 2026-05-21)
+- [x] **Phase 5: Surrogate Ground-Truth & Honesty Reset** - Validate the ΔTmrt surrogate against real Infrared UTCI across varied configs, convert to UTCI before the KPI, single CRS end-to-end, and relabel every overclaim down to what is actually proven (v2.0 keystone)
+ (completed 2026-05-21)
 - [ ] **Phase 6: Cost-Model Credibility** - Replace placeholder per-tree costs with a fully-loaded, cited, per-city-configurable lifecycle figure with growth-horizon discounting
 - [ ] **Phase 7: Real Geometry & Multi-Site Ingestion** - Load arbitrary OSM/cadastre geometry, reject collisions against real building/footway polygons, support N candidate sites per project
 - [ ] **Phase 8: Multi-Intervention & Portfolio Triage** - Make intervention type a parameter (trees + cool roofs), allocate one budget across competing types and across N citywide sites with equity weighting
@@ -132,7 +133,13 @@ Plans:
   1. Per-tree cost reflects a fully-loaded lifecycle figure (pit excavation, structural soil, guarding, multi-year establishment OpEx) anchored to a cited procurement source, replacing the €350/€35 placeholders
   2. A user can edit the cost table per city/locale through inputs rather than recompiling hardcoded constants, and the KPI recomputes from the edited values
   3. The €/°C KPI applies a growth-horizon discount so the modeled cooling benefit follows the establishment/growth curve instead of assuming full canopy on day one
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Itemized fully-loaded CostTable (6 sourced line items, €3,000 CapEx / €180/yr OpEx) replacing €350/€35 + MOCKS ledger (COST-03)
+- [ ] 06-02-PLAN.md — Growth-curve ramp + 3.5% discount over 40-yr horizon routed into the €/°C KPI, preserving Phase 5 dict shape (COST-05)
+- [ ] 06-03-PLAN.md — Editable cost_config.json + Gradio cost/discount inputs with live KPI recompute (COST-04)
+
 
 ### Phase 7: Real Geometry & Multi-Site Ingestion
 **Goal**: The pipeline runs on real-world geometry instead of hand-authored fixtures — a user can load any city site from OSM/cadastre, collisions are rejected against actual building and footway polygons, and the data model holds N candidate sites within one project.
@@ -188,7 +195,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 5. Surrogate Ground-Truth & Honesty Reset | 5/5 | Complete    | 2026-05-21 |
-| 6. Cost-Model Credibility | 0/TBD | Not started | - |
+| 6. Cost-Model Credibility | 0/3 | Planned | - |
 | 7. Real Geometry & Multi-Site Ingestion | 0/TBD | Not started | - |
 | 8. Multi-Intervention & Portfolio Triage | 0/TBD | Not started | - |
 | 9. Workflow, Grant Packaging & Audit | 0/TBD | Not started | - |
