@@ -28,7 +28,7 @@ SURROGATE HONESTY (OPT-02 / CONCERNS 1.1):
 from __future__ import annotations
 
 import json
-from math import cos, pi, radians
+from math import cos, radians
 from pathlib import Path
 from typing import Any
 
@@ -36,6 +36,7 @@ from typing import Any
 
 try:
     from shapely.geometry import LineString, Point, Polygon
+    from shapely.ops import unary_union
 except ImportError as _err:
     raise RuntimeError(
         "coolspend.spatial_engine requires shapely. "
@@ -290,6 +291,70 @@ TREE_SHADE_FRACTION: float = 0.80     # fraction of solar radiation blocked by a
 # REQUIRES_VERIFICATION: not from surveyed Barcelona tree inventory
 TREE_CANOPY_RADIUS_M: float = 3.0     # metres — effective shaded ground radius per tree
 
+# Maximum fraction of the site we credit as canopy-shaded (no plaza is 100% canopy).
+MAX_SITE_COVERAGE: float = 0.90       # cap on coverage_fraction — see MOCKS.md
+
+# Site rectangle polygon, lazily built and cached (used to clip canopy unions).
+_SITE_RECT_CACHE: dict[str, Any] = {}
+
+
+def _site_rectangle() -> Polygon:
+    """Return (and cache) the plaza rectangle polygon in local metres.
+
+    SW corner = (0, 0), extent SITE_WIDTH_M × SITE_DEPTH_M. Canopy unions are
+    intersected with this rectangle so that canopy area spilling outside the
+    site does not inflate coverage.
+    """
+    rect = _SITE_RECT_CACHE.get("rect")
+    if rect is None:
+        rect = Polygon(
+            [
+                (0.0, 0.0),
+                (SITE_WIDTH_M, 0.0),
+                (SITE_WIDTH_M, SITE_DEPTH_M),
+                (0.0, SITE_DEPTH_M),
+            ]
+        )
+        _SITE_RECT_CACHE["rect"] = rect
+    return rect
+
+
+def canopy_coverage_fraction(active_trees: list[dict]) -> float:
+    """Non-overlapping canopy coverage of the site as a fraction in [0, MAX_SITE_COVERAGE].
+
+    Builds the shapely union of canopy disks — Point(x_m, y_m).buffer(
+    TREE_CANOPY_RADIUS_M) — for every active tree, intersects that union with the
+    site rectangle, and divides the resulting area by the site area.
+
+    This is PLACEMENT-SENSITIVE: overlapping/clustered trees share canopy area so
+    their union grows slowly (diminishing returns), while dispersed trees cover
+    distinct ground and yield a larger union → higher coverage → higher relief.
+    Replaces the previous count-only model (count × π r² / area) that made the
+    optimizer ranking degenerate on mock data (REMEDIATION — review finding #1).
+
+    Pure geometry — no SDK calls, no file I/O beyond the cached site rectangle.
+    Deterministic for a given set of coordinates.
+
+    Args:
+        active_trees: List of tree dicts each carrying "x_m" and "y_m" (metres).
+
+    Returns:
+        Union canopy area clipped to the site / site area, capped at
+        MAX_SITE_COVERAGE. 0.0 for an empty list.
+    """
+    if not active_trees:
+        return 0.0
+
+    disks = [
+        Point(float(t["x_m"]), float(t["y_m"])).buffer(TREE_CANOPY_RADIUS_M)
+        for t in active_trees
+    ]
+    union = unary_union(disks)
+    covered = union.intersection(_site_rectangle())
+    site_area_m2 = SITE_WIDTH_M * SITE_DEPTH_M
+    fraction = covered.area / site_area_m2
+    return min(fraction, MAX_SITE_COVERAGE)
+
 
 def shade_efficiency(tilt_deg: float, height_m: float) -> float:
     """Sun-path alignment bonus: canopy tilt/height modifies shade quality.
@@ -368,22 +433,23 @@ def thermal_relief(config: dict) -> float:
     the NSGA-II optimizer (Plan 02-03) maximises as objective F1 (thermal).
     Zero SDK calls — pure math, fully offline, deterministic.
 
-    Method:
-    1. Count active trees (trees with active=True or no 'active' key — defaults True).
+    Method (PLACEMENT-SENSITIVE — REMEDIATION review finding #1):
+    1. Collect active trees (active=True or no 'active' key — defaults True).
     2. Per-tree under-canopy ΔTmrt = delta_tmrt_surrogate(TREE_SHADE_FRACTION).
-    3. Each tree shades area = π × TREE_CANOPY_RADIUS_M².
-    4. Total shaded area is summed and capped at the site area.
-    5. site_coverage_fraction = min(total_shaded / site_area, 0.90).
-    6. Return per_tree_delta × site_coverage_fraction (site-averaged relief).
+    3. site_coverage_fraction = canopy_coverage_fraction(active_trees) — the
+       NON-OVERLAPPING shapely union of canopy disks clipped to the site, divided
+       by site area and capped at MAX_SITE_COVERAGE (0.90).
+    4. Return per_tree_delta × site_coverage_fraction (site-averaged relief).
 
-    The 0.90 cap on coverage fraction prevents unrealistic 100% site shading from
-    a dense tree count exceeding physical limits.
+    Because coverage now comes from the canopy UNION (not a count × π r² sum),
+    clustered/overlapping trees yield diminishing returns and dispersed trees
+    cover more ground → higher relief. This makes placement matter end-to-end so
+    the optimizer ranking is non-degenerate even on mock data.
 
     Args:
         config: Dict with a "trees" list. Each tree may have:
                 - "active": bool (default True if absent)
-                - "x_m", "y_m": coordinates (unused in this aggregation — future
-                  spatial weighting hook)
+                - "x_m", "y_m": coordinates (NOW used — drive the union coverage)
                 Other keys are ignored.
 
     Returns:
@@ -401,11 +467,8 @@ def thermal_relief(config: dict) -> float:
     # Per-tree surrogate ΔTmrt — using canonical TREE_SHADE_FRACTION (DECLARED)
     per_tree_delta = delta_tmrt_surrogate(TREE_SHADE_FRACTION)
 
-    # Site coverage fraction (capped at 0.90 — no site is 100% canopy-covered)
-    tree_shade_area_m2 = pi * TREE_CANOPY_RADIUS_M ** 2
-    total_shaded_m2 = len(active_trees) * tree_shade_area_m2
-    site_area_m2 = SITE_WIDTH_M * SITE_DEPTH_M  # constants from site section above
-    site_coverage_fraction = min(total_shaded_m2 / site_area_m2, 0.90)
+    # Placement-sensitive coverage: non-overlapping canopy union clipped to site.
+    site_coverage_fraction = canopy_coverage_fraction(active_trees)
 
     return round(per_tree_delta * site_coverage_fraction, 3)
 
