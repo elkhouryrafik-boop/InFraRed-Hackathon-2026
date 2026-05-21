@@ -88,7 +88,7 @@ Plans:
   3. MOCKS ledger in README lists every surrogate, mock value, and DECLARED/PENDING data item (at minimum: `delta_tmrt_surrogate` ±4°C uncertainty, `MAX_TMRT_REDUCTION=12°C` unsourced cap, TOPSIS weights as user-adjustable)
   4. The demo video (2.5–3 min) shows the live Gradio app, a real Infrared API call completing visibly, and the ranked allocation output — uploaded and linked from the submission description
 
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 04-01-PLAN.md — Verify requirements.txt install (SHIP-01) + augment README with architecture diagram/how-it-works/structure & fix MOCKS link + audit MOCKS.md (SHIP-02) (completed 2026-05-21)
