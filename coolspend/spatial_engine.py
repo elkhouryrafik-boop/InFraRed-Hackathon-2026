@@ -27,8 +27,15 @@ these functions from this module.
 
 SURROGATE HONESTY (OPT-02 / CONCERNS 1.1):
   delta_tmrt_surrogate is an ANALYTICAL PROXY, NOT a measured or simulated result.
-  Uncertainty ±4°C. MAX_TMRT_REDUCTION_C=12°C is an UNSOURCED cap — see MOCKS.md.
+  Uncertainty ±4°C. MAX_TMRT_REDUCTION_C=12°C is still an UNSOURCED cap — REQUIRES_VERIFICATION.
   Use for optimizer hot-path only; validate Top-3 with real Infrared SDK UTCI calls.
+
+  Tmrt-magnitude anchor: Schrodi et al. 2023 (arXiv:2310.05691, venue PENDING) —
+  tree-placement point-wise ΔTmrt; an ML method, cited for the Tmrt magnitude only
+  (we do NOT use their ML approach; ML stays ruled out). Supporting: Rahman et al. 2022
+  (tree-Tmrt anchor, DOI PENDING). Garcia-Nevado 2020 is a shade-structure /
+  surface-temperature ANALOGUE only (measures pavement surface temp, not Tmrt at 1.1 m),
+  demoted from the primary anchor. No fabricated DOIs; unverified refs tagged PENDING.
 """
 from __future__ import annotations
 
@@ -452,12 +459,16 @@ def is_valid_location(
 # ZERO SDK calls. ZERO file I/O. Fully deterministic.
 #
 # HONESTY NOTICE (CONCERNS 1.1 / T-02-04):
-#   This is NOT a measured or simulated Tmrt result. It is a linear surrogate
-#   derived from Garcia-Nevado 2020 (pavement IR thermography — surface temp,
-#   NOT Tmrt at 1.1 m pedestrian height) + Vanos 2020 shade-component lower bound.
-#   Citation mismatch is documented. Uncertainty: ±4°C.
-#   MAX_TMRT_REDUCTION_C = 12.0°C is an UNSOURCED hard-coded cap — see MOCKS.md.
-#   Replace with Ladybug lookup table when available (D1-04 / CONCERNS 1.1).
+#   This is NOT a measured or simulated Tmrt result. It is a linear surrogate.
+#   Tmrt-magnitude anchor: Schrodi et al. 2023 (arXiv:2310.05691, venue PENDING) —
+#   tree-placement point-wise ΔTmrt; ML method cited for Tmrt magnitude ONLY
+#   (we do NOT use their ML approach). Supporting anchor: Rahman et al. 2022
+#   (tree-Tmrt anchor, DOI PENDING). Garcia-Nevado 2020 is a shade-structure /
+#   surface-temperature ANALOGUE only (pavement IR thermography — surface temp,
+#   NOT Tmrt at 1.1 m), demoted from primary anchor.
+#   Uncertainty: ±4°C. MAX_TMRT_REDUCTION_C = 12.0°C is still an UNSOURCED
+#   hard-coded linear cap — REQUIRES_VERIFICATION — see MOCKS.md.
+#   Re-anchoring the Tmrt magnitude does NOT claim this cap is now sourced.
 #
 # POROSITY BUG (CONCERNS 4.2 / T-02-06 — FIXED):
 #   The original nature_nsga2_coolstock.py body applied porosity twice (squared).
@@ -471,8 +482,11 @@ PEAK_SUN_ALTITUDE_DEG: float = 63.0   # degrees above horizon at solar noon — 
 PEAK_SUN_AZIMUTH_DEG: float = 215.0   # SW afternoon peak — Barcelona July
 
 # SOURCE: nature_nsga2_coolstock.py lines 138-146 (UNSOURCED operational cap — see CONCERNS 1.1)
-# MOCK: unsourced conservative estimate, no error bar, no Ladybug/Infrared validation
-MAX_TMRT_REDUCTION_C: float = 12.0    # °C — UNSOURCED cap — see MOCKS.md / CONCERNS 1.1
+# Tmrt-magnitude anchor: Schrodi et al. 2023 (arXiv:2310.05691, venue PENDING) + Rahman et al. 2022
+# (DOI PENDING). Garcia-Nevado 2020 = surface-temp analogue, NOT Tmrt@1.1m.
+# NOTE: re-anchoring the Tmrt magnitude does NOT source this linear cap — still REQUIRES_VERIFICATION.
+# MOCK: unsourced conservative cap estimate, no error bar, no Ladybug/Infrared validation
+MAX_TMRT_REDUCTION_C: float = 12.0    # °C — still an UNSOURCED linear cap — REQUIRES_VERIFICATION (see MOCKS.md)
 
 # SOURCE: DECLARED — mature street-tree typical canopy shade fraction assumption
 # REQUIRES_VERIFICATION: not from Barcelona Arbrat Viari data
@@ -698,9 +712,14 @@ def delta_tmrt_surrogate(
     Validate Top-3 configs with real Infrared SDK UTCI calls (Plan 02-04).
 
     HONESTY FLAGS:
-    - MAX_TMRT_REDUCTION_C = 12°C is an UNSOURCED hard-coded cap (CONCERNS 1.1).
-    - Sources (Garcia-Nevado 2020, Vanos 2020) measure surface temperature and
-      1.1 m shade component respectively — NOT a calibrated Tmrt model.
+    - MAX_TMRT_REDUCTION_C = 12°C is still an UNSOURCED hard-coded linear cap —
+      REQUIRES_VERIFICATION. Re-anchoring the Tmrt magnitude does NOT claim this cap
+      is now sourced (see MOCKS.md / CONCERNS 1.1).
+    - Tmrt-magnitude anchor: Schrodi et al. 2023 (arXiv:2310.05691, venue PENDING) —
+      tree-placement point-wise ΔTmrt; ML method cited for Tmrt magnitude ONLY
+      (we do NOT use their ML approach). Supporting: Rahman et al. 2022 (DOI PENDING).
+      Garcia-Nevado 2020 = shade-structure / surface-temp ANALOGUE only (pavement IR
+      thermography, NOT Tmrt at 1.1 m pedestrian height), demoted from primary anchor.
     - Uncertainty: ±4°C per parent audit_record.json.
 
     POROSITY FIX (CONCERNS 4.2 / T-02-06):

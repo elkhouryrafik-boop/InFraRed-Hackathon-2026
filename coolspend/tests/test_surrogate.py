@@ -282,3 +282,56 @@ def test_core_concentration_beats_full_spread_thermally() -> None:
 def test_core_weighted_coverage_empty_is_zero() -> None:
     """No trees → zero core-weighted coverage."""
     assert core_weighted_coverage_fraction([]) == 0.0
+
+
+# ── Citation re-anchor tests (D-13 / HONEST-02) ───────────────────────────────
+
+
+def test_surrogate_provenance_cites_schrodi() -> None:
+    """spatial_engine module docstring must cite Schrodi 2023 (arXiv:2310.05691).
+
+    D-13 re-anchor: Schrodi et al. 2023 is the Tmrt-magnitude anchor for the
+    surrogate ceiling. Garcia-Nevado 2020 is demoted to a surface-temp analogue.
+    This test pins the presence of the re-anchored citation in the module.
+    """
+    import coolspend.spatial_engine as _se
+    module_doc = _se.__doc__ or ""
+    assert "Schrodi" in module_doc, (
+        "D-13: spatial_engine module docstring must cite Schrodi 2023 "
+        "(arXiv:2310.05691, Tmrt-magnitude anchor)"
+    )
+    assert "arXiv:2310.05691" in module_doc, (
+        "D-13: spatial_engine module docstring must include arXiv:2310.05691 "
+        "(no fabricated DOI — arXiv preprint only)"
+    )
+    assert "Rahman" in module_doc, (
+        "D-13: spatial_engine module docstring must cite Rahman 2022 "
+        "(supporting tree-Tmrt anchor)"
+    )
+
+
+def test_surrogate_delta_tmrt_source_in_select_top3() -> None:
+    """select_top3 emits delta_tmrt_source citing Schrodi 2023, not Garcia-Nevado as primary.
+
+    D-11 / D-13: the per-config delta_tmrt_source field must reflect the re-anchored
+    citation. Verifies the string in the optimizer hot path matches the honesty contract.
+    """
+    from coolspend.optimizer import run_optimisation, select_top3
+
+    result = run_optimisation(n_gen=5, pop_size=10, seed=42)
+    top3 = select_top3(result)
+
+    for cfg in top3:
+        source = cfg.get("delta_tmrt_source", "")
+        assert "Schrodi" in source, (
+            f"D-13: delta_tmrt_source must cite Schrodi 2023; got: {source!r}"
+        )
+        assert "re-simulated" in cfg.get("surrogate_note", "") or "re-simulated" in cfg.get("surrogate_note", ""), (
+            f"D-11: surrogate_note must use 're-simulated' not 'validated'; "
+            f"got: {cfg.get('surrogate_note')!r}"
+        )
+        # Garcia-Nevado must be demoted (listed as analogue, not primary)
+        assert "analogue" in source.lower(), (
+            f"D-13: Garcia-Nevado 2020 must be listed as 'analogue' in delta_tmrt_source; "
+            f"got: {source!r}"
+        )

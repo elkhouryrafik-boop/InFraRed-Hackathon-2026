@@ -291,12 +291,13 @@ def select_top3(result) -> list[dict]:
         cfg["delta_tmrt_c"] = round(thermal, 3)
         cfg["delta_tmrt_uncertainty_c"] = 4.0
         cfg["delta_tmrt_source"] = (
-            "analytical surrogate (Garcia-Nevado 2020 surface-temp proxy, "
-            "not Tmrt@1.1m)"
+            "analytical surrogate ΔTmrt; magnitude anchored to Schrodi 2023 "
+            "(arXiv:2310.05691, PENDING) + Rahman 2022; Garcia-Nevado 2020 = "
+            "surface-temp analogue. NOT measured/simulated. ±4°C."
         )
         cfg["ecological_score"] = round(eco, 4)
         cfg["surrogate_note"] = (
-            "Analytical proxy — validated below with real Infrared UTCI"
+            "Analytical proxy — final picks re-simulated below with real Infrared UTCI (not 'validated')."
         )
         cfg["topsis_score"] = None   # filled in Plan 02-05
 
@@ -726,8 +727,17 @@ def write_audit_record(top3: list[dict], result, out_dir: Path) -> None:
         "surrogate_flags": {
             "delta_tmrt_c": "UNVALIDATED — analytical proxy, NOT measured/simulated",
             "uncertainty_c": 4.0,
-            "max_tmrt_reduction_c_cap": "12°C — UNSOURCED hard cap (ARCHITECTURE.md Known Issues #4)",
-            "validated_utci_c": "mock backend (NOT MEASURED DATA) until INFRARED_BACKEND=live",
+            "tmrt_magnitude_anchor": (
+                "Schrodi et al. 2023 (arXiv:2310.05691, venue PENDING) — tree-placement "
+                "point-wise ΔTmrt; ML method cited for Tmrt magnitude ONLY (we do NOT use "
+                "their ML approach). Supporting: Rahman et al. 2022 (tree-Tmrt anchor, DOI PENDING). "
+                "Garcia-Nevado 2020 = surface-temp analogue (pavement IR thermography, NOT Tmrt@1.1m)."
+            ),
+            "max_tmrt_reduction_c_cap": (
+                "12°C — still an UNSOURCED linear cap (REQUIRES_VERIFICATION). "
+                "Re-anchoring Tmrt magnitude does NOT claim this cap is sourced."
+            ),
+            "validated_utci_c": "re-simulated with Infrared UTCI (mock backend NOT MEASURED DATA until INFRARED_BACKEND=live)",
         },
         "topsis_weights": {
             "w_thermal": 0.6,
@@ -741,8 +751,14 @@ def write_audit_record(top3: list[dict], result, out_dir: Path) -> None:
         "configurations": config_audit,
         "data_sources": {
             "cost_constants": "DECLARED assumptions (REQUIRES_VERIFICATION) — see MOCKS.md",
-            "surrogate_physics": "Analytical proxy ported from NatureGooddest — see MOCKS.md",
-            "utci_validation": "mock / cached / live via INFRARED_BACKEND env var",
+            "surrogate_physics": (
+                "Analytical proxy; Tmrt-magnitude anchored to Schrodi 2023 "
+                "(arXiv:2310.05691, venue PENDING) + Rahman 2022 (DOI PENDING); "
+                "Garcia-Nevado 2020 = surface-temp analogue — see MOCKS.md"
+            ),
+            "utci_top3_validation": (
+                "final picks re-simulated with Infrared UTCI (mock / cached / live via INFRARED_BACKEND)"
+            ),
         },
     }
 
