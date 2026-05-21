@@ -7,7 +7,7 @@ Four phases deliver a live hackathon demo: stand up a clean, offline-testable sk
 ## Phases
 
 - [x] **Phase 1: Foundation & SDK Boundary** - Clean repo skeleton, deduplicated SDK client (mock/cached/live + SimBudget), spatial engine, and cost model — all offline-testable before May 27 (completed 2026-05-21)
-- [ ] **Phase 2: Optimizer Core** - NSGA-II on the surrogate, Top-3 Pareto validation with real/cached UTCI, ranked allocation artifact (requires May 27 API key for live validation path)
+- [x] **Phase 2: Optimizer Core** - NSGA-II on the surrogate, Top-3 Pareto validation with real/cached UTCI, ranked allocation artifact (requires May 27 API key for live validation path) (completed 2026-05-21)
 - [ ] **Phase 3: Web App & Decision UI** - Gradio app (polygon + budget in → before/after map + allocation table out), deployed to Hugging Face Spaces with visible API calls
 - [ ] **Phase 4: Ship** - requirements.txt, README with architecture diagram, MOCKS ledger, demo video and submission description
 
@@ -48,14 +48,14 @@ Plans:
   4. `outputs/top3_configurations.json` contains three ranked configs in `€/°C` order, each with `rank`, `label`, `delta_tmrt_c` (surrogate), `topsis_score`, and a real validated UTCI delta
   5. `outputs/pareto_front.png` renders and `outputs/audit_record.json` includes the honesty provenance trail (surrogate note, uncertainty ±4°C, data source tags)
 
-**Plans:** 5 plans
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 02-01-PLAN.md — rules_engine: min-spacing penalty (RULES-01) + species-diversity score (RULES-02), pure/offline (completed 2026-05-21)
 - [x] 02-02-PLAN.md — thermal surrogate in spatial_engine (OPT-02): fixed delta_tmrt_surrogate (porosity bug pinned) + thermal_relief (completed 2026-05-21)
 - [x] 02-03-PLAN.md — wire real live Infrared backend in sdk_client (OPT-03 live path), live→cache, key-from-env, mock default (completed 2026-05-21)
 - [x] 02-04-PLAN.md — optimizer: NSGA-II 2-objective + budget constraint (OPT-01), select_top3 + validate_top3_with_infrared (OPT-03) (completed 2026-05-21)
-- [ ] 02-05-PLAN.md — decision artifact: TOPSIS €/°C ranking + top3_configurations.json (DEC-01) + before/after (DEC-02) + main.py CLI
+- [x] 02-05-PLAN.md — decision artifact: TOPSIS EUR/degC ranking + top3_configurations.json (DEC-01) + before/after (DEC-02) + main.py CLI (completed 2026-05-21)
 
 ### Phase 3: Web App & Decision UI
 **Goal**: A user can open a URL, submit a site polygon and budget, and receive an interactive before/after map with a ranked allocation table — all within a running Gradio app on Hugging Face Spaces
@@ -91,6 +91,6 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & SDK Boundary | 3/3 | Complete    | 2026-05-21 |
-| 2. Optimizer Core | 4/5 | In progress | - |
+| 2. Optimizer Core | 5/5 | Complete    | 2026-05-21 |
 | 3. Web App & Decision UI | 0/TBD | Not started | - |
 | 4. Ship | 0/TBD | Not started | - |

@@ -37,8 +37,8 @@ Scope for the infrared.city Buildathon (Tree Budget track). v1 = what we demo Ma
 **: Validate the Top-3 Pareto configurations with real (or cached) Infrared UTCI; rank by €-per-°C.
 
 ### Decision Artifact
-- [ ] **DEC-01**: Emit a ranked allocation (which locations to plant, in priority order, within budget).
-- [ ] **DEC-02**: Emit a before/after comparison (baseline UTCI vs chosen intervention) with the headline delta.
+- [x] **DEC-01**: Emit a ranked allocation (which locations to plant, in priority order, within budget).
+- [x] **DEC-02**: Emit a before/after comparison (baseline UTCI vs chosen intervention) with the headline delta.
 
 ### Web App
 - [ ] **APP-01**: Gradio app takes a polygon + budget and returns the allocation table + before/after map.
@@ -79,8 +79,8 @@ Scope for the infrared.city Buildathon (Tree Budget track). v1 = what we demo Ma
 | OPT-01 | Phase 2 — Optimizer Core | Complete |
 | OPT-02 | Phase 2 — Optimizer Core | Complete |
 | OPT-03 | Phase 2 — Optimizer Core | Complete |
-| DEC-01 | Phase 2 — Optimizer Core | Pending |
-| DEC-02 | Phase 2 — Optimizer Core | Pending |
+| DEC-01 | Phase 2 — Optimizer Core | Complete (02-05) |
+| DEC-02 | Phase 2 — Optimizer Core | Complete (02-05) |
 | APP-01 | Phase 3 — Web App & Decision UI | Pending |
 | APP-02 | Phase 3 — Web App & Decision UI | Pending |
 | SHIP-01 | Phase 4 — Ship | Pending |
