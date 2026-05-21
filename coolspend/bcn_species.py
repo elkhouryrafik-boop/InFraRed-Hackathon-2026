@@ -94,6 +94,22 @@ def get_species(scientific: str) -> Species | None:
     return _BY_SCIENTIFIC.get(scientific)
 
 
+# Scientific names in palette order (stable index for the optimizer's species gene).
+SCIENTIFIC_NAMES: tuple[str, ...] = tuple(s.scientific for s in SPECIES_TABLE)
+
+_DEFAULT_COOLING_WEIGHT: float = 0.5  # unknown species -> neutral midpoint
+
+
+def cooling_score_by_name(scientific: str) -> float:
+    """cooling_score in [0,1] for a scientific name; neutral 0.5 if unknown.
+
+    Used to weight the optimizer's thermal objective so it prefers higher-cooling
+    species (ranking proxy; the live Infrared UTCI is the ground truth).
+    """
+    sp = _BY_SCIENTIFIC.get(scientific)
+    return cooling_score(sp) if sp is not None else _DEFAULT_COOLING_WEIGHT
+
+
 def palette(top_n: int | None = None) -> tuple[Species, ...]:
     """Return the species palette (optionally the top-N by cooling_score)."""
     if top_n is None:

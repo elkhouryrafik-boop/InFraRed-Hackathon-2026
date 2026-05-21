@@ -7,3 +7,7 @@ coolspend/cache/
 outputs/
 .venv/
 *.egg-info/
+
+# transient UI screenshots / playwright
+coolspend_ui_*.png
+.playwright-mcp/

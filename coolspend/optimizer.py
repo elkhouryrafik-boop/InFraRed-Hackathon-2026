@@ -91,32 +91,54 @@ N_GEN: int = 60
 
 
 def decode(x_flat: np.ndarray) -> dict:
-    """Decode a flat chromosome of length 2*N_TREES into a tree configuration dict.
+    """Decode a flat chromosome into a tree configuration dict.
 
-    The chromosome is a flat vector [x0, y0, x1, y1, ..., x_{N-1}, y_{N-1}].
-    Each pair (x_i, y_i) defines a candidate tree slot.  A slot is "active" iff
-    is_valid_location(x_m, y_m) returns True (i.e. inside boundary, not in a
-    building or on a street centerline).  Inactive slots still appear in
-    config["trees"] with active=False so decode is invertible / fully determinstic.
+    Two chromosome layouts are supported:
+      - SPECIES-AWARE (length 3*N_TREES): [x0,y0,..,x_{N-1},y_{N-1}, s0,..,s_{N-1}]
+        where s_i in [0, len(SPECIES)) selects slot i's species — the optimizer
+        CHOOSES the species for each location (user: "each tree is different;
+        pick the right tree for the land").
+      - LEGACY (length 2*N_TREES): positions only; species assigned round-robin.
+        Retained so manually-built 2*N chromosomes (tests, tools) still decode.
 
-    Species are assigned round-robin from SPECIES by slot index.
+    A slot is "active" iff is_valid_location(x_m, y_m) is True. Inactive slots
+    still appear with active=False so decode is invertible / deterministic.
 
     Returns:
-        {
-          "trees": [{"x_m":.., "y_m":.., "species":.., "active": bool}, ...],
-          "tree_count": int,   # count of active (valid) slots
-        }
+        {"trees": [{"x_m","y_m","species","active"}, ...], "tree_count": int}
     """
+    has_species_genes = len(x_flat) >= 3 * N_TREES
+    n_species = len(SPECIES)
     trees = []
     for i in range(N_TREES):
         x_m = float(x_flat[2 * i])
         y_m = float(x_flat[2 * i + 1])
-        species = SPECIES[i % len(SPECIES)]
+        if has_species_genes:
+            gene = float(x_flat[2 * N_TREES + i])
+            idx = max(0, min(int(gene), n_species - 1))
+            species = SPECIES[idx]
+        else:
+            species = SPECIES[i % n_species]
         active = is_valid_location(x_m, y_m)
         trees.append({"x_m": x_m, "y_m": y_m, "species": species, "active": active})
 
     tree_count = sum(1 for t in trees if t["active"])
     return {"trees": trees, "tree_count": tree_count}
+
+
+def _mean_cooling_factor(cfg: dict) -> float:
+    """Mean per-species cooling_score over active trees (proxy weight in [0,1]).
+
+    Used to weight the optimizer's THERMAL objective so it favours higher-cooling
+    species — balanced against the ecological-diversity objective (which penalises
+    monoculture). Selection proxy only; the live Infrared UTCI is the ground truth.
+    Returns 1.0 when no active trees (neutral).
+    """
+    from coolspend.bcn_species import cooling_score_by_name  # noqa: PLC0415
+    active = [t for t in cfg.get("trees", []) if t.get("active", True)]
+    if not active:
+        return 1.0
+    return sum(cooling_score_by_name(t.get("species", "")) for t in active) / len(active)
 
 
 # ── PROBLEM DEFINITION ───────────────────────────────────────────────────────
@@ -142,19 +164,31 @@ class TreeBudgetProblem(ElementwiseProblem):
     """
 
     def __init__(self, budget_eur: float = DEFAULT_BUDGET_EUR) -> None:
-        xl = np.zeros(2 * N_TREES)
-        xu = np.tile([_se.SITE_WIDTH_M, _se.SITE_DEPTH_M], N_TREES)
-        super().__init__(n_var=2 * N_TREES, n_obj=2, n_ieq_constr=1, xl=xl, xu=xu)
+        # Decision vars: 2*N_TREES position floats + N_TREES species selectors.
+        # Species selector s_i in [0, len(SPECIES)) -> decode() picks SPECIES[int(s_i)].
+        n_species = len(SPECIES)
+        xl = np.zeros(3 * N_TREES)
+        xu = np.concatenate([
+            np.tile([_se.SITE_WIDTH_M, _se.SITE_DEPTH_M], N_TREES),
+            np.full(N_TREES, n_species - 1e-6),  # species gene upper bound
+        ])
+        super().__init__(n_var=3 * N_TREES, n_obj=2, n_ieq_constr=1, xl=xl, xu=xu)
         self.budget_eur = budget_eur
 
     def _evaluate(self, x: np.ndarray, out: dict, *args, **kwargs) -> None:
         """Evaluate a single chromosome. SURROGATE-ONLY — no SDK calls here."""
         cfg = decode(x)
 
-        # Objective F1: maximize thermal relief => minimize negative
-        f1 = -thermal_relief(cfg)
+        # Objective F1: maximize thermal relief, WEIGHTED by the chosen species'
+        # cooling proxy => the optimizer prefers higher-cooling species AND good
+        # placement. Geometric thermal_relief is unchanged (so the surrogate tests
+        # and the reported delta_tmrt_c stay geometric); the species weight only
+        # biases selection here. minimize negative.
+        f1 = -thermal_relief(cfg) * _mean_cooling_factor(cfg)
 
-        # Objective F2: maximize ecological coherence => minimize negative
+        # Objective F2: maximize ecological coherence => minimize negative.
+        # ecological_score rewards species diversity, so it counterbalances the
+        # cooling weight's pull toward a high-cooling monoculture.
         f2 = -ecological_score(cfg)
 
         # Constraint G1: over-budget configs are infeasible (G > 0)
