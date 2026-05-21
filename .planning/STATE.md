@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: ready_to_plan
-stopped_at: Completed 02-05-PLAN.md — decision artifact, topsis_rank, save_outputs, main.py CLI, 88 tests green, DEC-01+DEC-02 satisfied
-last_updated: "2026-05-21T10:00:00.000Z"
+status: in_progress
+stopped_at: Completed 03-01-PLAN.md — app_pipeline.run_decision + app_viz.render_before_after, 99 tests green, APP-01 call-log capture implemented
+last_updated: "2026-05-21T11:00:00.000Z"
 last_activity: 2026-05-21
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
-  percent: 50
+  total_plans: 11
+  completed_plans: 9
+  percent: 38
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-21)
 ## Current Position
 
 Phase: 03
-Plan: Not started
-Status: Ready to plan
+Plan: 01 complete, 02 next
+Status: In progress
 Last activity: 2026-05-21
 
-Progress: [██████████] 100% (Phase 02 complete)
+Progress: [█████████░] 90% (Phase 02 complete + Phase 03 Plan 01 complete)
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Progress: [██████████] 100% (Phase 02 complete)
 | Phase 02-optimizer-core P02-03 | 15m | 2 tasks | 3 files |
 | Phase 02-optimizer-core P02-04 | 25m | 3 tasks | 2 files |
 | Phase 02-optimizer-core P02-05 | 25m | 3 tasks | 6 files |
+| Phase 03-web-app-decision-ui P03-01 | 5m | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,9 @@ Recent decisions affecting current work:
 - 02-05: TOPSIS weights (0.6/0.4) adjustable developer judgment, NOT stakeholder-elicited (CONCERNS 1.6)
 - 02-05: disclaimer injected by save_outputs if absent — T-02-15 never dependent on caller compliance
 - 02-05: plot_pareto() wrapped — JSON pipeline never blocked by matplotlib failure (T-02-18)
+- 03-01: sdk_client logger level temporarily set to INFO for call-log capture (root logger at WARNING suppresses INFO by default)
+- 03-01: parse_site_geojson raises ValueError on invalid input; run_decision catches and sets error field (clean separation)
+- 03-01: render_before_after accepts before_after dict with chosen_validated_utci_c and headline_delta_utci_c matching run_decision contract
 
 ### Pending Todos
 
@@ -123,8 +127,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-21T10:00:00.000Z
-Stopped at: Completed 02-05-PLAN.md — decision artifact, topsis_rank, save_outputs, main.py CLI, 88 tests green, DEC-01+DEC-02 satisfied
+Last session: 2026-05-21T11:00:00.000Z
+Stopped at: Completed 03-01-PLAN.md — app_pipeline.run_decision + app_viz.render_before_after, 99 tests green, APP-01 call-log capture
 Resume file: None
 
 **Planned Phase:** 1 (Foundation & SDK Boundary) — 3 plans — 2026-05-21T00:07:58.203Z
