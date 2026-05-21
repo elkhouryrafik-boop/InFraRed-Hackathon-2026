@@ -83,7 +83,7 @@ Scope for the infrared.city Buildathon (Tree Budget track). v1 = what we demo Ma
 | DEC-01 | Phase 2 — Optimizer Core | Complete (02-05) |
 | DEC-02 | Phase 2 — Optimizer Core | Complete (02-05) |
 | APP-01 | Phase 3 — Web App & Decision UI | Complete (03-02) |
-| APP-02 | Phase 3 — Web App & Decision UI | Pending |
+| APP-02 | Phase 3 — Web App & Decision UI | Complete |
 | SHIP-01 | Phase 4 — Ship | Pending |
 | SHIP-02 | Phase 4 — Ship | Pending |
 | SHIP-03 | Phase 4 — Ship | Pending |

@@ -8,7 +8,7 @@ Four phases deliver a live hackathon demo: stand up a clean, offline-testable sk
 
 - [x] **Phase 1: Foundation & SDK Boundary** - Clean repo skeleton, deduplicated SDK client (mock/cached/live + SimBudget), spatial engine, and cost model — all offline-testable before May 27 (completed 2026-05-21)
 - [x] **Phase 2: Optimizer Core** - NSGA-II on the surrogate, Top-3 Pareto validation with real/cached UTCI, ranked allocation artifact (requires May 27 API key for live validation path) (completed 2026-05-21)
-- [ ] **Phase 3: Web App & Decision UI** - Gradio app (polygon + budget in → before/after map + allocation table out), deployed to Hugging Face Spaces with visible API calls
+- [x] **Phase 3: Web App & Decision UI** - Gradio app (polygon + budget in → before/after map + allocation table out), deployed to Hugging Face Spaces with visible API calls (completed 2026-05-21)
 - [ ] **Phase 4: Ship** - requirements.txt, README with architecture diagram, MOCKS ledger, demo video and submission description
 
 ## Phase Details
@@ -68,7 +68,7 @@ Plans:
   3. Live Infrared SDK calls are visible in the Gradio log output during the Top-3 validation step (not hidden or batched silently)
   4. The app runs correctly with `INFRARED_BACKEND=mock` (no API key) so the deployed space can be demonstrated offline if the live key is unavailable
 
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 03-01-PLAN.md — app_pipeline.run_decision (UI-agnostic pipeline wrapper + safe GeoJSON parse + visible SDK call-log) and app_viz.render_before_after (headless matplotlib before/after map) (completed 2026-05-21)
