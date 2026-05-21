@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 02-03-PLAN.md — live Infrared backend wired in sdk_client.py, 11 tests green, live→cache, key-from-env
-last_updated: "2026-05-21T01:08:02.149Z"
+stopped_at: Completed 02-04-PLAN.md — NSGA-II optimizer, select_top3, validate_top3_with_infrared, 82 tests green, surrogate-only hot path, SimBudget 3 calls
+last_updated: "2026-05-21T02:00:00.000Z"
 last_activity: 2026-05-21
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 8
-  completed_plans: 6
-  percent: 75
+  completed_plans: 7
+  percent: 88
 ---
 
 # Project State
@@ -57,6 +57,7 @@ Progress: [████████░░] 75%
 | Phase 02-optimizer-core P02-01 | 3m | 1 tasks | 3 files |
 | Phase 02-optimizer-core P02-02 | 5m | 1 tasks | 3 files |
 | Phase 02-optimizer-core P02-03 | 15m | 2 tasks | 3 files |
+| Phase 02-optimizer-core P02-04 | 25m | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,9 @@ Recent decisions affecting current work:
 - 02-03: INFRARED_API_KEY validated present before SDK usage; never logged or embedded in any string
 - 02-03: live result written to CACHE_DIR for INFRARED_BACKEND=cached offline replay
 - 02-03: AnalysesName.utci member name left as TODO for May-27 SDK confirmation (one-line change)
+- 02-04: N_TREES=12 fixed chromosome length (24 vars); decode() maps to tree config with is_valid_location gating
+- 02-04: validate_top3_with_infrared: baseline called once (no budget record); 3 budget slots for interventions
+- 02-04: select_top3 deduplication via utopia-point sorted fallback ensures 3 distinct indices always
 
 ### Pending Todos
 
@@ -113,8 +117,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-21T01:08:02.138Z
-Stopped at: Completed 02-03-PLAN.md — live Infrared backend wired in sdk_client.py, 11 tests green, live→cache, key-from-env
+Last session: 2026-05-21T02:00:00.000Z
+Stopped at: Completed 02-04-PLAN.md — NSGA-II optimizer, select_top3, validate_top3_with_infrared, 82 tests green, surrogate-only hot path, SimBudget 3 calls
 Resume file: None
 
 **Planned Phase:** 1 (Foundation & SDK Boundary) — 3 plans — 2026-05-21T00:07:58.203Z

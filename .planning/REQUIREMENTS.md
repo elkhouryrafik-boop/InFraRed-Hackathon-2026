@@ -30,7 +30,7 @@ Scope for the infrared.city Buildathon (Tree Budget track). v1 = what we demo Ma
 **: Compute the headline KPI: °C of UTCI relief per euro for a configuration.
 
 ### Optimizer
-- [ ] **OPT-01**: NSGA-II (pymoo) over a fixed-length vector of tree coordinates, 2 objectives (thermal relief + ecological coherence) under a budget constraint.
+- [x] **OPT-01**: NSGA-II (pymoo) over a fixed-length vector of tree coordinates, 2 objectives (thermal relief + ecological coherence) under a budget constraint.
 - [x] **OPT-02
 **: Fitness uses the fast `delta_tmrt_surrogate` inside the loop — no live SDK call per chromosome.
 - [x] **OPT-03
@@ -74,11 +74,11 @@ Scope for the infrared.city Buildathon (Tree Budget track). v1 = what we demo Ma
 | SPATIAL-03 | Phase 1 — Foundation & SDK Boundary | Complete |
 | COST-01 | Phase 1 — Foundation & SDK Boundary | Complete |
 | COST-02 | Phase 1 — Foundation & SDK Boundary | Complete |
-| RULES-01 | Phase 2 — Optimizer Core | Pending |
-| RULES-02 | Phase 2 — Optimizer Core | Pending |
-| OPT-01 | Phase 2 — Optimizer Core | Pending |
-| OPT-02 | Phase 2 — Optimizer Core | Pending |
-| OPT-03 | Phase 2 — Optimizer Core | Pending |
+| RULES-01 | Phase 2 — Optimizer Core | Complete |
+| RULES-02 | Phase 2 — Optimizer Core | Complete |
+| OPT-01 | Phase 2 — Optimizer Core | Complete |
+| OPT-02 | Phase 2 — Optimizer Core | Complete |
+| OPT-03 | Phase 2 — Optimizer Core | Complete |
 | DEC-01 | Phase 2 — Optimizer Core | Pending |
 | DEC-02 | Phase 2 — Optimizer Core | Pending |
 | APP-01 | Phase 3 — Web App & Decision UI | Pending |
