@@ -25,6 +25,35 @@ logger = logging.getLogger("coolspend.app")
 
 import gradio as gr
 
+# ── Workaround: gradio 4.44.1 + gradio_client schema-parse bug ────────────────
+# get_api_info() crashes with "TypeError: argument of type 'bool' is not iterable"
+# when a component schema has a boolean `additionalProperties`/`const`. The buggy
+# helpers index the schema assuming it is always a dict. We make them bool-safe.
+# This also fixes the false "localhost is not accessible" error, which is caused
+# by the launch health-check hitting the crashing api_info endpoint.
+try:  # pragma: no cover - environment-dependent
+    import gradio_client.utils as _gcu
+
+    _orig_js2pt = _gcu._json_schema_to_python_type
+
+    def _safe_js2pt(schema, defs=None):
+        if isinstance(schema, bool):
+            return "Any"
+        return _orig_js2pt(schema, defs)
+
+    _gcu._json_schema_to_python_type = _safe_js2pt
+
+    _orig_get_type = _gcu.get_type
+
+    def _safe_get_type(schema):
+        if not isinstance(schema, dict):
+            return "Any"
+        return _orig_get_type(schema)
+
+    _gcu.get_type = _safe_get_type
+except Exception:  # noqa: BLE001 - never block launch on the patch itself
+    logger.warning("gradio_client bool-schema patch could not be applied", exc_info=True)
+
 from coolspend.app_pipeline import DEFAULT_BUDGET_EUR, run_decision
 from coolspend.app_viz import render_before_after
 from coolspend.spatial_engine import DEFAULT_SITE
