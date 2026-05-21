@@ -20,13 +20,24 @@ HONESTY NOTICE:
 SEED: 42 — deterministic run.
 PERFORMANCE: POP_SIZE=60, N_GEN=60 gives a qualitative Pareto front in tens of
 seconds offline on an analytical surrogate (CONCERNS 3.5).
+
+Decision artifact functions (Plan 02-05):
+  topsis_rank(top3, weights)  — rank validated Top-3 by €/°C (TOPSIS tie-break)
+  save_outputs(top3, result)  — write top3_configurations.json, audit_record.json,
+                                pareto_front.png  (DEC-01 + DEC-02)
 """
 from __future__ import annotations
 
+import json
+import logging
 import math
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
+
+logger = logging.getLogger("coolspend.optimizer")
 
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.core.problem import ElementwiseProblem
@@ -378,6 +389,334 @@ def validate_top3_with_infrared(
         cfg["validated_disclaimer"] = intervention.disclaimer
 
     return top3
+
+
+# ── TOPSIS RANKING (DEC-01 / Plan 02-05) ────────────────────────────────────
+
+
+def topsis_rank(
+    top3: list[dict],
+    weights: tuple[float, float] = (0.6, 0.4),
+) -> list[dict]:
+    """Rank validated Top-3 configs by euro/°C KPI, using TOPSIS as tie-breaker.
+
+    IMPORTANT — weights are ADJUSTABLE USER PARAMETERS, not stakeholder-derived
+    constants.  They will be exposed as Gradio sliders in Phase 3.  Do NOT present
+    them as calibrated values (ARCHITECTURE.md Known Issues #3 / CONCERNS 1.6).
+
+    Ranking procedure (Hwang & Yoon 1981, adapted):
+      1. Build a 3×2 performance matrix:
+           column 0 = delta_utci_c  (validated thermal relief, higher is better)
+           column 1 = ecological_score (higher is better)
+      2. Vector-normalise each column (guard zero-norms with 1e-9).
+      3. Apply weights.
+      4. Identify ideal-best (column max) and ideal-worst (column min).
+      5. Euclidean distance from ideal-best and ideal-worst per row.
+      6. Relative closeness = D_worst / (D_best + D_worst).
+      7. Set cfg["topsis_score"] = round(closeness, 4).
+
+    PRIMARY ranking criterion: cfg["cost_per_utci_degree"]["value"] ascending
+    (best euros-per-degree first).  TOPSIS closeness is used as a tie-breaker.
+    Configs with cost_per_utci_degree value=None are ranked last.
+
+    After ranking, each config receives:
+      cfg["rank"]                   — 1, 2, or 3 (1 = best euro/°C)
+      cfg["cost_eur"]               — total_cost(cfg) in EUR
+      cfg["cost_per_utci_degree"]   — standard metric dict from cost_model
+      cfg["topsis_score"]           — TOPSIS relative closeness (0–1)
+
+    Args:
+        top3:    List of 3 configs from validate_top3_with_infrared().
+        weights: (w_thermal, w_ecological) — must be positive, needn't sum to 1.
+
+    Returns:
+        The same list (in-place modified), re-sorted by ascending euro/°C with
+        ranks reassigned 1..3.
+    """
+    from coolspend.cost_model import cost_per_utci_degree, total_cost  # noqa: PLC0415
+
+    # Attach cost fields to each config
+    for cfg in top3:
+        cfg["cost_eur"] = round(total_cost(cfg), 2)
+        cfg["cost_per_utci_degree"] = cost_per_utci_degree(cfg)
+
+    # ── TOPSIS ────────────────────────────────────────────────────────────────
+    # Performance matrix: [delta_utci_c, ecological_score] — both higher is better
+    matrix = np.array(
+        [
+            [float(cfg.get("delta_utci_c") or 0.0), float(cfg.get("ecological_score", 0.0))]
+            for cfg in top3
+        ],
+        dtype=float,
+    )
+
+    # Vector-normalise (guard zero norms)
+    norms = np.linalg.norm(matrix, axis=0)
+    norms[norms == 0] = 1e-9
+    norm_matrix = matrix / norms
+
+    # Apply weights
+    w = np.array(weights, dtype=float)
+    weighted = norm_matrix * w
+
+    # Ideal best (max each column) and worst (min each column)
+    ideal_best = weighted.max(axis=0)
+    ideal_worst = weighted.min(axis=0)
+
+    # Euclidean distances
+    d_best = np.linalg.norm(weighted - ideal_best, axis=1)
+    d_worst = np.linalg.norm(weighted - ideal_worst, axis=1)
+
+    # Relative closeness
+    denom = d_best + d_worst
+    denom[denom == 0] = 1e-9
+    closeness = d_worst / denom
+
+    for i, cfg in enumerate(top3):
+        cfg["topsis_score"] = round(float(closeness[i]), 4)
+
+    # ── PRIMARY SORT: ascending euro/°C (None last), tie-break: desc TOPSIS ──
+    def _sort_key(cfg: dict):
+        kpi = cfg["cost_per_utci_degree"]["value"]
+        # None → sort to end; otherwise ascending cost, descending topsis
+        if kpi is None:
+            return (1, 0.0, -cfg["topsis_score"])
+        return (0, float(kpi), -cfg["topsis_score"])
+
+    top3.sort(key=_sort_key)
+
+    # Reassign ranks 1..3
+    for rank_zero, cfg in enumerate(top3):
+        cfg["rank"] = rank_zero + 1
+
+    return top3
+
+
+# ── BEFORE/AFTER RECORD (DEC-02 / Plan 02-05) ────────────────────────────────
+
+
+def _build_before_after(top3: list[dict]) -> dict:
+    """Build the DEC-02 before/after record from the rank-1 (best euro/°C) config.
+
+    Returns a dict with:
+      baseline_utci_c          — open-site UTCI before intervention
+      chosen_label             — label of the selected config
+      chosen_validated_utci_c  — post-intervention UTCI (mock or live)
+      headline_delta_utci_c    — comfort improvement in °C (positive = better)
+      source                   — backend / disclaimer string
+      note                     — human-readable interpretation
+    """
+    chosen = top3[0]   # rank-1: best euro/°C after topsis_rank()
+    return {
+        "baseline_utci_c": chosen.get("baseline_utci_c"),
+        "chosen_label": chosen.get("label"),
+        "chosen_validated_utci_c": chosen.get("validated_utci_c"),
+        "headline_delta_utci_c": chosen.get("delta_utci_c"),
+        "source": chosen.get("validated_disclaimer", chosen.get("validated_backend")),
+        "note": "before = baseline UTCI; after = chosen intervention validated UTCI",
+    }
+
+
+# ── SAVE OUTPUTS (DEC-01 + DEC-02 / Plan 02-05) ──────────────────────────────
+
+
+def save_outputs(
+    top3: list[dict],
+    result,
+    out_dir: Path = Path("outputs"),
+    budget_eur: float = DEFAULT_BUDGET_EUR,
+) -> Path:
+    """Write the decision artifact, audit record, and Pareto PNG to *out_dir*.
+
+    Fulfils DEC-01 (ranked allocation) and DEC-02 (before/after record).
+    Every config is guaranteed to carry a non-empty "disclaimer" key (honesty).
+
+    Files written:
+      outputs/top3_configurations.json  — DEC-01 + DEC-02 main artifact
+      outputs/audit_record.json         — provenance trail
+      outputs/pareto_front.png          — Pareto scatter (best-effort; pipeline
+                                          continues if matplotlib is unavailable)
+
+    Args:
+        top3:       Ranked Top-3 configs from topsis_rank().
+        result:     pymoo Result from run_optimisation() — needed for metadata.
+        out_dir:    Output directory (created if absent).
+        budget_eur: Planting budget used in this run (for run_metadata).
+
+    Returns:
+        Path to the written top3_configurations.json file.
+    """
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    F = np.atleast_2d(result.F)
+
+    # Ensure every config carries a "disclaimer" key (T-02-15 honesty)
+    surrogate_disclaimer = (
+        "SURROGATE-DERIVED — delta_tmrt from analytical proxy (±4°C uncertainty). "
+        "validated_utci_c is mock backend (NOT MEASURED DATA) until INFRARED_BACKEND=live. "
+        "See MOCKS.md."
+    )
+    for cfg in top3:
+        if not cfg.get("disclaimer"):
+            # Use the validated disclaimer if present, otherwise the surrogate note
+            validated_disclaimer = cfg.get("validated_disclaimer", "")
+            if validated_disclaimer:
+                cfg["disclaimer"] = (
+                    f"{surrogate_disclaimer} | Backend: {validated_disclaimer}"
+                )
+            else:
+                cfg["disclaimer"] = surrogate_disclaimer
+
+    # ── Build artifact JSON ───────────────────────────────────────────────────
+    artifact = {
+        "run_metadata": {
+            "algorithm": "NSGA-II (pymoo 0.6.1)",
+            "site": "Plaça dels Àngels, Barcelona",
+            "population": int(getattr(result, "algorithm", None) and 0 or POP_SIZE),
+            "generations": N_GEN,
+            "seed": SEED,
+            "pareto_front_size": len(F),
+            "surrogate": (
+                "Analytical geometry proxy (±4°C) — see MOCKS.md. "
+                "Outputs are surrogate-driven except validated_utci_c."
+            ),
+            "budget_eur": budget_eur,
+        },
+        "configurations": top3,
+        "before_after": _build_before_after(top3),
+    }
+
+    json_path = out_dir / "top3_configurations.json"
+    json_path.write_text(
+        json.dumps(artifact, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    logger.info("Wrote decision artifact: %s", json_path)
+
+    # Write audit record and Pareto plot (best-effort; failures do not block JSON)
+    write_audit_record(top3, result, out_dir)
+    plot_pareto(result, out_dir / "pareto_front.png")
+
+    return json_path
+
+
+# ── AUDIT RECORD (provenance trail / Plan 02-05) ─────────────────────────────
+
+
+def write_audit_record(top3: list[dict], result, out_dir: Path) -> None:
+    """Write a provenance audit record to *out_dir*/audit_record.json.
+
+    Captures:
+      - surrogate flags (which values are UNVALIDATED)
+      - per-config data-source tags (mock vs validated)
+      - TOPSIS weights echoed (as adjustable parameters, not calibrated constants)
+      - generation timestamp
+    """
+    out_dir = Path(out_dir)
+
+    # Per-config summary (lightweight — no full tree list)
+    config_audit = []
+    for cfg in top3:
+        config_audit.append(
+            {
+                "rank": cfg.get("rank"),
+                "label": cfg.get("label"),
+                "delta_tmrt_source": cfg.get("delta_tmrt_source", "surrogate"),
+                "delta_tmrt_c_status": "UNVALIDATED — surrogate proxy (±4°C)",
+                "delta_utci_c_status": (
+                    f"validated by {cfg.get('validated_backend', 'unknown')} backend"
+                ),
+                "cost_per_utci_degree_value": (
+                    cfg.get("cost_per_utci_degree", {}).get("value")
+                ),
+                "topsis_score": cfg.get("topsis_score"),
+                "disclaimer": cfg.get("disclaimer", ""),
+                "validated_backend": cfg.get("validated_backend", "unknown"),
+            }
+        )
+
+    F = np.atleast_2d(result.F)
+    audit = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "surrogate_flags": {
+            "delta_tmrt_c": "UNVALIDATED — analytical proxy, NOT measured/simulated",
+            "uncertainty_c": 4.0,
+            "max_tmrt_reduction_c_cap": "12°C — UNSOURCED hard cap (ARCHITECTURE.md Known Issues #4)",
+            "validated_utci_c": "mock backend (NOT MEASURED DATA) until INFRARED_BACKEND=live",
+        },
+        "topsis_weights": {
+            "w_thermal": 0.6,
+            "w_ecological": 0.4,
+            "note": (
+                "Adjustable parameters — NOT stakeholder-derived constants. "
+                "Will be exposed as Gradio sliders in Phase 3 (CONCERNS 1.6)."
+            ),
+        },
+        "pareto_front_size": len(F),
+        "configurations": config_audit,
+        "data_sources": {
+            "cost_constants": "DECLARED assumptions (REQUIRES_VERIFICATION) — see MOCKS.md",
+            "surrogate_physics": "Analytical proxy ported from NatureGooddest — see MOCKS.md",
+            "utci_validation": "mock / cached / live via INFRARED_BACKEND env var",
+        },
+    }
+
+    audit_path = out_dir / "audit_record.json"
+    audit_path.write_text(
+        json.dumps(audit, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    logger.info("Wrote audit record: %s", audit_path)
+
+
+# ── PARETO PLOT (best-effort / Plan 02-05) ────────────────────────────────────
+
+
+def plot_pareto(result, out_path: Path) -> None:
+    """Scatter-plot the Pareto front (thermal relief vs ecological score) as a PNG.
+
+    This function is intentionally best-effort: if matplotlib is not installed or
+    rendering fails, a warning is logged and the function returns without raising
+    so the JSON artifact pipeline is never blocked (T-02-18).
+
+    Args:
+        result:   pymoo Result from run_optimisation().
+        out_path: Full path to write the PNG (e.g. outputs/pareto_front.png).
+    """
+    try:
+        import matplotlib  # noqa: PLC0415
+        matplotlib.use("Agg")   # non-interactive backend (safe for headless runs)
+        import matplotlib.pyplot as plt  # noqa: PLC0415
+    except ImportError:
+        logger.warning(
+            "matplotlib not installed — skipping Pareto plot. "
+            "Install matplotlib to enable pareto_front.png output."
+        )
+        return
+
+    try:
+        F = np.atleast_2d(result.F)
+        # Negate objectives to get positive "improvement" axes
+        thermal = -F[:, 0]
+        ecological = -F[:, 1]
+
+        fig, ax = plt.subplots(figsize=(7, 5))
+        ax.scatter(thermal, ecological, c="steelblue", alpha=0.7, s=40, edgecolors="none")
+        ax.set_xlabel("Thermal relief — ΔTmrt surrogate (°C)")
+        ax.set_ylabel("Ecological coherence score")
+        ax.set_title(
+            "Pareto front — CoolSpend NSGA-II\n"
+            "(surrogate objectives; ±4°C uncertainty on thermal axis)"
+        )
+        ax.grid(True, linestyle="--", alpha=0.4)
+        fig.tight_layout()
+
+        out_path = Path(out_path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(out_path, dpi=120)
+        plt.close(fig)
+        logger.info("Wrote Pareto plot: %s", out_path)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Pareto plot failed (pipeline continues): %s", exc)
 
 
 # ── MAIN ENTRY POINT ─────────────────────────────────────────────────────────
