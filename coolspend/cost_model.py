@@ -44,10 +44,51 @@ KPI uncertainty band (D-10 / VALID-04):
     measured one.  The KPI is always reported as an interval [value_lo, value_hi],
     never as a bare point estimate.
 
+Growth-horizon discount (COST-05 / D-07..D-10):
+    A tree does not deliver full-canopy cooling on day one.  Counting day-one full
+    benefit overstates cooling and understates €/°C.  The following three functions
+    implement an auditable growth-ramp + social-discount model:
+
+    1. growth_cooling_fraction(year, p) — linear ramp (D-07 / MODELLING CHOICE):
+       A linear ramp was chosen over logistic or exponential for auditability; any
+       auditor can verify the numbers without specialist ecological modelling.
+         frac(y) = p.initial_fraction + (1 - p.initial_fraction) * min(y / p.ramp_years, 1.0)
+       At year 0  → p.initial_fraction (≈20% cooling from young tree shade).
+       At year 25 → 1.0 (full-canopy cooling, clamped to 1.0 thereafter).
+
+    2. discounted_lifetime_degc(full_canopy_degc, p) — annual summation (D-10 / MODELLING CHOICE):
+       A closed-form discount integral exists but annual summation was chosen for
+       auditability — each year's contribution can be inspected in a spreadsheet.
+       For each year y in 0..(horizon_years-1):
+         weight_y   = growth_cooling_fraction(y, p) / (1 + r)^y
+         disc_year  = 1 / (1 + r)^y
+       Returns: full_canopy_degc * (Σ weight_y / Σ disc_year_y)
+       This is the discounted-weighted *average* cooling fraction times the full
+       canopy °C, i.e. an "equivalent steady-state °C drop" (D-10).  Routing this
+       value into the KPI denominator keeps units in €/°C and the [lo,hi] band
+       propagates cleanly.
+
+    3. discounted_total_cost(config, p) — present value of lifecycle cost (D-08):
+       CapEx (year 0, undiscounted) + PV(OpEx over horizon at rate r) × tree_count.
+       Used only in the REPORTED KPI; the optimizer's budget constraint continues
+       to use total_cost() (nominal) for NSGA-II feasibility (Do NOT change).
+
+    See GrowthDiscountParams for editable defaults; Plan 06-03 (COST-04) exposes
+    these via Gradio inputs.
+
+    DECLARED modelling choices (REQUIRES_VERIFICATION):
+      - Linear ramp shape (not calibrated growth model); species-specific canopy
+        growth would replace this (i-Tree or local arboricultural data).
+      - 3.5% discount rate = EU/UK Green Book social convention; locale-editable.
+      - 40-yr horizon = urban sealed-site functional lifespan; locale-editable.
+
 Key functions:
-    per_tree_cost(horizon_years) -> float          euros per tree over horizon
-    total_cost(config)           -> float          total euros for config
-    cost_per_utci_degree(config, band_c) -> dict   standard metric dict EUR/degC
+    per_tree_cost(horizon_years) -> float             euros per tree over horizon
+    total_cost(config)           -> float             total euros for config
+    growth_cooling_fraction(year, p) -> float         ramp fraction at year y
+    discounted_lifetime_degc(full_canopy_degc, p) -> float  equiv discounted °C
+    discounted_total_cost(config, p) -> float         PV of lifecycle cost
+    cost_per_utci_degree(config, band_c, growth_discount) -> dict  EUR/degC KPI
 """
 from __future__ import annotations
 
@@ -265,6 +306,139 @@ _COST_SOURCE = (
     "DECLARED/PENDING: itemized CostTable lifecycle cost (Phase 6 / COST-03); "
     "see DEFAULT_COST_TABLE lines for per-item source anchors and MOCKS.md ledger"
 )
+
+
+# ── GrowthDiscountParams — editable growth-curve + discount params (COST-05) ─
+
+@dataclass
+class GrowthDiscountParams:
+    """
+    Editable growth-curve + discounting parameters (COST-05 / D-07..D-09).
+
+    All three fields are user-editable via Gradio inputs (Plan 06-03 / COST-04).
+    Defaults represent DECLARED modelling choices — REQUIRES_VERIFICATION against
+    local species data and municipal finance guidance (see MOCKS.md).
+    """
+    ramp_years: float = 25.0
+    # D-07: establishment→maturity duration (years).
+    # DECLARED: linear ramp shape is a modelling choice for auditability.
+    # UNIT: years   SOURCE: urban arboricultural context (illustrative)
+    # REQUIRES_VERIFICATION: replace with species-specific canopy growth curve
+    #   from i-Tree or local arboricultural data.
+
+    initial_fraction: float = 0.20
+    # D-07: effective cooling fraction at planting (year 0).
+    # Young tree provides ~20% of full-canopy cooling via partial shade.
+    # DECLARED   REQUIRES_VERIFICATION.
+
+    discount_rate: float = 0.035
+    # D-08: social discount rate — EU / UK Green Book convention (3.5%/yr).
+    # Editable per locale; see MOCKS.md.
+    # DECLARED   SOURCE: EU / UK HM Treasury Green Book (2022)
+
+    horizon_years: int = 40
+    # D-09: tree functional lifespan in urban sealed-site context.
+    # DECLARED   SOURCE: German 5-city LCC study (Riegel/ScienceDirect 2025,
+    #   venue-only PENDING) + urban tree lifespan literature.
+    # REQUIRES_VERIFICATION: local tree-survival / lifespan data.
+
+
+DEFAULT_GROWTH_DISCOUNT: "GrowthDiscountParams" = GrowthDiscountParams()
+# Single-source default instance — used when cost_per_utci_degree receives
+# growth_discount=None (backward-compat default).
+
+
+# ── Growth-ramp + discount functions (COST-05 / D-07..D-10) ──────────────────
+
+def growth_cooling_fraction(year: float, p: GrowthDiscountParams) -> float:
+    """
+    Effective cooling fraction in *year* years since planting.
+
+    Linear ramp from p.initial_fraction at year 0 to 1.0 at p.ramp_years,
+    clamped to 1.0 beyond ramp_years (D-07).
+
+    Modelling choice: linear ramp was chosen over logistic for auditability —
+    each year's contribution can be verified in a plain spreadsheet.
+
+    Parameters
+    ----------
+    year  : float  Years since planting (0 = planting year).
+    p     : GrowthDiscountParams
+
+    Returns
+    -------
+    float  in [p.initial_fraction, 1.0]
+    """
+    frac = p.initial_fraction + (1.0 - p.initial_fraction) * min(year / p.ramp_years, 1.0)
+    return min(frac, 1.0)
+
+
+def discounted_lifetime_degc(full_canopy_degc: float, p: GrowthDiscountParams) -> float:
+    """
+    Present-value-weighted equivalent °C drop over the tree's functional lifespan.
+
+    Computes the discounted-weighted *average* cooling fraction times
+    full_canopy_degc.  The result is an "equivalent steady-state °C drop" (D-10):
+    routing this into the KPI denominator keeps units in €/°C and the [lo,hi]
+    band propagates cleanly.
+
+    Annual summation (closed-form avoided for auditability — D-10 MODELLING CHOICE):
+      For y in 0..(horizon_years-1):
+        weight_y  = growth_cooling_fraction(y, p) / (1 + r)^y
+        disc_y    = 1 / (1 + r)^y
+      Returns: full_canopy_degc * (Σ weight_y / Σ disc_y)
+
+    Parameters
+    ----------
+    full_canopy_degc : float  °C drop at full-canopy maturity (day-one assumption
+                              is replaced by this discounted equivalent).
+    p                : GrowthDiscountParams
+
+    Returns
+    -------
+    float  Discounted-lifetime equivalent mean-°C drop, in (0, full_canopy_degc].
+    """
+    total_weight = 0.0
+    total_disc = 0.0
+    r = p.discount_rate
+    for y in range(p.horizon_years):
+        disc_factor = (1.0 + r) ** y
+        total_weight += growth_cooling_fraction(y, p) / disc_factor
+        total_disc += 1.0 / disc_factor
+    if total_disc <= 0.0:  # guard: should never occur with horizon_years >= 1
+        return full_canopy_degc * p.initial_fraction
+    return full_canopy_degc * (total_weight / total_disc)
+
+
+def discounted_total_cost(config: dict, p: GrowthDiscountParams) -> float:
+    """
+    Present value of the full lifecycle cost for all trees in *config*.
+
+    CapEx (year 0, undiscounted) + PV(OpEx over horizon_years at rate r),
+    multiplied by tree_count.
+
+    IMPORTANT: This is used for the REPORTED KPI only.  The optimizer's NSGA-II
+    budget constraint uses total_cost() (nominal, no discounting) for NSGA-II
+    feasibility — do NOT change the optimizer path.
+
+    Parameters
+    ----------
+    config : dict  Must contain tree_count.
+    p      : GrowthDiscountParams
+
+    Returns
+    -------
+    float  Total present-value lifecycle cost in EUR.
+    """
+    tree_count = int(config.get("tree_count", 0))
+    if tree_count <= 0:
+        return 0.0
+    capex = DEFAULT_COST_TABLE.capex_total()  # year-0, undiscounted
+    opex_pv = sum(
+        DEFAULT_COST_TABLE.opex_per_year() / (1.0 + p.discount_rate) ** y
+        for y in range(p.horizon_years)
+    )
+    return tree_count * (capex + opex_pv)
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
