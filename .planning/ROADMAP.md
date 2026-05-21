@@ -118,8 +118,8 @@ Plans:
 **Plans:** 5 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — UTM-31N (EPSG:32631) CRS migration: per-site origin + <1m fail-closed round-trip guard before every live call (VALID-05)
-- [ ] 05-02-PLAN.md — KPI routed through utci_hours_above (UTCI not raw Tmrt), dual units, [lo,hi] uncertainty interval (VALID-02, VALID-04)
+- [x] 05-01-PLAN.md — UTM-31N (EPSG:32631) CRS migration: per-site origin + <1m fail-closed round-trip guard before every live call (VALID-05) (completed 2026-05-21)
+- [x] 05-02-PLAN.md — KPI routed through utci_hours_above (UTCI not raw Tmrt), dual units, [lo,hi] uncertainty interval (VALID-02, VALID-04) (completed 2026-05-21)
 - [ ] 05-03-PLAN.md — Calibration study: 10-config coverage sweep, live-recorded RMSE/R²/band + ranking stability both ways, separate SimBudget (VALID-01, VALID-03)
 - [ ] 05-04-PLAN.md — Honesty (code): delete naive-baseline/improvement_vs_naive, re-anchor surrogate citation (Schrodi/Rahman), fix artifact JSON phrasing (HONEST-02, HONEST-03)
 - [ ] 05-05-PLAN.md — Honesty (docs+UI): scrub CONCEPT_REPORT/README/demo/MOCKS/app overclaims, out-of-scope exclusions list (HONEST-01, HONEST-02, HONEST-03, HONEST-04)
@@ -187,7 +187,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 5. Surrogate Ground-Truth & Honesty Reset | 0/5 | Not started | - |
+| 5. Surrogate Ground-Truth & Honesty Reset | 2/5 | Executing | 2026-05-21 |
 | 6. Cost-Model Credibility | 0/TBD | Not started | - |
 | 7. Real Geometry & Multi-Site Ingestion | 0/TBD | Not started | - |
 | 8. Multi-Intervention & Portfolio Triage | 0/TBD | Not started | - |

@@ -9,9 +9,9 @@ Derived from the 3-review synthesis (`docs/review/SYNTHESIS-market-ready.md`). G
 
 ### Validation & Scientific Credibility (keystone)
 - [ ] **VALID-01**: A user can run a surrogate-vs-Infrared calibration study across 5–10 deliberately varied configurations (not just Top-3) and get an RMSE/R² fit + error band quantifying surrogate accuracy.
-- [ ] **VALID-02**: The optimizer's ΔTmrt surrogate is converted to a true UTCI-hours delta (via the existing `utci_hours_above()` / ladybug path) before the €/°C KPI is formed — the KPI reports UTCI, not raw Tmrt.
+- [x] **VALID-02**: The optimizer's ΔTmrt surrogate is converted to a true UTCI-hours delta (via the existing `utci_hours_above()` / ladybug path) before the €/°C KPI is formed — the KPI reports UTCI, not raw Tmrt.
 - [ ] **VALID-03**: A user can verify ranking stability — the Top-3 picks chosen on the surrogate remain the Top-3 (or report rank shift) when each is re-simulated with real Infrared UTCI.
-- [ ] **VALID-04**: The €/°C KPI is reported as an uncertainty interval (surrogate ±band propagated), never a bare point estimate.
+- [x] **VALID-04**: The €/°C KPI is reported as an uncertainty interval (surrogate ±band propagated), never a bare point estimate.
 - [x] **VALID-05
 **: Geometry is handled in one projected metric CRS (UTM 31N) end-to-end, with a round-trip consistency assertion before any live SDK call.
 
@@ -141,9 +141,9 @@ Derived from the 3-review synthesis (`docs/review/SYNTHESIS-market-ready.md`). G
 | SHIP-02 | Phase 4 — Ship | Complete (04-01) |
 | SHIP-03 | Phase 4 — Ship | Complete (04-02) |
 | VALID-01 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Pending |
-| VALID-02 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Pending |
+| VALID-02 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Complete (05-02) |
 | VALID-03 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Pending |
-| VALID-04 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Pending |
+| VALID-04 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Complete (05-02) |
 | VALID-05 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Pending |
 | HONEST-01 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Pending |
 | HONEST-02 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Pending |

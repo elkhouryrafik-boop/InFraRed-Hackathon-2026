@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Market-Ready CoolSpend
 status: executing
-stopped_at: "Completed 05-01: UTM-31N CRS migration + fail-closed guard"
-last_updated: "2026-05-21T16:26:26.315Z"
-last_activity: 2026-05-21 -- Phase --phase execution started
+stopped_at: "Completed 05-02: UTCI-routed KPI with dual units and interval band"
+last_updated: "2026-05-21T17:20:00.000Z"
+last_activity: 2026-05-21 -- Phase 05 Plan 02 execution complete
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 18
-  completed_plans: 14
-  percent: 78
+  completed_plans: 15
+  percent: 83
 ---
 
 # Project State
@@ -68,6 +68,7 @@ Progress: [████████░░] 78%
 | Phase 04-ship P04-01 | 15m | 3 tasks | 2 files |
 | Phase 04-ship P04-02 | 3m | 3 tasks | 3 files |
 | Phase 05-surrogate-ground-truth-honesty-reset P01 | 15m | 2 tasks | 4 files |
+| Phase 05-surrogate-ground-truth-honesty-reset P02 | 25m | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -123,6 +124,7 @@ Recent decisions affecting current work:
 - 03-03: app_file: coolspend/app.py in HF Spaces header — no root shim needed
 - D-06: pyproj UTM-31N (EPSG:32631) with always_xy=True, per-site SW UTM corner origin from polygon bbox, [0,width]x[0,depth] local frame preserved
 - D-07: assert_crs_roundtrip measures UTM metres euclidean distance, raises CRSConsistencyError >= 1m, wired in _live_utci before InfraredClient call — fail-closed
+- D-08/D-09/D-10: HOURS_PER_DEGC_REF=200.0 (Barcelona EPW strong heat stress mean UTCI excess ~3°C; 600h/yr / 3°C = 200h/°C); cost_per_utci_degree now routes through utci_hours_above — never raw Tmrt; reports both EUR/degC and EUR/UTCI-hour; always interval [lo,hi] with PRE_CALIBRATION_BAND_C=4.0 until Plan 05-03 RMSE available
 
 ### Pending Todos
 
@@ -150,7 +152,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-21T16:26:26.291Z
-Stopped at: Completed 05-01: UTM-31N CRS migration + fail-closed guard
+Stopped at: Completed 05-02: UTCI-routed KPI with dual units and interval band
 Resume file: None
 
 **Planned Phase:** 5 (Surrogate Ground-Truth & Honesty Reset) — 5 plans — 2026-05-21T16:15:19.750Z
