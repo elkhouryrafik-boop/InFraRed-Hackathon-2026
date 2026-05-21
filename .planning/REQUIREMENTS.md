@@ -19,7 +19,7 @@ Derived from the 3-review synthesis (`docs/review/SYNTHESIS-market-ready.md`). G
 - [x] **COST-03
 **: Per-tree cost is a fully-loaded lifecycle figure (pit excavation, structural soil, guarding, multi-year establishment OpEx) anchored to a cited procurement source — replacing the €350/€35 placeholders.
 - [ ] **COST-04**: A user can configure the cost table per city/locale (editable inputs, not hardcoded constants).
-- [ ] **COST-05**: The €/°C KPI applies a growth-horizon discount so cooling benefit is modeled over the establishment/growth curve, not assumed day-one.
+- [x] **COST-05**: The €/°C KPI applies a growth-horizon discount so cooling benefit is modeled over the establishment/growth curve, not assumed day-one.
 
 ### Real Geometry & Multi-Site Ingestion
 - [ ] **GEO-01**: A user can load arbitrary city geometry from OSM/cadastre for any site (not a hand-authored fixture).
@@ -156,7 +156,7 @@ Derived from the 3-review synthesis (`docs/review/SYNTHESIS-market-ready.md`). G
 | HONEST-04 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Complete |
 | COST-03 | Phase 6 — Cost-Model Credibility | Pending |
 | COST-04 | Phase 6 — Cost-Model Credibility | Pending |
-| COST-05 | Phase 6 — Cost-Model Credibility | Pending |
+| COST-05 | Phase 6 — Cost-Model Credibility | Complete — 06-02 (growth-discount routed into EUR/degC KPI) |
 | GEO-01 | Phase 7 — Real Geometry & Multi-Site Ingestion | Pending |
 | GEO-02 | Phase 7 — Real Geometry & Multi-Site Ingestion | Pending |
 | GEO-03 | Phase 7 — Real Geometry & Multi-Site Ingestion | Pending |

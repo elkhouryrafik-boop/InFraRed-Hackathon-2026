@@ -133,11 +133,11 @@ Plans:
   1. Per-tree cost reflects a fully-loaded lifecycle figure (pit excavation, structural soil, guarding, multi-year establishment OpEx) anchored to a cited procurement source, replacing the €350/€35 placeholders
   2. A user can edit the cost table per city/locale through inputs rather than recompiling hardcoded constants, and the KPI recomputes from the edited values
   3. The €/°C KPI applies a growth-horizon discount so the modeled cooling benefit follows the establishment/growth curve instead of assuming full canopy on day one
-**Plans:** 3 plans
+**Plans:** 2/3 plans complete
 
 Plans:
-- [ ] 06-01-PLAN.md — Itemized fully-loaded CostTable (6 sourced line items, €3,000 CapEx / €180/yr OpEx) replacing €350/€35 + MOCKS ledger (COST-03)
-- [ ] 06-02-PLAN.md — Growth-curve ramp + 3.5% discount over 40-yr horizon routed into the €/°C KPI, preserving Phase 5 dict shape (COST-05)
+- [x] 06-01-PLAN.md — Itemized fully-loaded CostTable (6 sourced line items, €3,000 CapEx / €180/yr OpEx) replacing €350/€35 + MOCKS ledger (COST-03) (completed 2026-05-21)
+- [x] 06-02-PLAN.md — Growth-curve ramp + 3.5% discount over 40-yr horizon routed into the €/°C KPI, preserving Phase 5 dict shape (COST-05) (completed 2026-05-21)
 - [ ] 06-03-PLAN.md — Editable cost_config.json + Gradio cost/discount inputs with live KPI recompute (COST-04)
 
 

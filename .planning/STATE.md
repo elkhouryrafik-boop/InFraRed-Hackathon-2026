@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Market-Ready CoolSpend
 status: executing
-stopped_at: "Completed 06-01: itemized CostTable (6-line lifecycle cost; CapEx=3000, OpEx=180/yr)"
-last_updated: "2026-05-21T17:48:34.009Z"
+stopped_at: "Completed 06-02: growth-horizon discount routed into EUR/degC KPI (COST-05)"
+last_updated: "2026-05-21T18:10:00.000Z"
 last_activity: 2026-05-21 -- Phase --phase execution started
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 21
-  completed_plans: 19
-  percent: 90
+  completed_plans: 21
+  percent: 95
 ---
 
 # Project State
@@ -74,6 +74,7 @@ Progress: [████████░░] 78%
 | Phase 05 P04 | 5m | 2 tasks | 5 files |
 | Phase 05-surrogate-ground-truth-honesty-reset P05 | 8m | 2 tasks | 7 files |
 | Phase 06-cost-model-credibility P01 | 4 | 3 tasks | 3 files |
+| Phase 06-cost-model-credibility P02 | 20m | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -138,6 +139,8 @@ Recent decisions affecting current work:
 - D-15 backward-compat: CAPEX_PER_TREE_EUR/OPEX_PER_TREE_YEAR_EUR derived from DEFAULT_COST_TABLE (single source of truth — no dual definition)
 - OPEX_HORIZON_YEARS changed 10->40 yr per D-09 (urban sealed-site functional lifespan)
 - DEFAULT_COST_TABLE: CapEx=3000 EUR/tree (5 itemized lines), OpEx=180 EUR/tree/yr; label='illustrative European mid-range — verify locally'
+- 06-02: cost_per_utci_degree routes denominator through discounted_lifetime_degc() (25yr linear ramp, 3.5% discount, 40yr horizon) and numerator through discounted_total_cost() (PV of OpEx); growth_discount=None default preserves backward compat; optimizer total_cost() path unchanged
+- 06-02: new param-echo keys (discount_rate, ramp_years, horizon_years, growth_note) additive — no Phase 5 key removed from result dict
 
 ### Pending Todos
 
@@ -164,8 +167,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-21T17:48:33.997Z
-Stopped at: Completed 06-01: itemized CostTable (6-line lifecycle cost; CapEx=3000, OpEx=180/yr)
+Last session: 2026-05-21T18:10:00.000Z
+Stopped at: Completed 06-02: growth-horizon discount routed into EUR/degC KPI (COST-05)
 Resume file: None
 
 **Planned Phase:** 6 (Cost-Model Credibility) — 3 plans — 2026-05-21T17:42:27.847Z
