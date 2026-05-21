@@ -13,7 +13,7 @@ pinned: false
 
 CoolSpend is a heat-mitigation budget decision-support tool built for the infrared.city SDK Buildathon (Tree Budget track). A city Chief Heat Officer provides a site polygon and a fixed planting budget. CoolSpend runs a baseline UTCI thermal-comfort simulation, identifies the hottest, most sun-exposed street locations, and uses a multi-objective NSGA-II optimizer to propose where to plant trees so that each euro buys the most degrees of street-level comfort relief. The result is a ranked budget allocation and a before/after UTCI map — a defensible decision, not just a heatmap.
 
-The app defaults to Plaça dels Àngels, Barcelona (real Infrared SDK data already validated in the reference project). Switch the polygon text box to any GeoJSON site to run a new optimization.
+The app defaults to Plaça dels Àngels, Barcelona. Switch the polygon text box to any GeoJSON site to run a new optimization.
 
 ## Run locally (offline, no API key)
 
@@ -64,8 +64,23 @@ With these set the app calls the Infrared UTCI API for the Top-3 validated confi
 and shows the real measured UTCI deltas in the call-log panel. **Never commit the key to the
 repository.**
 
+**Live wiring status:** the SDK boundary is implemented and the live path wires polygon
+coordinates through to InfraredClient.run_area_and_wait. The exact AnalysesName member and
+merged_grid field name require confirmation against the installed infrared-sdk version on
+May 27 (see MOCKS.md live row and sdk_client.py TODO). The live path has not yet been
+confirmed end-to-end against the real API in this repository.
+
 mock = NOT MEASURED DATA (surrogate values, synthetic, for integration only)
-live = real Infrared UTCI API calls with real measured data
+live = real Infrared UTCI API calls (wired; unverified until May 27 key confirmation)
+
+**Known limitation — live call count (Security M1):** one "Run" with
+`INFRARED_BACKEND=live` makes 4 live Infrared SDK calls (1 baseline + 3 Top-3
+interventions). On a public Hugging Face Space this can be abused. Recommendations:
+guard the live backend behind an additional server-side environment flag (e.g.
+`LIVE_BACKEND_ENABLED=1`) checked in `app_pipeline.run_decision` before flipping
+`INFRARED_BACKEND`, and add a per-IP or per-session rate limit at the Space level.
+The current implementation does not enforce either — treat this as a pre-production
+limitation before opening the Space to the public.
 
 ## Honesty / MOCKS note
 
@@ -103,7 +118,8 @@ flowchart TD
 
 Six modules: `sdk_client`, `spatial_engine`, `rules_engine`, `cost_model`, `optimizer`, `app`.
 The NSGA-II hot path calls only the analytical surrogate — zero SDK calls during optimization.
-The real Infrared SDK is called exactly three times (Top-3 validation, SimBudget-guarded).
+When `INFRARED_BACKEND=live`, the SDK is called exactly three times (Top-3 validation,
+SimBudget-guarded). The live wiring is implemented; see MOCKS.md for current verification status.
 
 ## How it works
 
@@ -116,9 +132,10 @@ maximising two objectives simultaneously: thermal relief (via an analytical surr
 delta mean-radiant-temperature, `delta_tmrt_surrogate`, with ±4 degC uncertainty) and
 ecological coherence (spacing + species diversity from `rules_engine`).
 The analytical surrogate runs with zero SDK calls, keeping the hot path fast.
-Third, the Top-3 Pareto candidates are validated with real Infrared UTCI calls (SimBudget
-cap = 3), ranked by the headline KPI — euros per degree Celsius of UTCI relief
-(`cost_per_utci_degree`) — and emitted as a ranked decision artifact.
+Third, the Top-3 Pareto candidates are validated with Infrared UTCI calls (SimBudget
+cap = 3) when run live, replacing surrogate values with real measured UTCI deltas.
+Rankings use the headline KPI — euros per degree Celsius of UTCI relief
+(`cost_per_utci_degree`) — and are emitted as a ranked decision artifact.
 
 **Honesty contract:** all mock numbers are NOT MEASURED DATA; the €/°C cost constants
 (CAPEX_PER_TREE_EUR=350, OPEX_PER_TREE_YEAR_EUR=35) are DECLARED assumptions that

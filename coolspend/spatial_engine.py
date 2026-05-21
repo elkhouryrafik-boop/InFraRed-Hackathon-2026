@@ -28,7 +28,7 @@ SURROGATE HONESTY (OPT-02 / CONCERNS 1.1):
 from __future__ import annotations
 
 import json
-from math import cos, pi, radians
+from math import cos, radians
 from pathlib import Path
 from typing import Any
 
@@ -36,6 +36,7 @@ from typing import Any
 
 try:
     from shapely.geometry import LineString, Point, Polygon
+    from shapely.ops import unary_union
 except ImportError as _err:
     raise RuntimeError(
         "coolspend.spatial_engine requires shapely. "
@@ -290,6 +291,184 @@ TREE_SHADE_FRACTION: float = 0.80     # fraction of solar radiation blocked by a
 # REQUIRES_VERIFICATION: not from surveyed Barcelona tree inventory
 TREE_CANOPY_RADIUS_M: float = 3.0     # metres — effective shaded ground radius per tree
 
+# Maximum fraction of the site we credit as canopy-shaded (no plaza is 100% canopy).
+MAX_SITE_COVERAGE: float = 0.90       # cap on coverage_fraction — see MOCKS.md
+
+# ── CORE-WEIGHTED COVERAGE CONSTANTS (REMEDIATION — Option A) ─────────────────
+# SOURCE: DECLARED — modelling choice to create a genuine thermal↔ecological
+# trade-off so the Pareto front is non-degenerate. Shading the pedestrian CORE
+# (plaza centre, where people gather) is worth more than shading the perimeter.
+# The thermal score therefore rewards CONCENTRATING canopy in the centre, which is
+# in tension with the ecological objective (min-spacing + diversity push trees
+# apart toward the edges). These are NOT surveyed footfall values —
+# REQUIRES_VERIFICATION. See MOCKS.md.
+CORE_BLEND: float = 0.6     # weight on the core-concentration term vs the spread term
+CORE_RADIUS_M: float = 6.0   # radial reach (m) over which centre-proximity weight decays to 0
+N_CORE_REF: float = 6.0      # reference: 6 canopies stacked on centre = full core score
+# Backward-compatible aliases (documentation / centre sub-rectangle for viz).
+CORE_FRACTION: float = 0.34  # central sub-rectangle fraction (used only by _core_rectangle/viz)
+CORE_WEIGHT: float = CORE_BLEND  # legacy alias
+
+# Site rectangle polygon, lazily built and cached (used to clip canopy unions).
+_SITE_RECT_CACHE: dict[str, Any] = {}
+# Core sub-rectangle polygon, lazily built and cached (for documentation/viz).
+_CORE_RECT_CACHE: dict[str, Any] = {}
+
+
+def _site_rectangle() -> Polygon:
+    """Return (and cache) the plaza rectangle polygon in local metres.
+
+    SW corner = (0, 0), extent SITE_WIDTH_M × SITE_DEPTH_M. Canopy unions are
+    intersected with this rectangle so that canopy area spilling outside the
+    site does not inflate coverage.
+    """
+    rect = _SITE_RECT_CACHE.get("rect")
+    if rect is None:
+        rect = Polygon(
+            [
+                (0.0, 0.0),
+                (SITE_WIDTH_M, 0.0),
+                (SITE_WIDTH_M, SITE_DEPTH_M),
+                (0.0, SITE_DEPTH_M),
+            ]
+        )
+        _SITE_RECT_CACHE["rect"] = rect
+    return rect
+
+
+def _core_rectangle() -> Polygon:
+    """Return (and cache) the centred CORE sub-rectangle of the plaza.
+
+    The core is the central CORE_FRACTION (50%) of each site dimension, centred on
+    the plaza geometric centre. Canopy that falls inside this rectangle is the
+    pedestrian-priority shade and is weighted CORE_WEIGHT× the perimeter (Option A).
+    """
+    rect = _CORE_RECT_CACHE.get("rect")
+    if rect is None:
+        half_w = SITE_WIDTH_M * CORE_FRACTION / 2.0
+        half_d = SITE_DEPTH_M * CORE_FRACTION / 2.0
+        cx = SITE_WIDTH_M / 2.0
+        cy = SITE_DEPTH_M / 2.0
+        rect = Polygon(
+            [
+                (cx - half_w, cy - half_d),
+                (cx + half_w, cy - half_d),
+                (cx + half_w, cy + half_d),
+                (cx - half_w, cy + half_d),
+            ]
+        )
+        _CORE_RECT_CACHE["rect"] = rect
+    return rect
+
+
+def core_weighted_coverage_fraction(active_trees: list[dict]) -> float:
+    """Core-weighted canopy coverage as a fraction in [0, MAX_SITE_COVERAGE].
+
+    REMEDIATION — Option A. This is the SHARED coverage model used by BOTH
+    thermal_relief (objective F1) and optimizer._config_to_geometry (the mock-UTCI
+    geometry payload) so the surrogate ranking and the mock UTCI stay consistent.
+
+    The score is a blend of two pure-geometry terms (deterministic, no SDK, no file
+    I/O beyond the cached rectangles):
+
+      A) SPREAD term — non-overlapping canopy UNION clipped to the site, divided by
+         site area. Maximised by DISPERSING trees so canopies cover distinct ground
+         (overlap gives diminishing returns). Aligned with the ecological objective.
+
+      B) CORE-CONCENTRATION term — a radial, OVERLAP-COUNTING sum of each tree's
+         canopy area weighted by closeness to the plaza centre. A tree whose canopy
+         sits on the centre contributes far more than one at the edge, and STACKING
+         several canopies on the centre keeps adding value (overlap is NOT
+         de-duplicated here). Maximised by CLUSTERING trees tightly in the centre —
+         which drives them closer than the ecological MIN_SPACING and lowers the
+         ecological score. This is the source of the genuine THERMAL↔ECOLOGICAL
+         trade-off that spreads the Pareto front (root-cause fix — REMEDIATION).
+
+    coverage = (1 - CORE_BLEND) * spread + CORE_BLEND * core_concentration,
+    capped at MAX_SITE_COVERAGE.
+
+    Both terms are normalised to [0, 1] so the blend is well-scaled. Because term B
+    rewards centre-clustering and term A + the ecological objective reward spreading,
+    no single placement maximises everything: the optimizer must trade thermal
+    against ecological coherence, so np.unique(F) > 1.
+
+    Args:
+        active_trees: List of tree dicts each carrying "x_m" and "y_m" (metres).
+
+    Returns:
+        Core-weighted coverage fraction in [0, MAX_SITE_COVERAGE]. 0.0 for empty.
+    """
+    if not active_trees:
+        return 0.0
+
+    # ── Term A: SPREAD (non-overlapping union, clipped to site) ───────────────
+    disks = [
+        Point(float(t["x_m"]), float(t["y_m"])).buffer(TREE_CANOPY_RADIUS_M)
+        for t in active_trees
+    ]
+    union = unary_union(disks)
+    covered = union.intersection(_site_rectangle())
+    site_area_m2 = SITE_WIDTH_M * SITE_DEPTH_M
+    spread = covered.area / site_area_m2 if not covered.is_empty else 0.0
+
+    # ── Term B: CORE CONCENTRATION (radial, overlap-counting) ─────────────────
+    # Each tree contributes its full canopy area (π r²) scaled by a radial weight
+    # that decays from 1.0 at the plaza centre to 0.0 at CORE_RADIUS_M. Overlap is
+    # intentionally NOT removed: stacking canopies on the centre keeps adding value.
+    cx = SITE_WIDTH_M / 2.0
+    cy = SITE_DEPTH_M / 2.0
+    canopy_area = 3.141592653589793 * TREE_CANOPY_RADIUS_M * TREE_CANOPY_RADIUS_M
+    concentration = 0.0
+    for t in active_trees:
+        dx = float(t["x_m"]) - cx
+        dy = float(t["y_m"]) - cy
+        dist = (dx * dx + dy * dy) ** 0.5
+        weight = max(0.0, 1.0 - dist / CORE_RADIUS_M)
+        concentration += weight * canopy_area
+    # Normalise by the value of N_CORE_REF canopies stacked exactly on the centre.
+    core_norm = N_CORE_REF * canopy_area
+    core_concentration = min(1.0, concentration / core_norm)
+
+    fraction = (1.0 - CORE_BLEND) * spread + CORE_BLEND * core_concentration
+    return min(fraction, MAX_SITE_COVERAGE)
+
+
+def canopy_coverage_fraction(active_trees: list[dict]) -> float:
+    """Non-overlapping canopy coverage of the site as a fraction in [0, MAX_SITE_COVERAGE].
+
+    Builds the shapely union of canopy disks — Point(x_m, y_m).buffer(
+    TREE_CANOPY_RADIUS_M) — for every active tree, intersects that union with the
+    site rectangle, and divides the resulting area by the site area.
+
+    This is PLACEMENT-SENSITIVE: overlapping/clustered trees share canopy area so
+    their union grows slowly (diminishing returns), while dispersed trees cover
+    distinct ground and yield a larger union → higher coverage → higher relief.
+    Replaces the previous count-only model (count × π r² / area) that made the
+    optimizer ranking degenerate on mock data (REMEDIATION — review finding #1).
+
+    Pure geometry — no SDK calls, no file I/O beyond the cached site rectangle.
+    Deterministic for a given set of coordinates.
+
+    Args:
+        active_trees: List of tree dicts each carrying "x_m" and "y_m" (metres).
+
+    Returns:
+        Union canopy area clipped to the site / site area, capped at
+        MAX_SITE_COVERAGE. 0.0 for an empty list.
+    """
+    if not active_trees:
+        return 0.0
+
+    disks = [
+        Point(float(t["x_m"]), float(t["y_m"])).buffer(TREE_CANOPY_RADIUS_M)
+        for t in active_trees
+    ]
+    union = unary_union(disks)
+    covered = union.intersection(_site_rectangle())
+    site_area_m2 = SITE_WIDTH_M * SITE_DEPTH_M
+    fraction = covered.area / site_area_m2
+    return min(fraction, MAX_SITE_COVERAGE)
+
 
 def shade_efficiency(tilt_deg: float, height_m: float) -> float:
     """Sun-path alignment bonus: canopy tilt/height modifies shade quality.
@@ -368,22 +547,25 @@ def thermal_relief(config: dict) -> float:
     the NSGA-II optimizer (Plan 02-03) maximises as objective F1 (thermal).
     Zero SDK calls — pure math, fully offline, deterministic.
 
-    Method:
-    1. Count active trees (trees with active=True or no 'active' key — defaults True).
+    Method (CORE-WEIGHTED, PLACEMENT-SENSITIVE — REMEDIATION Option A):
+    1. Collect active trees (active=True or no 'active' key — defaults True).
     2. Per-tree under-canopy ΔTmrt = delta_tmrt_surrogate(TREE_SHADE_FRACTION).
-    3. Each tree shades area = π × TREE_CANOPY_RADIUS_M².
-    4. Total shaded area is summed and capped at the site area.
-    5. site_coverage_fraction = min(total_shaded / site_area, 0.90).
-    6. Return per_tree_delta × site_coverage_fraction (site-averaged relief).
+    3. site_coverage_fraction = core_weighted_coverage_fraction(active_trees) — the
+       NON-OVERLAPPING shapely canopy union clipped to the site, with canopy in the
+       central pedestrian CORE weighted CORE_WEIGHT× the perimeter, normalised and
+       capped at MAX_SITE_COVERAGE (0.90).
+    4. Return per_tree_delta × site_coverage_fraction (site-averaged relief).
 
-    The 0.90 cap on coverage fraction prevents unrealistic 100% site shading from
-    a dense tree count exceeding physical limits.
+    Because core m² count more than perimeter m², CONCENTRATING canopy in the plaza
+    centre maximises thermal relief — directly opposing the ecological objective
+    (spacing + diversity), which is maximised by spreading trees apart toward the
+    edges. This genuine TRADE-OFF spreads the Pareto front so the optimizer ranking
+    is non-degenerate on mock data (root cause fix — REMEDIATION review).
 
     Args:
         config: Dict with a "trees" list. Each tree may have:
                 - "active": bool (default True if absent)
-                - "x_m", "y_m": coordinates (unused in this aggregation — future
-                  spatial weighting hook)
+                - "x_m", "y_m": coordinates (NOW used — drive the union coverage)
                 Other keys are ignored.
 
     Returns:
@@ -401,11 +583,9 @@ def thermal_relief(config: dict) -> float:
     # Per-tree surrogate ΔTmrt — using canonical TREE_SHADE_FRACTION (DECLARED)
     per_tree_delta = delta_tmrt_surrogate(TREE_SHADE_FRACTION)
 
-    # Site coverage fraction (capped at 0.90 — no site is 100% canopy-covered)
-    tree_shade_area_m2 = pi * TREE_CANOPY_RADIUS_M ** 2
-    total_shaded_m2 = len(active_trees) * tree_shade_area_m2
-    site_area_m2 = SITE_WIDTH_M * SITE_DEPTH_M  # constants from site section above
-    site_coverage_fraction = min(total_shaded_m2 / site_area_m2, 0.90)
+    # Core-weighted, placement-sensitive coverage (REMEDIATION Option A): canopy
+    # union clipped to site, with the central pedestrian core weighted CORE_WEIGHT×.
+    site_coverage_fraction = core_weighted_coverage_fraction(active_trees)
 
     return round(per_tree_delta * site_coverage_fraction, 3)
 

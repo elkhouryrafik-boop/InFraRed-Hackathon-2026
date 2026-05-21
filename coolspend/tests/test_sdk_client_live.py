@@ -215,7 +215,19 @@ def test_cached_replays_live_result(
     cached_result = sdk.get_baseline_utci(LIVE_GEOMETRY)
 
     assert cached_result.utci_c == live_result.utci_c
-    assert cached_result.backend == "live"  # backend field preserved from live result
+    # wave-2 Fix 2: cache READ must relabel backend as 'cached:<origin>' so the
+    # provenance is unambiguous (previously reported 'live', un-auditable — H-2).
+    assert cached_result.backend == "cached:live", (
+        f"Expected backend='cached:live' on cache read, got '{cached_result.backend}'. "
+        "Cached results must be labelled to distinguish them from fresh live calls."
+    )
+    # Replay note must be present in disclaimer and source
+    assert "replayed from cache" in cached_result.disclaimer, (
+        f"'replayed from cache' missing from disclaimer: {cached_result.disclaimer!r}"
+    )
+    assert "cached replay" in cached_result.source, (
+        f"'cached replay' missing from source: {cached_result.source!r}"
+    )
 
 
 def test_key_never_logged(

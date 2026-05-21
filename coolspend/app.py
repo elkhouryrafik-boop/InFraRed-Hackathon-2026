@@ -12,11 +12,16 @@ Threat mitigations:
   T-03-06: polygon text delegated to parse_site_geojson (json.loads only, no eval)
   T-03-07: SimBudget cap enforced inside run_decision (3 live calls/run)
   T-03-08: per-row provenance + global banner make mock-vs-live explicit
+  T-03-09: on_submit catches unexpected exceptions and shows a GENERIC error
+           message to the UI; full traceback is logged server-side only
+           (prevents path/internal leakage on a public Space — Security L1)
 """
 from __future__ import annotations
 
-import traceback
+import logging
 from pathlib import Path
+
+logger = logging.getLogger("coolspend.app")
 
 import gradio as gr
 
@@ -75,9 +80,11 @@ def on_submit(
             backend=backend,
         )
     except Exception as exc:  # noqa: BLE001  — never crash the UI
-        err_msg = f"Unexpected error: {exc}\n{traceback.format_exc()}"
-        banner = f"**ERROR** — pipeline raised an unexpected exception.\n\n```\n{err_msg}\n```"
-        return (banner, None, [], err_msg)
+        # T-03-09: log full traceback server-side; show only a generic message to the
+        # UI to prevent path/internal leakage on a public Space (Security L1).
+        logger.exception("on_submit: unexpected exception from run_decision: %s", exc)
+        banner = "**ERROR** — An unexpected error occurred — see server logs."
+        return (banner, None, [], "An unexpected error occurred — see server logs.")
 
     # ── Error path ────────────────────────────────────────────────────────────
     if result.get("error"):

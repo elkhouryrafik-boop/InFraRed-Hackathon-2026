@@ -18,10 +18,13 @@ import pytest
 
 # These imports WILL FAIL before the surrogate is implemented (RED gate).
 from coolspend.spatial_engine import (
+    core_weighted_coverage_fraction,
     delta_tmrt_surrogate,
     shade_efficiency,
     thermal_relief,
     MAX_TMRT_REDUCTION_C,
+    SITE_DEPTH_M,
+    SITE_WIDTH_M,
     TREE_SHADE_FRACTION,
     TREE_CANOPY_RADIUS_M,
 )
@@ -232,3 +235,50 @@ def test_thermal_relief_default_active_flag() -> None:
     assert result_explicit == result_implicit, (
         f"Expected default active=True: explicit={result_explicit}, implicit={result_implicit}"
     )
+
+
+# ── core-weighted coverage tests (REMEDIATION Option A) ───────────────────────
+
+
+def test_core_weighting_rewards_centre_over_edge() -> None:
+    """A canopy at the plaza centre must score higher than the same canopy at the edge.
+
+    This is the mechanism that creates the thermal↔ecological trade-off: shading the
+    pedestrian core is worth more than shading the perimeter (Option A).
+    """
+    cx, cy = SITE_WIDTH_M / 2.0, SITE_DEPTH_M / 2.0
+    centre = [{"x_m": cx, "y_m": cy}]
+    edge = [{"x_m": 2.0, "y_m": 2.0}]
+    cov_centre = core_weighted_coverage_fraction(centre)
+    cov_edge = core_weighted_coverage_fraction(edge)
+    assert cov_centre > cov_edge, (
+        f"Centre canopy ({cov_centre:.4f}) must out-score edge canopy ({cov_edge:.4f})"
+    )
+
+
+def test_core_concentration_beats_full_spread_thermally() -> None:
+    """Clustering canopy at the centre yields higher thermal relief than spreading wide.
+
+    Concentrating in the core is what the thermal objective rewards; the ecological
+    objective rewards the spread layout. Their disagreement is the trade-off.
+    """
+    cx, cy = SITE_WIDTH_M / 2.0, SITE_DEPTH_M / 2.0
+    clustered = {"trees": [
+        {"active": True, "x_m": cx + dx, "y_m": cy + dy}
+        for dx, dy in [(-3, 0), (3, 0), (0, -3), (0, 3), (0, 0)]
+    ]}
+    spread = {"trees": [
+        {"active": True, "x_m": 6.0, "y_m": 6.0},
+        {"active": True, "x_m": 54.0, "y_m": 6.0},
+        {"active": True, "x_m": 6.0, "y_m": 36.0},
+        {"active": True, "x_m": 54.0, "y_m": 36.0},
+        {"active": True, "x_m": cx, "y_m": cy},
+    ]}
+    assert thermal_relief(clustered) > thermal_relief(spread), (
+        "Core-clustered canopy must give more thermal relief than a wide spread"
+    )
+
+
+def test_core_weighted_coverage_empty_is_zero() -> None:
+    """No trees → zero core-weighted coverage."""
+    assert core_weighted_coverage_fraction([]) == 0.0
