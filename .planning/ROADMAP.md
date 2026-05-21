@@ -4,12 +4,19 @@
 
 Four phases deliver a live hackathon demo: stand up a clean, offline-testable skeleton with a validated SDK boundary (Phase 1), wire the optimizer core and produce the ranked decision artifact (Phase 2), wrap everything in a Gradio app and deploy to Hugging Face Spaces (Phase 3), then finalize the repo, MOCKS ledger, and demo video for submission (Phase 4). Phases 1–2 can start and complete before the API key arrives on May 27; Phase 3 wires live calls; Phase 4 ships.
 
+**Milestone v2.0 — Market-Ready CoolSpend (Phases 5–9):** Convert the credible *framework* into a defensible *product*. Phase 5 is the existential keystone — ground-truth the surrogate against real Infrared UTCI and reset every external claim to honest phrasing; if surrogate rankings don't hold, the rest of the milestone is invalid. Phase 6 fixes the ~10×-low cost denominator so the €/°C KPI survives an auditor. Phase 7 replaces hand-authored fixtures with real OSM/cadastre geometry and an N-site data model. Phase 8 is the product pivot: allocate one budget across competing intervention types (trees + cool roofs) and across N city sites with equity weighting. Phase 9 is the go-to-market/defensibility layer: GIS interop, procurement and grant-compliance exports, and a reproducible per-run audit manifest. Execution is strictly downstream of Phase 5 — validate before betting.
+
 ## Phases
 
 - [x] **Phase 1: Foundation & SDK Boundary** - Clean repo skeleton, deduplicated SDK client (mock/cached/live + SimBudget), spatial engine, and cost model — all offline-testable before May 27 (completed 2026-05-21)
 - [x] **Phase 2: Optimizer Core** - NSGA-II on the surrogate, Top-3 Pareto validation with real/cached UTCI, ranked allocation artifact (requires May 27 API key for live validation path) (completed 2026-05-21)
 - [x] **Phase 3: Web App & Decision UI** - Gradio app (polygon + budget in → before/after map + allocation table out), deployed to Hugging Face Spaces with visible API calls (completed 2026-05-21)
 - [x] **Phase 4: Ship** - requirements.txt, README with architecture diagram, MOCKS ledger, demo video and submission description (completed 2026-05-21)
+- [ ] **Phase 5: Surrogate Ground-Truth & Honesty Reset** - Validate the ΔTmrt surrogate against real Infrared UTCI across varied configs, convert to UTCI before the KPI, single CRS end-to-end, and relabel every overclaim down to what is actually proven (v2.0 keystone)
+- [ ] **Phase 6: Cost-Model Credibility** - Replace placeholder per-tree costs with a fully-loaded, cited, per-city-configurable lifecycle figure with growth-horizon discounting
+- [ ] **Phase 7: Real Geometry & Multi-Site Ingestion** - Load arbitrary OSM/cadastre geometry, reject collisions against real building/footway polygons, support N candidate sites per project
+- [ ] **Phase 8: Multi-Intervention & Portfolio Triage** - Make intervention type a parameter (trees + cool roofs), allocate one budget across competing types and across N citywide sites with equity weighting
+- [ ] **Phase 9: Workflow, Grant Packaging & Audit** - GIS layer import/export (GeoPackage/Shapefile), procurement and grant-compliance exports, stakeholder-elicited weights, and a reproducible per-run audit manifest
 
 ## Phase Details
 
@@ -94,9 +101,73 @@ Plans:
 - [x] 04-01-PLAN.md — Verify requirements.txt install (SHIP-01) + augment README with architecture diagram/how-it-works/structure & fix MOCKS link + audit MOCKS.md (SHIP-02) (completed 2026-05-21)
 - [x] 04-02-PLAN.md — Submission assets: DEMO_SCRIPT.md (shot-by-shot screencast + commands), SUBMISSION.md (four judging axes + links), CHANGELOG.md (SHIP-03) (completed 2026-05-21)
 
+---
+
+## Milestone v2.0 — Market-Ready CoolSpend (Phases 5–9)
+
+### Phase 5: Surrogate Ground-Truth & Honesty Reset
+**Goal**: The headline KPI stops being assumption ÷ assumption — the surrogate is quantitatively validated against real Infrared UTCI, the KPI reports true UTCI (not raw Tmrt) as an uncertainty interval over one consistent CRS, and every external claim is relabeled down to what is actually proven. This is the existential keystone: if surrogate rankings don't hold against measured UTCI, the rest of v2.0 is built on sand.
+**Depends on**: Phase 4 (v1.0 complete)
+**Requirements**: VALID-01, VALID-02, VALID-03, VALID-04, VALID-05, HONEST-01, HONEST-02, HONEST-03, HONEST-04
+**Success Criteria** (what must be TRUE):
+  1. A user can run a calibration study across 5–10 deliberately varied configurations and read back an RMSE/R² fit with an error band quantifying how well the ΔTmrt surrogate tracks real Infrared UTCI
+  2. The €/°C KPI is computed from a true UTCI-hours delta (surrogate ΔTmrt routed through `utci_hours_above()`), never from raw Tmrt, and is reported as an uncertainty interval — never a bare point estimate
+  3. A user can see whether the Top-3 picks chosen on the surrogate stay the Top-3 when re-simulated with real Infrared UTCI, with any rank shift reported explicitly
+  4. All geometry runs through one projected metric CRS (UTM 31N) end-to-end, and a round-trip consistency assertion fires before any live SDK call
+  5. External copy contains no "validated with Infrared" or "88% vs naive" claims; `CONCEPT_REPORT.md` matches `MOCKS.md`; the surrogate ceiling cites a tree/pedestrian-Tmrt source (Schrodi 2023 / Rahman 2022) with Garcia-Nevado demoted; and unmodeled siting constraints are listed as explicit out-of-scope exclusions
+**Plans**: TBD
+
+### Phase 6: Cost-Model Credibility
+**Goal**: The €/°C denominator survives a budget auditor — per-tree cost is a fully-loaded, sourced lifecycle figure that the user can localize per city, with cooling benefit discounted over the establishment/growth curve rather than assumed day-one.
+**Depends on**: Phase 5
+**Requirements**: COST-03, COST-04, COST-05
+**Success Criteria** (what must be TRUE):
+  1. Per-tree cost reflects a fully-loaded lifecycle figure (pit excavation, structural soil, guarding, multi-year establishment OpEx) anchored to a cited procurement source, replacing the €350/€35 placeholders
+  2. A user can edit the cost table per city/locale through inputs rather than recompiling hardcoded constants, and the KPI recomputes from the edited values
+  3. The €/°C KPI applies a growth-horizon discount so the modeled cooling benefit follows the establishment/growth curve instead of assuming full canopy on day one
+**Plans**: TBD
+
+### Phase 7: Real Geometry & Multi-Site Ingestion
+**Goal**: The pipeline runs on real-world geometry instead of hand-authored fixtures — a user can load any city site from OSM/cadastre, collisions are rejected against actual building and footway polygons, and the data model holds N candidate sites within one project.
+**Depends on**: Phase 5
+**Requirements**: GEO-01, GEO-02, GEO-03
+**Success Criteria** (what must be TRUE):
+  1. A user can load arbitrary city geometry from OSM/cadastre for a site that was never hand-authored, and the optimizer runs against it end-to-end
+  2. Collision rejection uses building footprint and carriageway/footway polygons (not street-centreline buffers), so candidate placements respect real ground truth
+  3. A single project can hold N candidate sites in its data model and the pipeline can iterate over all of them
+**Plans**: TBD
+
+### Phase 8: Multi-Intervention & Portfolio Triage
+**Goal**: CoolSpend delivers on its name — intervention type becomes a parameter (trees + cool roofs as the proof pair), one fixed budget is allocated across competing intervention types by €/°C, and the allocation extends from a single plaza to a citywide portfolio of N sites with equity weighting for heat-vulnerable areas.
+**Depends on**: Phase 6, Phase 7
+**Requirements**: MULTI-01, MULTI-02, TRIAGE-01, TRIAGE-02
+**Success Criteria** (what must be TRUE):
+  1. A user can choose intervention type as a parameter (trees + cool roofs), with no hardcoded tree-only assumption left in the pipeline
+  2. A user can allocate one fixed budget across competing intervention types and see them ranked by €/°C
+  3. A user can rank N sites by €/°C and receive a citywide budget allocation across sites, not just within one plaza
+  4. The citywide allocation can be equity-weighted to prioritize heat-vulnerable / overburdened areas, and the weighting visibly changes the allocation
+**Plans**: TBD
+
+### Phase 9: Workflow, Grant Packaging & Audit
+**Goal**: CoolSpend enters real planning and funding workflows and can defend every number — outputs export to GIS and procurement formats, city GIS layers import as inputs, the allocation maps onto a grant reporting template, and every run emits a reproducible audit manifest with stakeholder-elicited weights.
+**Depends on**: Phase 8
+**Requirements**: EXPORT-01, EXPORT-02, EXPORT-03, GRANT-01, AUDIT-01, AUDIT-02
+**Success Criteria** (what must be TRUE):
+  1. A user can export the recommended layout as GeoPackage/Shapefile and open it in standard GIS, and import existing city GIS layers (canopy/heat/LST from ArcGIS/QGIS/i-Tree) as inputs
+  2. A user can export a procurement-ready cost summary (PDF/CSV) with line items
+  3. A user can generate an allocation appendix mapped to a grant reporting template (EU LIFE / European Urban Initiative)
+  4. Every run emits a reproducible audit manifest (inputs, model + surrogate version, data-source tags, re-run command)
+  5. Objective weights are stakeholder-elicited and recorded in the audit trail, replacing the developer-default TOPSIS 0.6/0.4
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress
 
-**Execution Order:** 1 → 2 → 3 → 4
+**Execution Order:** 1 → 2 → 3 → 4 (v1.0 complete) → 5 → {6, 7} → 8 → 9 (v2.0)
+
+**Note:** Phases 6 and 7 both depend only on Phase 5 and can proceed in parallel after the keystone validates; Phase 8 requires both.
+
+### Milestone v1.0 (complete)
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -104,3 +175,13 @@ Plans:
 | 2. Optimizer Core | 5/5 | Complete    | 2026-05-21 |
 | 3. Web App & Decision UI | 3/3 | Complete    | 2026-05-21 |
 | 4. Ship | 2/2 | Complete    | 2026-05-21 |
+
+### Milestone v2.0 — Market-Ready CoolSpend
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 5. Surrogate Ground-Truth & Honesty Reset | 0/TBD | Not started | - |
+| 6. Cost-Model Credibility | 0/TBD | Not started | - |
+| 7. Real Geometry & Multi-Site Ingestion | 0/TBD | Not started | - |
+| 8. Multi-Intervention & Portfolio Triage | 0/TBD | Not started | - |
+| 9. Workflow, Grant Packaging & Audit | 0/TBD | Not started | - |

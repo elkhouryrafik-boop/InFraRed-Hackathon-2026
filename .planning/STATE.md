@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Market-Ready CoolSpend
-status: defining_requirements
-stopped_at: Milestone v2.0 started — requirements defined, roadmap pending
-last_updated: "2026-05-21T02:15:37Z"
+status: roadmap_complete
+stopped_at: Milestone v2.0 roadmap created — Phases 5–9 defined, ready to plan Phase 5
+last_updated: "2026-05-21T03:00:00Z"
 last_activity: 2026-05-21
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-21)
 
 **Core value:** Given a polygon and a budget, output a defensible ranked tree-planting allocation maximizing UTCI relief per euro — proved with a real Infrared UTCI before/after on the top picks
-**Current focus:** Milestone v2.0 — Market-Ready CoolSpend (defining requirements → roadmap)
+**Current focus:** Milestone v2.0 — Market-Ready CoolSpend (roadmap complete → plan Phase 5, the validation keystone)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 5 — Surrogate Ground-Truth & Honesty Reset (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-21 — Milestone v2.0 started
+Status: Roadmap complete; ready to plan Phase 5
+Last activity: 2026-05-21 — v2.0 roadmap created (Phases 5–9, 25 requirements mapped)
 
-Progress: v1.0 complete (4 phases / 13 plans, hackathon submission shipped). v2.0 scoping in progress — seeded by 3-review synthesis in docs/review/.
+Progress: v1.0 complete (4 phases / 13 plans, hackathon submission shipped). v2.0 roadmapped into 5 phases (5–9). Phase 5 is the existential keystone — surrogate ground-truth + honesty reset — and gates the entire milestone. Execution order: 5 → {6, 7} → 8 → 9.
 
 ## Performance Metrics
 
@@ -75,6 +75,10 @@ Progress: v1.0 complete (4 phases / 13 plans, hackathon submission shipped). v2.
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- v2.0 roadmap: Validation (VALID-* + HONEST-*) is the keystone Phase 5 — if surrogate rankings don't hold against measured UTCI, the rest of v2.0 is invalid; everything downstream of it
+- v2.0 roadmap: HONEST-* relabeling folded into Phase 5 (keystone) — low-effort doc edits that gate external credibility and belong with the validation reset
+- v2.0 roadmap: Phases 6 (cost) and 7 (geometry) both depend only on Phase 5 and can run in parallel; Phase 8 (multi-intervention + triage) requires both
+- v2.0 roadmap: Phase 9 (export/grant/audit) is the go-to-market/defensibility layer — last, after the product pivot is real
 - 01-01: mock backend returns scalar UTCI delta (not field grid) — coolspend needs a scalar, not NatureGooddest's 24x24 grid
 - 01-01: cached miss raises FileNotFoundError, no silent fallthrough — CONCERNS 6.1 stale-cache risk mitigated
 - 01-01: SimBudget RuntimeError guards NSGA-II hot path from live Infrared calls
@@ -87,7 +91,7 @@ Recent decisions affecting current work:
 - equirectangular + cos-latitude correction for CRS conversion — accurate within +/-200m of plaza centroid, no geodesy dep
 - STREET_BUFFER_M=1.5m rejection radius around street centerlines — prevents tree placement on pavement edge
 - load_site() caches by resolved path in _SITE_CACHE — avoids repeated disk reads in NSGA-II hot path
-- 01-03: DECLARED assumptions CAPEX_PER_TREE_EUR=350/OPEX_PER_TREE_YEAR_EUR=35/OPEX_HORIZON_YEARS=10 tagged REQUIRES_VERIFICATION — no fabricated citation
+- 01-03: DECLARED assumptions CAPEX_PER_TREE_EUR=350/OPEX_PER_TREE_YEAR_EUR=35/OPEX_HORIZON_YEARS=10 tagged REQUIRES_VERIFICATION — no fabricated citation (REPLACED in Phase 6 COST-03)
 - 01-03: Non-positive delta returns value=None (T-01-10 mitigated) — zero-delta guard in cost_per_utci_degree
 - RULES-01 min-spacing penalty uses linear violation depth (min_spacing_m - dist) / min_spacing_m — smooth gradient for NSGA-II
 - RULES-02 Shannon index normalised by ln(n_distinct) — monoculture=0.0, balanced N-species=1.0 exactly
@@ -105,7 +109,7 @@ Recent decisions affecting current work:
 - 02-04: validate_top3_with_infrared: baseline called once (no budget record); 3 budget slots for interventions
 - 02-04: select_top3 deduplication via utopia-point sorted fallback ensures 3 distinct indices always
 - 02-05: primary ranking by EUR/degC (not TOPSIS closeness) — cheapest-per-degree always rank-1 (DEC-01 defensibility)
-- 02-05: TOPSIS weights (0.6/0.4) adjustable developer judgment, NOT stakeholder-elicited (CONCERNS 1.6)
+- 02-05: TOPSIS weights (0.6/0.4) adjustable developer judgment, NOT stakeholder-elicited (CONCERNS 1.6) — REPLACED in Phase 9 AUDIT-02
 - 02-05: disclaimer injected by save_outputs if absent — T-02-15 never dependent on caller compliance
 - 02-05: plot_pareto() wrapped — JSON pipeline never blocked by matplotlib failure (T-02-18)
 - 03-01: sdk_client logger level temporarily set to INFO for call-log capture (root logger at WARNING suppresses INFO by default)
@@ -123,23 +127,27 @@ None yet.
 
 ### Blockers/Concerns
 
-- **API key (May 27):** `INFRARED_API_KEY` not issued until hackathon kickoff May 27 17:00 CET. All Phase 1 work and Phase 2 NSGA-II/rules work must run offline. Live Top-3 validation (OPT-03) and live app demo (APP-02) blocked until key arrives.
-- **Coordinate system footgun (HIGH):** Three CRSes coexist. Must define and test ONE frame before the first Infrared API call or UTCI results will be spatially wrong with no warning.
-- **Surrogate citation mismatch (honesty):** `MAX_TMRT_REDUCTION=12°C` is unsourced; Garcia-Nevado 2020 measures surface temp not Tmrt at 1.1m. Must be disclosed in MOCKS ledger and JSON output — not hidden.
+- **Surrogate validity (v2.0 EXISTENTIAL):** The headline KPI is currently assumption ÷ assumption. Until the ΔTmrt surrogate is ground-truthed against real Infrared UTCI across varied configs (Phase 5 / VALID-01), the rankings — the whole product — may be wrong. Phase 5 must answer this before any downstream phase is worth building.
+- **Tmrt ≠ UTCI (KPI unit substitution):** Optimizer maximizes ΔTmrt (capped 12°C) but the product sells "UTCI relief"; a 12°C Tmrt drop ≈ only ~3–5°C UTCI. Fix is ~80% built (route through `nature_metrics.py::utci_hours_above()`) — Phase 5 / VALID-02.
+- **Cost model ~10× too low + unsourced:** €350 CapEx / €35/yr OpEx vs NYC ~$3,300 fully-loaded CapEx + Boston ~$900/tree/yr. A 10×-low denominator can invert the trees-vs-alternatives ranking — the exact error an auditor catches. Phase 6 / COST-03.
+- **Coordinate system footgun (HIGH):** Three CRSes coexist. Must define and test ONE frame (UTM 31N) end-to-end before the first Infrared API call or UTCI results will be spatially wrong with no warning. Phase 5 / VALID-05.
+- **Surrogate citation mismatch (honesty):** `MAX_TMRT_REDUCTION=12°C` is unsourced; Garcia-Nevado 2020 measures surface temp not Tmrt at 1.1m. Re-anchor to Schrodi 2023 / Rahman 2022; disclose in MOCKS + JSON output. Phase 5 / HONEST-02.
 
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| v2 | Cool-roof / shade-structure interventions | Deferred | Init |
-| v2 | Multi-site district triage ranking | Deferred | Init |
-| v2 | Live re-run from user edit | Deferred | Init |
-| v2 | Pollinator 3rd objective (degenerate) | Deferred | Init |
+| post-v2.0 | Water-feature & shade-structure interventions (beyond trees + cool roofs) | Deferred | v2.0 roadmap |
+| post-v2.0 | Per-species cooling coefficients, soil-volume constraint, irrigation objective | Deferred | v2.0 roadmap |
+| post-v2.0 | SaaS hardening (multi-tenancy, auth, rate limiting) | Deferred | v2.0 roadmap |
+| post-v2.0 | Pricing & packaging; 5+ Chief-Heat-Officer discovery interviews | Deferred | v2.0 roadmap |
+| post-v2.0 | Live re-run from user edit | Deferred | Init |
+| post-v2.0 | Pollinator 3rd objective (degenerate) | Deferred | Init |
 
 ## Session Continuity
 
-Last session: 2026-05-21T02:15:37Z
-Stopped at: Completed 04-02-PLAN.md — DEMO_SCRIPT.md, SUBMISSION.md, CHANGELOG.md created; all submission assets ready
+Last session: 2026-05-21T03:00:00Z
+Stopped at: v2.0 roadmap created — Phases 5–9 written to ROADMAP.md, 25 requirements mapped in REQUIREMENTS.md traceability
 Resume file: None
 
-**Planned Phase:** 1 (Foundation & SDK Boundary) — 3 plans — 2026-05-21T00:07:58.203Z
+**Planned Phase:** 5 (Surrogate Ground-Truth & Honesty Reset) — keystone — next: `/gsd-plan-phase 5`

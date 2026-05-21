@@ -139,3 +139,28 @@ Derived from the 3-review synthesis (`docs/review/SYNTHESIS-market-ready.md`). G
 | SHIP-01 | Phase 4 — Ship | Complete (04-01) |
 | SHIP-02 | Phase 4 — Ship | Complete (04-01) |
 | SHIP-03 | Phase 4 — Ship | Complete (04-02) |
+| VALID-01 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Pending |
+| VALID-02 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Pending |
+| VALID-03 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Pending |
+| VALID-04 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Pending |
+| VALID-05 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Pending |
+| HONEST-01 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Pending |
+| HONEST-02 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Pending |
+| HONEST-03 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Pending |
+| HONEST-04 | Phase 5 — Surrogate Ground-Truth & Honesty Reset | Pending |
+| COST-03 | Phase 6 — Cost-Model Credibility | Pending |
+| COST-04 | Phase 6 — Cost-Model Credibility | Pending |
+| COST-05 | Phase 6 — Cost-Model Credibility | Pending |
+| GEO-01 | Phase 7 — Real Geometry & Multi-Site Ingestion | Pending |
+| GEO-02 | Phase 7 — Real Geometry & Multi-Site Ingestion | Pending |
+| GEO-03 | Phase 7 — Real Geometry & Multi-Site Ingestion | Pending |
+| MULTI-01 | Phase 8 — Multi-Intervention & Portfolio Triage | Pending |
+| MULTI-02 | Phase 8 — Multi-Intervention & Portfolio Triage | Pending |
+| TRIAGE-01 | Phase 8 — Multi-Intervention & Portfolio Triage | Pending |
+| TRIAGE-02 | Phase 8 — Multi-Intervention & Portfolio Triage | Pending |
+| EXPORT-01 | Phase 9 — Workflow, Grant Packaging & Audit | Pending |
+| EXPORT-02 | Phase 9 — Workflow, Grant Packaging & Audit | Pending |
+| EXPORT-03 | Phase 9 — Workflow, Grant Packaging & Audit | Pending |
+| GRANT-01 | Phase 9 — Workflow, Grant Packaging & Audit | Pending |
+| AUDIT-01 | Phase 9 — Workflow, Grant Packaging & Audit | Pending |
+| AUDIT-02 | Phase 9 — Workflow, Grant Packaging & Audit | Pending |
