@@ -1,24 +1,29 @@
 """
 coolspend.spatial_engine — GeoJSON site loader, shapely collision engine,
-and the single EPSG:4326 <-> plaza-local-metres CRS boundary.
+and the single UTM-31N (EPSG:32631) <-> site-local-metres CRS boundary.
 
 Project: CoolSpend / Tree Budget Optimizer (infrared.city SDK Buildathon)
-Site:    Placa dels Angels, Barcelona (plaza centroid lon=2.1670, lat=41.3826)
+Default site: Placa dels Angels, Barcelona.
 
 Geometry inputs are loaded from a MOCK hand-authored fixture
 (coolspend/data/angels_site.geojson). Not surveyed OSM data — see MOCKS.md.
 
+CRS: UTM-31N (EPSG:32631) via pyproj. Valid across all of Barcelona with
+sub-metre distortion (D-06). Per-site SW-corner local frame derived from UTM offsets.
+
 Key functions:
-  - load_site(path)         : parse GeoJSON fixture -> shapely geometries in local metres
-  - is_valid_location(x, y) : returns False for points in buildings / on streets / outside boundary
-  - latlon_to_local_m(lon, lat) : THE ONLY CRS conversion in coolspend (EPSG:4326 -> local m)
-  - local_m_to_latlon(x, y)    : THE ONLY inverse CRS conversion (local m -> EPSG:4326)
+  - load_site(path)                  : parse GeoJSON fixture -> shapely geometries in local metres
+  - is_valid_location(x, y)          : returns False for points in buildings / on streets / outside boundary
+  - latlon_to_local_m(lon, lat)      : THE ONLY CRS conversion in coolspend (EPSG:4326 -> local m)
+  - local_m_to_latlon(x, y)          : THE ONLY inverse CRS conversion (local m -> EPSG:4326)
+  - set_site_origin_from_polygon(ring) : set per-site UTM origin from polygon bbox SW corner (D-06)
+  - assert_crs_roundtrip(ring)        : fail-closed guard: <1 m round-trip or raises CRSConsistencyError (D-07)
   - shade_efficiency(tilt_deg, height_m) : sun-path alignment bonus (analytical, OPT-02)
   - delta_tmrt_surrogate(shade_fraction, ...) : fast analytical ΔTmrt proxy (OPT-02 hot path)
-  - thermal_relief(config)  : site-averaged ΔTmrt for a tree config (OPT-02)
+  - thermal_relief(config)           : site-averaged ΔTmrt for a tree config (OPT-02)
 
 SPATIAL-03 compliance: no other module may convert CRS. All callers must import
-these two functions from this module.
+these functions from this module.
 
 SURROGATE HONESTY (OPT-02 / CONCERNS 1.1):
   delta_tmrt_surrogate is an ANALYTICAL PROXY, NOT a measured or simulated result.
@@ -28,7 +33,6 @@ SURROGATE HONESTY (OPT-02 / CONCERNS 1.1):
 from __future__ import annotations
 
 import json
-from math import cos, radians
 from pathlib import Path
 from typing import Any
 
@@ -43,15 +47,43 @@ except ImportError as _err:
         "Install it with: pip install shapely"
     ) from _err
 
+# ── PYPROJ UTM-31N TRANSFORMERS (D-06) ────────────────────────────────────────
+# always_xy=True: call order is (lon, lat) -> (easting, northing) for _TO_UTM,
+# and (easting, northing) -> (lon, lat) for _TO_WGS. Consistent everywhere.
+
+try:
+    from pyproj import Transformer as _Transformer
+except ImportError as _err:
+    raise RuntimeError(
+        "coolspend.spatial_engine requires pyproj. "
+        "Install it with: pip install 'pyproj>=3.6,<4'"
+    ) from _err
+
+_TO_UTM = _Transformer.from_crs("EPSG:4326", "EPSG:32631", always_xy=True)
+_TO_WGS = _Transformer.from_crs("EPSG:32631", "EPSG:4326", always_xy=True)
+
+# ── CRS CONSISTENCY ERROR (D-07) ─────────────────────────────────────────────
+
+
+class CRSConsistencyError(RuntimeError):
+    """Raised when a WGS84->UTM->WGS84 round-trip exceeds the 1 m tolerance (D-07).
+
+    This error is fail-closed: when raised, the downstream live SDK call is aborted.
+    The error message names the worst round-trip error in metres.
+    """
+
+
 # ── SITE CONSTANTS ────────────────────────────────────────────────────────────
-# Source: ARCHITECTURE.md "Coordinate Systems" + nature_nsga2_coolstock.py lines 74-86
+# SITE_WIDTH_M and SITE_DEPTH_M are updated by set_site_origin_from_polygon()
+# when a real polygon is loaded. Defaults match the bundled angels_site.geojson.
+# The NSGA-II optimizer reads these module-level values for its decision-variable
+# bounds — they automatically follow whatever polygon was last set. (D-06)
 
-SITE_WIDTH_M: float = 60.0       # E-W extent of the plaza rectangle, metres
-SITE_DEPTH_M: float = 42.0       # N-S usable extent of the plaza rectangle, metres
-SITE_ORIGIN_LON: float = 2.1670  # EPSG:4326 longitude of plaza centroid (anchor point)
-SITE_ORIGIN_LAT: float = 41.3826 # EPSG:4326 latitude of plaza centroid (anchor point)
+SITE_WIDTH_M: float = 60.0       # E-W extent in metres; updated per-site by set_site_origin_from_polygon
+SITE_DEPTH_M: float = 42.0       # N-S usable extent in metres; updated per-site
+SITE_ORIGIN_LON: float = 2.1670  # WGS84 longitude — DEFAULT fallback (Plaça dels Àngels centroid)
+SITE_ORIGIN_LAT: float = 41.3826 # WGS84 latitude  — DEFAULT fallback (Plaça dels Àngels centroid)
 HERITAGE_BUFFER_M: float = 5.0   # MACBA north-edge no-tree buffer, metres
-
 STREET_BUFFER_M: float = 1.5     # Rejection radius around street centerlines, metres
 
 # ── FILE PATHS ────────────────────────────────────────────────────────────────
@@ -59,61 +91,205 @@ STREET_BUFFER_M: float = 1.5     # Rejection radius around street centerlines, m
 DATA_DIR: Path = Path(__file__).resolve().parent / "data"
 DEFAULT_SITE: Path = DATA_DIR / "angels_site.geojson"
 
-# ── CRS PROJECTION CONSTANTS ──────────────────────────────────────────────────
+# ── PER-SITE UTM ORIGIN STATE (D-06) ─────────────────────────────────────────
+# Set by set_site_origin_from_polygon(ring_lonlat); lazily initialized from the
+# default site if never explicitly set (backwards-compatible fallback).
+# _SITE_ORIGIN_E: UTM-31N easting of the polygon's SW corner (min easting).
+# _SITE_ORIGIN_N: UTM-31N northing of the polygon's SW corner (min northing).
 
-_M_PER_DEG_LAT: float = 111_320.0  # metres per degree of latitude (equirectangular)
+_SITE_ORIGIN_E: float | None = None   # UTM-31N easting of SW corner (metres)
+_SITE_ORIGIN_N: float | None = None   # UTM-31N northing of SW corner (metres)
+
+_ORIGIN_INITIALIZED: bool = False  # True once _ensure_origin_initialized() has run
+
+
+def set_site_origin_from_polygon(
+    ring_lonlat: list[tuple[float, float]],
+) -> tuple[float, float]:
+    """Compute and store the per-site UTM origin from a polygon ring's UTM bbox.
+
+    The site origin is set to the SW corner of the polygon's UTM bounding box —
+    i.e. (min_easting, min_northing) of the ring in UTM-31N. After this call:
+      - latlon_to_local_m maps the SW UTM corner to (0, 0).
+      - local_m_to_latlon maps (0, 0) back to the SW UTM corner.
+      - SITE_WIDTH_M = max(E) - min(E) over the ring.
+      - SITE_DEPTH_M = max(N) - min(N) over the ring.
+    The NSGA-II optimizer bounds ([0, SITE_WIDTH_M] x [0, SITE_DEPTH_M]) follow
+    the site automatically — no NSGA-II bound rewrite needed (D-06).
+
+    Per-site real sites call this; existing code that does NOT call it gets a
+    lazy fallback from the bundled angels_site.geojson boundary (see _ensure_origin_initialized).
+
+    Args:
+        ring_lonlat: Polygon ring as a list of (lon, lat) tuples. May be closed
+                     (first == last) or open; duplicates are handled correctly.
+
+    Returns:
+        (width_m, depth_m): UTM extents of the polygon in metres.
+    """
+    global _SITE_ORIGIN_E, _SITE_ORIGIN_N, SITE_WIDTH_M, SITE_DEPTH_M, _ORIGIN_INITIALIZED
+
+    eastings: list[float] = []
+    northings: list[float] = []
+    for lon, lat in ring_lonlat:
+        e, n = _TO_UTM.transform(lon, lat)
+        eastings.append(e)
+        northings.append(n)
+
+    _SITE_ORIGIN_E = min(eastings)
+    _SITE_ORIGIN_N = min(northings)
+    SITE_WIDTH_M = max(eastings) - min(eastings)
+    SITE_DEPTH_M = max(northings) - min(northings)
+    _ORIGIN_INITIALIZED = True
+
+    # Invalidate any cached site rectangles so they rebuild with new dimensions
+    _SITE_RECT_CACHE.clear()
+    _CORE_RECT_CACHE.clear()
+
+    return SITE_WIDTH_M, SITE_DEPTH_M
+
+
+def _ensure_origin_initialized() -> None:
+    """Lazily initialize the site origin from the default angels_site.geojson if needed.
+
+    Called before any coordinate conversion when no explicit set_site_origin_from_polygon
+    call has been made. Provides backwards-compatible fallback so existing tests and
+    the NSGA-II optimizer work without explicitly calling set_site_origin_from_polygon.
+
+    Default site origin: SW corner of the angels_site.geojson boundary polygon in UTM-31N.
+    """
+    global _ORIGIN_INITIALIZED
+    if _ORIGIN_INITIALIZED:
+        return
+
+    # Load the default site boundary ring and set origin from it
+    if DEFAULT_SITE.exists():
+        with DEFAULT_SITE.open("r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        for feature in data.get("features", []):
+            kind = feature.get("properties", {}).get("kind", "")
+            geom = feature.get("geometry", {})
+            if kind == "site_boundary" and geom.get("type") == "Polygon":
+                ring = [(lon, lat) for lon, lat in geom["coordinates"][0]]
+                set_site_origin_from_polygon(ring)
+                return
+
+    # Absolute fallback: derive from SITE_ORIGIN_LON/LAT (plaza centroid) if GeoJSON unavailable
+    # The centroid is NOT the SW corner; approximate the SW corner from known 60x42 m dimensions.
+    # This path is a last resort and documents its own limitation.
+    global _SITE_ORIGIN_E, _SITE_ORIGIN_N
+    e_ctr, n_ctr = _TO_UTM.transform(SITE_ORIGIN_LON, SITE_ORIGIN_LAT)
+    _SITE_ORIGIN_E = e_ctr - SITE_WIDTH_M / 2.0
+    _SITE_ORIGIN_N = n_ctr - SITE_DEPTH_M / 2.0
+    _ORIGIN_INITIALIZED = True
+
 
 # ── SINGLE CRS BOUNDARY (SPATIAL-03) ─────────────────────────────────────────
 
 
 def latlon_to_local_m(lon: float, lat: float) -> tuple[float, float]:
-    """Convert EPSG:4326 (lon, lat) to plaza-local metres (x_m, y_m).
+    """Convert EPSG:4326 (lon, lat) to site-local metres (x_m, y_m) via UTM-31N.
 
     THIS IS THE ONLY PLACE CRS CONVERSION HAPPENS IN coolspend (SPATIAL-03).
     No other module may convert EPSG:4326 to local metres. Import this function
     from here — do not reproduce the formula elsewhere.
 
-    Projection: equirectangular with cos-latitude correction, accurate within
-    ±200 m of the plaza centroid. Not suitable for city-scale use.
+    Projection: UTM-31N (EPSG:32631) via pyproj, valid across all of Barcelona with
+    sub-metre distortion (D-06). Per-site SW-corner local frame derived from UTM offsets.
 
-    Local-metre frame: SW corner of the plaza rectangle = (0, 0).
-    x_m = East-West position in [0, SITE_WIDTH_M].
-    y_m = North-South position in [0, SITE_DEPTH_M].
-    The EPSG:4326 centroid anchor maps to the geometric centre:
-    (SITE_WIDTH_M/2, SITE_DEPTH_M/2).
+    Local-metre frame: SW corner of the site polygon's UTM bounding box = (0, 0).
+    x_m = East-West UTM offset from the SW corner (true metres).
+    y_m = North-South UTM offset from the SW corner (true metres).
+    For the default angels_site.geojson: x_m in [0, ~60], y_m in [0, ~42].
+    For any other polygon: [0, width_m] x [0, depth_m] per set_site_origin_from_polygon.
+
+    Per-site real calls: call set_site_origin_from_polygon(ring) first (done automatically
+    by load_site()). Fallback for callers that never set an explicit origin: lazily
+    initialised from the default site boundary (backwards-compatible).
 
     Args:
         lon: WGS84 longitude in decimal degrees.
         lat: WGS84 latitude in decimal degrees.
 
     Returns:
-        (x_m, y_m) — position in plaza-local metres.
+        (x_m, y_m) — position in site-local metres relative to the SW UTM corner.
     """
-    x_m = (lon - SITE_ORIGIN_LON) * _M_PER_DEG_LAT * cos(radians(SITE_ORIGIN_LAT)) + SITE_WIDTH_M / 2
-    y_m = (lat - SITE_ORIGIN_LAT) * _M_PER_DEG_LAT + SITE_DEPTH_M / 2
-    return x_m, y_m
+    _ensure_origin_initialized()
+    e, n = _TO_UTM.transform(lon, lat)
+    return (e - _SITE_ORIGIN_E, n - _SITE_ORIGIN_N)
 
 
 def local_m_to_latlon(x_m: float, y_m: float) -> tuple[float, float]:
-    """Convert plaza-local metres (x_m, y_m) to EPSG:4326 (lon, lat).
+    """Convert site-local metres (x_m, y_m) to EPSG:4326 (lon, lat) via UTM-31N.
 
     THIS IS THE ONLY PLACE INVERSE CRS CONVERSION HAPPENS IN coolspend (SPATIAL-03).
     No other module may convert local metres to EPSG:4326. Import this function
     from here — do not reproduce the formula elsewhere.
 
-    Exact algebraic inverse of latlon_to_local_m. See that function for frame
-    conventions and projection accuracy notes.
+    Exact algebraic inverse of latlon_to_local_m via pyproj UTM-31N transformers.
+    Valid citywide in Barcelona (D-06). See latlon_to_local_m for frame conventions.
 
     Args:
-        x_m: East-West position in plaza-local metres.
-        y_m: North-South position in plaza-local metres.
+        x_m: East-West position in site-local metres.
+        y_m: North-South position in site-local metres.
 
     Returns:
         (lon, lat) — WGS84 longitude and latitude in decimal degrees.
     """
-    lon = (x_m - SITE_WIDTH_M / 2) / (_M_PER_DEG_LAT * cos(radians(SITE_ORIGIN_LAT))) + SITE_ORIGIN_LON
-    lat = (y_m - SITE_DEPTH_M / 2) / _M_PER_DEG_LAT + SITE_ORIGIN_LAT
+    _ensure_origin_initialized()
+    lon, lat = _TO_WGS.transform(x_m + _SITE_ORIGIN_E, y_m + _SITE_ORIGIN_N)
     return lon, lat
+
+
+# ── FAIL-CLOSED ROUND-TRIP GUARD (D-07) ──────────────────────────────────────
+
+
+def assert_crs_roundtrip(
+    ring_lonlat: list[tuple[float, float]] | list[list[float]],
+    tol_m: float = 1.0,
+) -> float:
+    """Assert that every vertex in ring_lonlat round-trips through the CRS with <tol_m error.
+
+    WGS84 -> UTM-31N (via latlon_to_local_m) -> WGS84 (via local_m_to_latlon),
+    then measure the ground error in METRES using UTM-31N euclidean distance
+    (NOT degrees — metres, as required by D-07).
+
+    Fail-closed: if any vertex round-trips with error >= tol_m, raises CRSConsistencyError
+    naming the worst error in metres. The SDK call that follows this guard is unreachable
+    on failure — the exception propagates out.
+
+    Args:
+        ring_lonlat: Polygon ring as a list of [lon, lat] pairs or (lon, lat) tuples.
+        tol_m: Tolerance in metres (default 1.0 m, per D-07).
+
+    Returns:
+        max_error_m: Maximum round-trip error in metres across all vertices. < tol_m.
+
+    Raises:
+        CRSConsistencyError: if any vertex round-trips with error >= tol_m (D-07).
+    """
+    max_error_m: float = 0.0
+
+    for pair in ring_lonlat:
+        lon, lat = float(pair[0]), float(pair[1])
+        x_m, y_m = latlon_to_local_m(lon, lat)
+        lon2, lat2 = local_m_to_latlon(x_m, y_m)
+
+        # Measure error in UTM metres (NOT degrees) — D-07 requirement
+        e1, n1 = _TO_UTM.transform(lon, lat)
+        e2, n2 = _TO_UTM.transform(lon2, lat2)
+        import math  # noqa: PLC0415 — kept inline for hot-path clarity
+        error_m = math.hypot(e1 - e2, n1 - n2)
+        if error_m > max_error_m:
+            max_error_m = error_m
+
+    if max_error_m >= tol_m:
+        raise CRSConsistencyError(
+            f"CRS round-trip {max_error_m:.3f} m exceeds {tol_m} m — "
+            f"aborting live call (D-07)"
+        )
+
+    return max_error_m
 
 
 # ── SITE CACHE ────────────────────────────────────────────────────────────────
@@ -130,9 +306,14 @@ def load_site(path: str | None = None) -> dict[str, Any]:
     Reads the file at `path` (default: bundled coolspend/data/angels_site.geojson)
     using json.load only — never exec/eval — per CONVENTIONS Rule 4.
 
+    IMPORTANT: Before converting any feature coordinates, this function calls
+    set_site_origin_from_polygon with the site_boundary ring, so the local-metre
+    origin is the polygon's own SW UTM corner (per D-06). The NSGA-II optimizer
+    bounds follow the site automatically.
+
     The GeoJSON must be a FeatureCollection with features keyed by
     `properties.kind`: "site_boundary", "building", "street".
-    All coordinates are converted from EPSG:4326 (lon, lat) to plaza-local metres
+    All coordinates are converted from EPSG:4326 (lon, lat) to site-local metres
     via the single CRS boundary (latlon_to_local_m).
 
     Results for the default site are cached in _SITE_CACHE to avoid repeated
@@ -176,6 +357,16 @@ def load_site(path: str | None = None) -> dict[str, Any]:
     buildings: list[Polygon] = []
     streets: list[LineString] = []
 
+    # First pass: find the site_boundary ring and set the per-site UTM origin (D-06).
+    for feature in data.get("features", []):
+        kind = feature.get("properties", {}).get("kind", "")
+        geom = feature.get("geometry", {})
+        if kind == "site_boundary" and geom.get("type") == "Polygon":
+            ring_lonlat = [(lon, lat) for lon, lat in geom["coordinates"][0]]
+            set_site_origin_from_polygon(ring_lonlat)
+            break
+
+    # Second pass: convert all feature coordinates now that the origin is set.
     for feature in data.get("features", []):
         kind = feature.get("properties", {}).get("kind", "")
         geom = feature.get("geometry", {})
@@ -224,7 +415,7 @@ def is_valid_location(
     - The point lies inside any building footprint polygon.
     - The point is within STREET_BUFFER_M (1.5 m) of any street centerline.
 
-    Coordinates must be in plaza-local metres (SW corner = (0, 0)).
+    Coordinates must be in site-local metres (SW UTM corner = (0, 0)).
     Use latlon_to_local_m to convert from EPSG:4326 before calling.
 
     Args:
@@ -606,6 +797,10 @@ if __name__ == "__main__":
     _cx, _cy = _bld.centroid.x, _bld.centroid.y
     print(f"is_valid_location({_cx:.2f}, {_cy:.2f}) = {is_valid_location(_cx, _cy)} [in building, expect False]")
 
-    # CRS round-trip check
+    # CRS round-trip check via UTM-31N
     _lon_rt, _lat_rt = local_m_to_latlon(*latlon_to_local_m(SITE_ORIGIN_LON, SITE_ORIGIN_LAT))
-    print(f"CRS round-trip: lon_err={abs(_lon_rt - SITE_ORIGIN_LON):.2e}, lat_err={abs(_lat_rt - SITE_ORIGIN_LAT):.2e}")
+    import math as _math
+    _e1, _n1 = _TO_UTM.transform(SITE_ORIGIN_LON, SITE_ORIGIN_LAT)
+    _e2, _n2 = _TO_UTM.transform(_lon_rt, _lat_rt)
+    _err_m = _math.hypot(_e1 - _e2, _n1 - _n2)
+    print(f"CRS round-trip error: {_err_m:.4f} m (< 1 m required by D-07)")

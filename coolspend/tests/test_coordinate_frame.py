@@ -196,65 +196,55 @@ def test_assert_crs_roundtrip_passes_valid_ring() -> None:
     assert max_err < 1.0, f"Valid Barcelona ring round-trip error {max_err:.4f} m >= 1.0 m"
 
 
-def test_guard_fails_closed_on_bad_ring() -> None:
-    """assert_crs_roundtrip raises CRSConsistencyError when forced >1 m mismatch.
+def test_guard_fails_closed_on_bad_ring(monkeypatch) -> None:
+    """assert_crs_roundtrip raises CRSConsistencyError when local_m_to_latlon returns wrong coords.
 
-    We construct a scenario where the module's site origin is set to one polygon
-    but we pass ring coordinates from a far-away location that exceed the 1 m
-    threshold due to a deliberately corrupted ring.
+    Monkeypatches local_m_to_latlon to return a point ~10 km away from the real
+    inverse, simulating a broken/drifted CRS boundary. The guard must detect this
+    mismatch (>> 1 m in UTM metres) and raise CRSConsistencyError.
     """
-    # Use absurd coordinates that round-trip through a WRONG origin (manually corrupted)
-    # Strategy: monkeypatch _SITE_ORIGIN_E/_SITE_ORIGIN_N to values far from these coords
-    from coolspend import spatial_engine as se
+    import coolspend.spatial_engine as se
 
-    # Save and corrupt the origin so round-trip error is huge
-    orig_e = se._SITE_ORIGIN_E
-    orig_n = se._SITE_ORIGIN_N
+    # Monkeypatch local_m_to_latlon to return a point 10 km away (simulates CRS drift)
+    def _bad_inverse(x_m: float, y_m: float):
+        # Return a point ~0.1 deg (~10 km) away — well above 1 m threshold
+        return 2.1666 + 0.1, 41.3824 + 0.1
 
-    try:
-        # Set origin to be 100 km off — round-trip will be ~100 km error
-        se._SITE_ORIGIN_E = 431000.0 + 100_000.0  # ~100 km east
-        se._SITE_ORIGIN_N = 4579000.0
-        # Force ring to FAIL the guard — point is far from the corrupted origin
-        bad_ring = [(2.1666, 41.3824), (2.1674, 41.3824), (2.1674, 41.3828), (2.1666, 41.3828)]
-        with pytest.raises(CRSConsistencyError) as exc_info:
-            assert_crs_roundtrip(bad_ring)
-        # Error message should mention metres and D-07
-        assert "m" in str(exc_info.value).lower() or "metre" in str(exc_info.value).lower() or "D-07" in str(exc_info.value)
-    finally:
-        se._SITE_ORIGIN_E = orig_e
-        se._SITE_ORIGIN_N = orig_n
+    monkeypatch.setattr(se, "local_m_to_latlon", _bad_inverse)
+
+    ring = [(2.1666, 41.3824), (2.1674, 41.3824), (2.1674, 41.3828), (2.1666, 41.3828)]
+    with pytest.raises(CRSConsistencyError) as exc_info:
+        assert_crs_roundtrip(ring)
+    # Error message should mention metres and D-07
+    assert "m" in str(exc_info.value).lower() or "D-07" in str(exc_info.value)
 
 
-def test_crs_consistency_error_message_names_worst_error() -> None:
+def test_crs_consistency_error_message_names_worst_error(monkeypatch) -> None:
     """CRSConsistencyError message names the worst error in metres."""
-    from coolspend import spatial_engine as se
+    import re
+    import coolspend.spatial_engine as se
 
-    orig_e = se._SITE_ORIGIN_E
-    orig_n = se._SITE_ORIGIN_N
-    try:
-        se._SITE_ORIGIN_E = 431000.0 + 50_000.0
-        se._SITE_ORIGIN_N = 4579000.0
-        bad_ring = [(2.1666, 41.3824), (2.1670, 41.3826)]
-        with pytest.raises(CRSConsistencyError) as exc_info:
-            assert_crs_roundtrip(bad_ring)
-        msg = str(exc_info.value)
-        # Message must contain a numeric error value
-        import re
-        assert re.search(r"\d+\.\d+", msg), f"Error message should contain numeric error: {msg!r}"
-    finally:
-        se._SITE_ORIGIN_E = orig_e
-        se._SITE_ORIGIN_N = orig_n
+    def _bad_inverse(x_m: float, y_m: float):
+        return 2.1666 + 0.05, 41.3824 + 0.05  # ~7 km off
+
+    monkeypatch.setattr(se, "local_m_to_latlon", _bad_inverse)
+
+    bad_ring = [(2.1666, 41.3824), (2.1670, 41.3826)]
+    with pytest.raises(CRSConsistencyError) as exc_info:
+        assert_crs_roundtrip(bad_ring)
+    msg = str(exc_info.value)
+    # Message must contain a numeric error value (e.g. "7432.123 m")
+    assert re.search(r"\d+\.\d+", msg), f"Error message should contain numeric error: {msg!r}"
 
 
 def test_guard_blocks_sdk_call_on_bad_ring(monkeypatch) -> None:
     """_live_utci aborts — SDK unreachable past a guard failure.
 
     Monkeypatches InfraredClient so it raises AssertionError if reached.
-    Forces a bad origin so the CRS guard triggers first.
+    Monkeypatches local_m_to_latlon to return wrong coordinates so CRS guard triggers.
     The test asserts CRSConsistencyError is raised, not the SDK's AssertionError.
     """
-    import os
+    import sys
     from coolspend import spatial_engine as se
     from coolspend import sdk_client
 
@@ -262,9 +252,11 @@ def test_guard_blocks_sdk_call_on_bad_ring(monkeypatch) -> None:
     monkeypatch.setenv("INFRARED_BACKEND", "live")
     monkeypatch.setenv("INFRARED_API_KEY", "test-key-not-real")
 
-    # Corrupt the origin so round-trip fails
-    orig_e = se._SITE_ORIGIN_E
-    orig_n = se._SITE_ORIGIN_N
+    # Patch local_m_to_latlon to return a point far off so guard triggers
+    def _bad_inverse(x_m: float, y_m: float):
+        return 2.1666 + 0.1, 41.3824 + 0.1  # ~10 km away
+
+    monkeypatch.setattr(se, "local_m_to_latlon", _bad_inverse)
 
     class _FakeSDK:
         def __enter__(self):
@@ -272,42 +264,33 @@ def test_guard_blocks_sdk_call_on_bad_ring(monkeypatch) -> None:
         def __exit__(self, *a):
             pass
 
-    try:
-        se._SITE_ORIGIN_E = 431000.0 + 100_000.0
-        se._SITE_ORIGIN_N = 4579000.0
+    # geometry with a polygon_lonlat — the guard operates on this ring
+    bad_geom = {
+        "polygon_lonlat": [
+            [2.1666, 41.3824],
+            [2.1674, 41.3824],
+            [2.1674, 41.3828],
+            [2.1666, 41.3828],
+            [2.1666, 41.3824],
+        ]
+    }
 
-        # geometry with a polygon_lonlat — the guard operates on this ring
-        bad_geom = {
-            "polygon_lonlat": [
-                [2.1666, 41.3824],
-                [2.1674, 41.3824],
-                [2.1674, 41.3828],
-                [2.1666, 41.3828],
-                [2.1666, 41.3824],
-            ]
-        }
+    # Monkeypatch InfraredClient so it fails if reached
+    fake_infrared_sdk = type(sys)("infrared_sdk")
+    fake_infrared_sdk.InfraredClient = _FakeSDK
 
-        # Monkeypatch InfraredClient so it fails if reached
-        import sys
-        fake_infrared_sdk = type(sys)("infrared_sdk")
-        fake_infrared_sdk.InfraredClient = _FakeSDK
+    class _FakeAnalysesName:
+        utci = "utci"
+    fake_infrared_sdk.analyses = type(sys)("analyses")
+    fake_infrared_sdk.analyses.types = type(sys)("types")
+    fake_infrared_sdk.analyses.types.AnalysesName = _FakeAnalysesName
 
-        class _FakeAnalysesName:
-            utci = "utci"
-        fake_infrared_sdk.analyses = type(sys)("analyses")
-        fake_infrared_sdk.analyses.types = type(sys)("types")
-        fake_infrared_sdk.analyses.types.AnalysesName = _FakeAnalysesName
+    monkeypatch.setitem(sys.modules, "infrared_sdk", fake_infrared_sdk)
+    monkeypatch.setitem(sys.modules, "infrared_sdk.analyses", fake_infrared_sdk.analyses)
+    monkeypatch.setitem(sys.modules, "infrared_sdk.analyses.types", fake_infrared_sdk.analyses.types)
 
-        monkeypatch.setitem(sys.modules, "infrared_sdk", fake_infrared_sdk)
-        # Also patch the AnalysesName import path
-        monkeypatch.setitem(sys.modules, "infrared_sdk.analyses", fake_infrared_sdk.analyses)
-        monkeypatch.setitem(sys.modules, "infrared_sdk.analyses.types", fake_infrared_sdk.analyses.types)
-
-        with pytest.raises(CRSConsistencyError):
-            sdk_client._live_utci("utci_baseline", bad_geom)
-    finally:
-        se._SITE_ORIGIN_E = orig_e
-        se._SITE_ORIGIN_N = orig_n
+    with pytest.raises(CRSConsistencyError):
+        sdk_client._live_utci("utci_baseline", bad_geom)
 
 
 def test_assert_crs_roundtrip_symbol_present() -> None:

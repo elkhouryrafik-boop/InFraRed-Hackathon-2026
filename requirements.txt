@@ -6,6 +6,7 @@ gradio==4.44.1
 gradio-client==1.3.0  # MUST match gradio 4.44.1 — a mismatched client causes "bool is not iterable" at launch
 fastapi==0.112.4      # gradio 4.44.1-compatible; newer fastapi pulls starlette>=1.0 which breaks TemplateResponse
 starlette==0.37.2     # starlette>=1.0 removes the TemplateResponse(name, context) signature gradio 4.44.1 calls -> "unhashable type: dict"
+pyproj>=3.6,<4
 shapely>=2.0,<3.0
 numpy>=1.26,<2.0
 matplotlib>=3.7,<4.0
