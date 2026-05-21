@@ -124,6 +124,65 @@ def test_on_submit_bad_geojson_no_crash() -> None:
     )
 
 
+# ── (d-wave2) Generic error message — no traceback to UI ─────────────────────
+
+
+def test_on_submit_unexpected_exception_no_traceback_in_ui(monkeypatch) -> None:
+    """on_submit must NOT render traceback or internal paths to the UI banner.
+
+    Security L1 (wave-2 Fix 5): before the fix, on_submit rendered
+    traceback.format_exc() directly into the Gradio banner — exposing file paths
+    and internal details on a public Space. After the fix, a generic message is
+    shown to the UI; the full traceback is logged server-side only.
+    """
+    import coolspend.app as app
+
+    # Force run_decision to raise an unexpected exception.
+    # Patch in the app module's namespace (where the imported name lives) so the
+    # except branch in on_submit actually fires.
+    def _explode(*args, **kwargs):
+        raise RuntimeError("Simulated internal error with C:\\secret\\path\\file.py")
+
+    monkeypatch.setattr(app, "run_decision", _explode)
+
+    result = app.on_submit(
+        geojson_text=None,
+        budget_eur=1_000_000.0,
+        w_thermal=0.6,
+        w_ecological=0.4,
+        backend="mock",
+    )
+
+    assert isinstance(result, tuple) and len(result) == 4
+    banner_md, img_path, table_rows, call_log_text = result
+
+    # Must return an error banner (not a successful result)
+    assert "ERROR" in banner_md or "error" in banner_md.lower(), (
+        f"Expected error indication in banner: {banner_md!r}"
+    )
+
+    # Must NOT leak traceback, file paths, or the exception message to the UI
+    assert "Traceback" not in banner_md, (
+        "Traceback must not appear in the UI banner (Security L1)"
+    )
+    assert "File " not in banner_md, (
+        "File path must not appear in the UI banner (Security L1)"
+    )
+    assert "secret" not in banner_md, (
+        "Exception message content must not appear in the UI banner (Security L1)"
+    )
+    assert "Traceback" not in (call_log_text or ""), (
+        "Traceback must not appear in the call_log_text output"
+    )
+    assert "secret" not in (call_log_text or ""), (
+        "Exception message must not appear in call_log_text"
+    )
+
+    # Image and table must be empty (error path)
+    assert not img_path
+    assert table_rows == [] or table_rows is None
+
+
 # ── (d) Headless launch smoke ─────────────────────────────────────────────────
 
 
