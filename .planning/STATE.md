@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 02-02-PLAN.md — thermal surrogate (delta_tmrt_surrogate + thermal_relief) in spatial_engine, 18 tests green, porosity bug pinned
-last_updated: "2026-05-21T01:02:32.218Z"
+stopped_at: Completed 02-03-PLAN.md — live Infrared backend wired in sdk_client.py, 11 tests green, live→cache, key-from-env
+last_updated: "2026-05-21T01:08:02.149Z"
 last_activity: 2026-05-21
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 8
-  completed_plans: 5
-  percent: 63
+  completed_plans: 6
+  percent: 75
 ---
 
 # Project State
@@ -30,7 +30,7 @@ Plan: Not started
 Status: Ready to plan
 Last activity: 2026-05-21
 
-Progress: [██████░░░░] 63%
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Progress: [██████░░░░] 63%
 | Phase 01-foundation-sdk-boundary P01-03 | 10m | 2 tasks | 3 files |
 | Phase 02-optimizer-core P02-01 | 3m | 1 tasks | 3 files |
 | Phase 02-optimizer-core P02-02 | 5m | 1 tasks | 3 files |
+| Phase 02-optimizer-core P02-03 | 15m | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,10 @@ Recent decisions affecting current work:
 - 02-02: porosity_pct retained in signature for call-site compatibility but intentionally unused in body (CONCERNS 4.2)
 - 02-02: thermal_relief site-coverage capped at 0.90 — prevents unrealistic 100% canopy scenario
 - 02-02: TREE_SHADE_FRACTION=0.80 and TREE_CANOPY_RADIUS_M=3.0 tagged DECLARED/REQUIRES_VERIFICATION — no fabricated citation
+- 02-03: lazy import of infrared_sdk inside _live_utci() only — module importable offline without SDK installed
+- 02-03: INFRARED_API_KEY validated present before SDK usage; never logged or embedded in any string
+- 02-03: live result written to CACHE_DIR for INFRARED_BACKEND=cached offline replay
+- 02-03: AnalysesName.utci member name left as TODO for May-27 SDK confirmation (one-line change)
 
 ### Pending Todos
 
@@ -108,8 +113,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-21T01:02:32.208Z
-Stopped at: Completed 02-02-PLAN.md — thermal surrogate (delta_tmrt_surrogate + thermal_relief) in spatial_engine, 18 tests green, porosity bug pinned
+Last session: 2026-05-21T01:08:02.138Z
+Stopped at: Completed 02-03-PLAN.md — live Infrared backend wired in sdk_client.py, 11 tests green, live→cache, key-from-env
 Resume file: None
 
 **Planned Phase:** 1 (Foundation & SDK Boundary) — 3 plans — 2026-05-21T00:07:58.203Z
