@@ -1,0 +1,102 @@
+{
+  "source": "Meteocat XEMA station X4 — Barcelona el Raval (Generalitat de Catalunya, Dades Obertes)",
+  "license": "Free public (analisi.transparenciacatalunya.cat)",
+  "source_url": "https://analisi.transparenciacatalunya.cat/resource/nzvn-apee.json",
+  "retrieval_date": "2026-05-17",
+  "station_metadata": {
+    "codi_estacio": "X4",
+    "nom": "Barcelona - el Raval",
+    "lat": 41.38386,
+    "lon": 2.16774,
+    "altitud_m": 33,
+    "data_inici": "2009",
+    "status": "Operativa",
+    "distance_to_plaza_centroid_m": 153
+  },
+  "cross_validation_purpose": "verify EPW airport temperature vs urban canyon at 153m from Plaça dels Àngels",
+  "x4_july_multi_year": [
+    {
+      "year": 2017,
+      "n_hours": 1489,
+      "mean_c": 25.44,
+      "min_c": 18.2,
+      "max_c": 31.0,
+      "hours_above_30": 5,
+      "hours_above_32": 0
+    },
+    {
+      "year": 2018,
+      "n_hours": 1489,
+      "mean_c": 26.53,
+      "min_c": 20.6,
+      "max_c": 33.1,
+      "hours_above_30": 78,
+      "hours_above_32": 5
+    },
+    {
+      "year": 2019,
+      "n_hours": 1489,
+      "mean_c": 26.41,
+      "min_c": 18.8,
+      "max_c": 32.8,
+      "hours_above_30": 52,
+      "hours_above_32": 9
+    },
+    {
+      "year": 2020,
+      "n_hours": 1489,
+      "mean_c": 26.05,
+      "min_c": 19.8,
+      "max_c": 31.4,
+      "hours_above_30": 17,
+      "hours_above_32": 0
+    },
+    {
+      "year": 2021,
+      "n_hours": 1489,
+      "mean_c": 25.62,
+      "min_c": 18.0,
+      "max_c": 32.5,
+      "hours_above_30": 72,
+      "hours_above_32": 6
+    },
+    {
+      "year": 2022,
+      "n_hours": 1489,
+      "mean_c": 27.24,
+      "min_c": 21.8,
+      "max_c": 34.2,
+      "hours_above_30": 140,
+      "hours_above_32": 28
+    },
+    {
+      "year": 2023,
+      "n_hours": 1489,
+      "mean_c": 26.57,
+      "min_c": 20.4,
+      "max_c": 32.8,
+      "hours_above_30": 73,
+      "hours_above_32": 11
+    },
+    {
+      "year": 2024,
+      "n_hours": 0,
+      "mean_c": null,
+      "min_c": null,
+      "max_c": null,
+      "hours_above_30": 0,
+      "hours_above_32": 0
+    }
+  ],
+  "x4_aggregate": {
+    "years_used": 7,
+    "mean_c": 26.27
+  },
+  "epw_july_baseline": {
+    "source": "Barcelona TMYx 2011-2025 EPW (climate.onebuilding.org, El Prat airport WMO 081810)",
+    "representative_year_for_july": 2017,
+    "mean_c": 25.83
+  },
+  "uhi_delta_summer_daytime": 0.44,
+  "uhi_delta_interpretation": "For summer daytime: urban canyon at El Raval (26.27°C July mean across 7 years) is essentially equivalent to airport (25.83°C). UHI delta = 0.44°C. NO daytime-summer UHI correction needed. Pla Clima's published +3°C annual UHI is a NIGHTTIME+WINTER maximum — does NOT apply to the daytime summer UTCI > 32°C metric. EPW airport dry-bulb is VERIFIED-EQUIVALENT for the use case. Confidence on UTCI metric flips HIGH."
+}

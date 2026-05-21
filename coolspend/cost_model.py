@@ -794,14 +794,21 @@ def cost_per_utci_degree(  # noqa: C901 (complexity OK — linear decision tree)
     try:
         from nature_metrics import utci_hours_above  # noqa: PLC0415
         uh = utci_hours_above(32.0, cov)
-        if "error" in uh or uh.get("value") is None:
+        if uh.get("error") or uh.get("value") is None:
             utci_hours_note = "UTCI-hours unavailable (EPW missing)"
         else:
-            raw_delta = uh.get("delta", 0.0)
-            # delta is negative (reduction); flip sign to positive hours_reduced
-            hours_reduced = float(-raw_delta) if raw_delta is not None else None
-            if hours_reduced is not None and hours_reduced < 0:
-                hours_reduced = 0.0  # guard: should not happen but be safe
+            # utci_hours_above returns value (hours-above with canopy) and
+            # baseline_value (hours-above with no canopy). The reduction is
+            # baseline - value (NOT a "delta" key — that key does not exist).
+            val = uh.get("value")
+            base = uh.get("baseline_value")
+            if val is not None and base is not None:
+                hours_reduced = float(base) - float(val)
+                if hours_reduced < 0:
+                    hours_reduced = 0.0  # guard: canopy never increases hot hours
+            else:
+                hours_reduced = None
+                utci_hours_note = "UTCI-hours baseline unavailable"
     except Exception as exc:  # noqa: BLE001
         utci_hours_note = f"UTCI-hours unavailable ({exc})"
 
@@ -875,6 +882,15 @@ def cost_per_utci_degree(  # noqa: C901 (complexity OK — linear decision tree)
     # only the cost and degc_drop magnitudes change.
     degc_drop = discounted_lifetime_degc(degc_drop, gd)
 
+    # Scale the uncertainty band through the SAME growth/discount factor so it
+    # stays proportional to the (now discounted) °C estimate. Without this, an
+    # absolute ±4°C band applied to a discounted ~3°C estimate makes degc_drop-band
+    # go negative and nulls value_hi (the upper cost bound) — an artifact, not real
+    # uncertainty. discounted_lifetime_degc is linear in its input, so this is
+    # band × the same discount factor applied to degc_drop. (band_hours below stays
+    # on the RAW per-year hours scale — annual hours are not lifetime-discounted.)
+    band_degc = discounted_lifetime_degc(band, gd)
+
     # ── Compute primary KPI (€/°C) ────────────────────────────────────────────
     # Numerator: present value of lifecycle cost (discounted OpEx, D-08).
     # NOTE: total_cost() (nominal, no discounting) is preserved for the
@@ -886,8 +902,8 @@ def cost_per_utci_degree(  # noqa: C901 (complexity OK — linear decision tree)
 
     # Interval propagation: band on °C drop (D-10)
     # More cooling (degc_drop + band) → cheaper per °C → lower bound
-    value_lo = round(cost / (degc_drop + band), 2)
-    degc_minus_band = degc_drop - band
+    value_lo = round(cost / (degc_drop + band_degc), 2)
+    degc_minus_band = degc_drop - band_degc
     if degc_minus_band <= _EPS:
         value_hi = None  # upper bound unbounded — band exceeds estimate
         note_parts.append("upper bound unbounded (band exceeds °C estimate)")
