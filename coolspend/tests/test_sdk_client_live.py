@@ -45,13 +45,18 @@ DUMMY_KEY = "TEST-KEY-OFFLINE-0000"
 
 
 def _make_fake_infrared_sdk() -> types.ModuleType:
-    """Build a minimal fake infrared_sdk module tree for monkeypatching."""
+    """Build a fake infrared_sdk module tree matching the live UTCI call wiring.
+
+    Mirrors the real call surface _live_utci uses: weather lookup + filter,
+    buildings/ground_materials fetch, UtciModelRequest.from_weatherfile_payload,
+    TimePeriod/Location models, and run_area_and_wait returning a merged_grid.
+    """
     # Root package
     fake_sdk = types.ModuleType("infrared_sdk")
 
-    # Fake AnalysesName enum-like object
+    # Fake AnalysesName enum-like object (real member: thermal_comfort_index)
     fake_analyses_name = MagicMock()
-    fake_analyses_name.utci = "utci"
+    fake_analyses_name.thermal_comfort_index = "thermal-comfort-index"
 
     # Fake result with merged_grid
     fake_result = MagicMock()
@@ -61,9 +66,18 @@ def _make_fake_infrared_sdk() -> types.ModuleType:
     fake_area = MagicMock()
     fake_area.buildings = []
 
+    # Fake ground-materials area with .layers
+    fake_gm = MagicMock()
+    fake_gm.layers = {}
+
     # Fake client (context manager)
     fake_client_instance = MagicMock()
     fake_client_instance.buildings.get_area.return_value = fake_area
+    fake_client_instance.ground_materials.get_area.return_value = fake_gm
+    fake_client_instance.weather.get_weather_file_from_location.return_value = [
+        {"uuid": "fake-weather-uuid"}
+    ]
+    fake_client_instance.weather.filter_weather_data.return_value = []
     fake_client_instance.run_area_and_wait.return_value = fake_result
     # Support context manager protocol
     fake_client_instance.__enter__ = MagicMock(return_value=fake_client_instance)
@@ -76,10 +90,27 @@ def _make_fake_infrared_sdk() -> types.ModuleType:
     fake_analyses_mod = types.ModuleType("infrared_sdk.analyses")
     fake_analyses_types_mod = types.ModuleType("infrared_sdk.analyses.types")
     fake_analyses_types_mod.AnalysesName = fake_analyses_name
+    fake_analyses_types_mod.UtciModelRequest = MagicMock()
+    fake_analyses_types_mod.UtciModelRequest.from_weatherfile_payload.return_value = "fake-payload"
+    fake_analyses_types_mod.UtciModelBaseRequest = MagicMock()
     fake_sdk.analyses = fake_analyses_mod
     fake_analyses_mod.types = fake_analyses_types_mod
 
+    # infrared_sdk.models sub-module (TimePeriod, Location)
+    fake_models_mod = types.ModuleType("infrared_sdk.models")
+    fake_models_mod.TimePeriod = MagicMock()
+    fake_models_mod.Location = MagicMock()
+    fake_sdk.models = fake_models_mod
+
     return fake_sdk, fake_client_instance
+
+
+def _install_fake_sdk(fake_sdk) -> None:
+    """Register the fake SDK module tree into sys.modules (incl. .models)."""
+    sys.modules["infrared_sdk"] = fake_sdk
+    sys.modules["infrared_sdk.analyses"] = fake_sdk.analyses
+    sys.modules["infrared_sdk.analyses.types"] = fake_sdk.analyses.types
+    sys.modules["infrared_sdk.models"] = fake_sdk.models
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -163,9 +194,7 @@ def test_live_calls_sdk_and_caches(
 
     # Inject fake infrared_sdk
     fake_sdk, fake_client = _make_fake_infrared_sdk()
-    sys.modules["infrared_sdk"] = fake_sdk
-    sys.modules["infrared_sdk.analyses"] = fake_sdk.analyses
-    sys.modules["infrared_sdk.analyses.types"] = fake_sdk.analyses.types
+    _install_fake_sdk(fake_sdk)
 
     result = sdk.get_baseline_utci(LIVE_GEOMETRY)
 
@@ -173,7 +202,7 @@ def test_live_calls_sdk_and_caches(
     assert result.backend == "live"
     assert result.utci_c == round(FAKE_GRID_MEAN, 2)
     assert result.metric == "utci_at_1.1m"
-    assert result.disclaimer == "LIVE Infrared SDK result"
+    assert "LIVE Infrared SDK result" in result.disclaimer
     assert "run_area_and_wait" in result.source
 
     # Verify cache file was written
@@ -197,9 +226,7 @@ def test_cached_replays_live_result(
     monkeypatch.setattr(sdk, "CACHE_DIR", tmp_path)
 
     fake_sdk, _ = _make_fake_infrared_sdk()
-    sys.modules["infrared_sdk"] = fake_sdk
-    sys.modules["infrared_sdk.analyses"] = fake_sdk.analyses
-    sys.modules["infrared_sdk.analyses.types"] = fake_sdk.analyses.types
+    _install_fake_sdk(fake_sdk)
 
     live_result = sdk.get_baseline_utci(LIVE_GEOMETRY)
 
@@ -241,9 +268,7 @@ def test_key_never_logged(
     monkeypatch.setattr(sdk, "CACHE_DIR", tmp_path)
 
     fake_sdk, _ = _make_fake_infrared_sdk()
-    sys.modules["infrared_sdk"] = fake_sdk
-    sys.modules["infrared_sdk.analyses"] = fake_sdk.analyses
-    sys.modules["infrared_sdk.analyses.types"] = fake_sdk.analyses.types
+    _install_fake_sdk(fake_sdk)
 
     with caplog.at_level(logging.DEBUG, logger="coolspend.sdk_client"):
         sdk.get_baseline_utci(LIVE_GEOMETRY)

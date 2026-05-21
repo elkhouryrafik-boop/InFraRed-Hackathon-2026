@@ -72,8 +72,10 @@ N_TREES: int = 12
 DEFAULT_BUDGET_EUR: float = 1_000_000.0
 """Default planting budget in euros ("one million euros for canopy")."""
 
-SPECIES: tuple[str, ...] = ("platanus", "celtis", "tilia", "quercus")
-"""Species palette cycled round-robin per slot index."""
+from coolspend.bcn_species import SPECIES_TABLE as _BCN_SPECIES  # noqa: E402
+SPECIES: tuple[str, ...] = tuple(s.scientific for s in _BCN_SPECIES)
+"""Real Barcelona street-tree palette (scientific names from arbrat-viari top species,
+see coolspend.bcn_species). Cycled round-robin per slot index."""
 
 SEED: int = 42
 """Deterministic seed — pins the Pareto front across runs with identical problem."""
@@ -360,10 +362,24 @@ def _config_to_geometry(cfg: dict) -> dict:
         list(local_m_to_latlon(0.0, 0.0)),   # closed ring
     ]
 
+    # Per-tree lon/lat + species — injected as Infrared vegetation Points on the
+    # live backend (the marginal cooling vs the bare baseline is what we measure).
+    # SPATIAL-03: local_m_to_latlon is the single CRS boundary; do NOT convert
+    # coordinates anywhere else. The mock backend ignores this key.
+    trees_lonlat = []
+    for t in active:
+        lon, lat = local_m_to_latlon(float(t["x_m"]), float(t["y_m"]))
+        trees_lonlat.append({
+            "lon": round(lon, 8),
+            "lat": round(lat, 8),
+            "species": t.get("species", "platanus"),
+        })
+
     return {
         "width_m": round(width_m, 2),
         "coverage_fraction": round(coverage_fraction, 4),
         "polygon_lonlat": polygon_lonlat,
+        "trees_lonlat": trees_lonlat,
         "tree_count": cfg.get("tree_count", len(active)),
     }
 
@@ -404,6 +420,7 @@ def _build_baseline_geometry() -> dict:
         "coverage_fraction": 0.0,
         "tree_count": 0,
         "polygon_lonlat": polygon_lonlat,
+        "trees_lonlat": [],   # bare baseline — no vegetation injected (live path)
     }
 
 

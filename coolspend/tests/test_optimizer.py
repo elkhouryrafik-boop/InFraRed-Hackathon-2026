@@ -42,8 +42,14 @@ from coolspend.spatial_engine import is_valid_location, load_site
 
 @pytest.fixture(scope="module")
 def small_result():
-    """Run a small optimisation once for the whole module (shared, fast)."""
-    return run_optimisation(n_gen=20, pop_size=30, seed=42)
+    """Run a small optimisation once for the whole module (shared, fast).
+
+    pop_size=40: the real 12-species Barcelona palette (bcn_species) gives a more
+    granular ecological-diversity landscape than the old 4-name palette, so a
+    slightly larger population is needed to reliably surface >=10 distinct Pareto
+    configs. Still well under the suite time budget.
+    """
+    return run_optimisation(n_gen=20, pop_size=40, seed=42)
 
 
 @pytest.fixture(scope="module")

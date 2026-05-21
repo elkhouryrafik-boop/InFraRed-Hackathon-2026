@@ -99,6 +99,12 @@ class UTCIResult:
     geometry_hash: str
     disclaimer: str
     source: str
+    # Spatial value primitive (live grid only; None for mock/scalar backends).
+    # heat_stress_area_m2: ground area (m², 1 m² per cell) where UTCI exceeds the
+    # strong-heat-stress threshold (32 °C). Baseline minus intervention = the
+    # m² of heat-stress pavement a placement removes — the headline value metric.
+    heat_stress_area_m2: float | None = None
+    grid_cells_total: int | None = None  # non-NaN cells in the merged grid
 
     def to_dict(self) -> dict[str, Any]:
         """Serialise to a JSON-safe dict."""
@@ -198,9 +204,91 @@ def _mock_intervention_utci(geometry: dict) -> UTCIResult:
 
 # ── Live Infrared backend ─────────────────────────────────────────────────────
 
+# Single-month daytime summer window for the UTCI run. UTCI/TCS require a
+# single-month TimePeriod (server sun_vectors generator does not honour multi-
+# month windows — see skill 03-time-period.md). July 09:00–17:00 = Barcelona
+# peak-heat daytime, the window where shade matters for pedestrian comfort.
+UTCI_TIME_PERIOD: dict[str, int] = {
+    "start_month": 7, "start_day": 1, "start_hour": 9,
+    "end_month": 7, "end_day": 31, "end_hour": 17,
+}
+
+# Valid Infrared ground-material names (byo-inputs.md). The fetch may return
+# extra keys (e.g. 'building') that are NOT materials; only these reach the run.
+_VALID_GROUND_MATERIALS: frozenset[str] = frozenset(
+    {"asphalt", "concrete", "soil", "vegetation", "water"}
+)
+
+# Heat-stress threshold for the live AREA metric, on the official UTCI assessment
+# scale (>26 = moderate, >32 = strong heat stress). We use 26 °C (moderate) here
+# because the Infrared UTCI map is AGGREGATED over the July 09–17 window — a
+# window-mean surface that compresses instantaneous peaks (empirically maxes
+# ~31 °C on a sun-exposed Barcelona block), so a >32 area is ~0 and useless as a
+# metric. heat_stress_area_m2 therefore = ground area in AT-LEAST-MODERATE heat
+# stress on the aggregate map. HONEST DIVERGENCE: the surrogate objective is
+# instantaneous hours>32 °C (EPW, nature_metrics.utci_hours_above); the truly
+# dimensionally-matched live validation is the TCS (thermal-comfort-statistics)
+# per-cell hour count — documented as the rigorous upgrade (MOCKS.md).
+UTCI_HEAT_STRESS_C: float = 26.0
+
+# Fallback crown diameter (m) when a tree's species is not in the BCN species
+# table — pinned to 2 × TREE_CANOPY_RADIUS_M (surrogate's representative footprint).
+def _fallback_crown_diameter_m() -> float:
+    from coolspend.spatial_engine import TREE_CANOPY_RADIUS_M  # noqa: PLC0415
+    return 2.0 * float(TREE_CANOPY_RADIUS_M)
+
+_DEFAULT_SPECIES_HEIGHT_M: float = 12.0
+
+# In-process fetch caches (one live calibration run = one process). Keyed so the
+# site context (buildings, ground materials) and weather are fetched ONCE and
+# reused across every config in the run — they are identical for a fixed site.
+# These hold network-fetched INPUTS only; the metered UTCI sim output is cached
+# to disk separately via _dispatch.
+_AREA_CTX_CACHE: dict[str, tuple] = {}   # polygon-hash -> (buildings, ground_layers)
+_WEATHER_CACHE: dict[str, list] = {}     # "lat,lon" -> weather_data list
+
+
+def _trees_to_vegetation(trees_lonlat: list[dict]) -> dict[str, dict]:
+    """Convert placed trees to Infrared vegetation Features (GeoJSON Points).
+
+    Each tree dict has lon, lat, species (scientific name). Properties use the SAME
+    keys real OSM trees carry (natural, species, height, diameter_crown) so the
+    inference layer dimensions the crown correctly (byo-inputs.md). Per-species crown
+    + height come from the REAL Barcelona species table (bcn_species, Verd Urbà
+    bands) — so each species has its real footprint, not a single guess. Unknown
+    species fall back to the surrogate's representative crown. Empty input -> {}
+    (skip injection = bare baseline).
+    """
+    from coolspend.bcn_species import get_species  # noqa: PLC0415
+
+    fallback_crown = _fallback_crown_diameter_m()
+    veg: dict[str, dict] = {}
+    for i, t in enumerate(trees_lonlat):
+        sp_name = t.get("species") or ""
+        sp = get_species(sp_name)
+        if sp is not None:
+            crown_d = sp.crown_diameter_m
+            height = sp.height_m
+            sci = sp.scientific
+        else:
+            crown_d = fallback_crown
+            height = _DEFAULT_SPECIES_HEIGHT_M
+            sci = sp_name or "Platanus x acerifolia"
+        veg[f"placed_{i}"] = {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [t["lon"], t["lat"]]},
+            "properties": {
+                "natural": "tree",
+                "species": sci,
+                "height": round(float(height), 1),
+                "diameter_crown": round(float(crown_d), 2),
+            },
+        }
+    return veg
+
 
 def _live_utci(metric_key: str, geometry: dict) -> "UTCIResult":
-    """Call the real Infrared SDK and return a live UTCIResult.
+    """Call the real Infrared UTCI (thermal-comfort-index) API and return a UTCIResult.
 
     Imports infrared_sdk LAZILY (inside this function only) so importing
     coolspend.sdk_client never requires the SDK to be installed — the offline
@@ -210,106 +298,165 @@ def _live_utci(metric_key: str, geometry: dict) -> "UTCIResult":
     internally; we validate its presence here but NEVER log it, include it in any
     string, or write it to disk.
 
-    Coordinate policy (T-02-10 / SPATIAL-03): polygon coordinates are WGS84 lon/lat
-    only. If geometry carries a "polygon_local_m" key (list of [x_m, y_m] pairs in
-    plaza-local metres), they are converted via spatial_engine.local_m_to_latlon.
-    If geometry carries "polygon_lonlat", those are used directly. If neither key is
-    present, a ValueError is raised — callers must supply polygon coordinates.
+    METHOD (the measurement that gives each placement its value):
+      baseline geometry  (trees_lonlat == []) -> vegetation={} (bare site)
+      intervention       (trees_lonlat != []) -> placed trees injected as vegetation
+    Buildings + ground materials + weather are IDENTICAL for both (same site),
+    fetched once and cached, so the UTCI delta isolates the cooling of the trees.
+
+    Coordinate policy (SPATIAL-03): polygon + tree coords are WGS84 lon/lat.
+    geometry must carry 'polygon_lonlat'; trees in 'trees_lonlat' (lon/lat + species).
 
     Args:
         metric_key: stable metric identifier ("utci_baseline" or "utci_intervention").
-        geometry:   dict with polygon coordinates; see coordinate policy above.
+        geometry:   dict with polygon_lonlat + trees_lonlat (see coordinate policy).
 
     Returns:
-        UTCIResult with backend="live", disclaimer="LIVE Infrared SDK result".
+        UTCIResult with backend="live".
 
     Raises:
         EnvironmentError: if INFRARED_API_KEY is not set.
-        RuntimeError: if infrared_sdk package is not installed.
-        ValueError: if geometry lacks usable polygon coordinate keys.
+        RuntimeError: if infrared_sdk / numpy not installed.
+        ValueError: if geometry lacks polygon_lonlat.
     """
     # ── Key check (T-02-07) ───────────────────────────────────────────────────
     api_key = os.environ.get("INFRARED_API_KEY")
     if api_key is None:
         raise EnvironmentError(
-            "INFRARED_BACKEND=live requires INFRARED_API_KEY (issued May 27). "
+            "INFRARED_BACKEND=live requires INFRARED_API_KEY. "
             "Set INFRARED_API_KEY in your environment or .env file."
         )
     # NEVER log, format, or embed api_key in any string after this point.
 
-    # ── Lazy SDK import (CONCERNS 3.2 — offline before May 27) ───────────────
+    # ── Build WGS84 polygon (SPATIAL-03) — no SDK needed ─────────────────────
+    if "polygon_lonlat" not in geometry:
+        raise ValueError(
+            "geometry must contain 'polygon_lonlat' (list of [lon, lat] pairs) "
+            "to call the live Infrared SDK."
+        )
+    ring = [list(pair) for pair in geometry["polygon_lonlat"]]
+    if ring[0] != ring[-1]:
+        ring.append(ring[0])
+    polygon = {"type": "Polygon", "coordinates": [ring]}
+
+    # ── CRS round-trip guard (D-07): fails CLOSED before any SDK import or ────
+    # network call. Runs first so a bad ring is rejected even when the SDK is
+    # absent — the live call is genuinely unreachable past a coordinate mismatch.
+    from coolspend.spatial_engine import assert_crs_roundtrip  # noqa: PLC0415
+    assert_crs_roundtrip(ring)
+
+    # ── Lazy imports (CONCERNS 3.2 — module importable offline) ──────────────
     try:
         from infrared_sdk import InfraredClient  # noqa: PLC0415
-        from infrared_sdk.analyses.types import AnalysesName  # noqa: PLC0415
+        from infrared_sdk.analyses.types import (  # noqa: PLC0415
+            UtciModelRequest,
+            UtciModelBaseRequest,
+            AnalysesName,
+        )
+        from infrared_sdk.models import TimePeriod, Location  # noqa: PLC0415
     except ImportError as exc:
         raise RuntimeError(
             "infrared_sdk not installed — run `pip install infrared-sdk` "
             "before using INFRARED_BACKEND=live."
         ) from exc
 
-    # Lazy numpy import (same offline-safety rationale)
     try:
         import numpy as np  # noqa: PLC0415
     except ImportError as exc:
         raise RuntimeError(
-            "numpy not installed — run `pip install numpy` "
-            "before using INFRARED_BACKEND=live."
+            "numpy not installed — run `pip install numpy`."
         ) from exc
 
-    # ── Build WGS84 polygon (T-02-10 / SPATIAL-03) ───────────────────────────
-    if "polygon_lonlat" in geometry:
-        lonlat_pairs = geometry["polygon_lonlat"]
-    elif "polygon_local_m" in geometry:
-        # Convert local-metre coords to lon/lat via the single CRS boundary.
-        from coolspend.spatial_engine import local_m_to_latlon  # noqa: PLC0415
-        lonlat_pairs = [
-            list(local_m_to_latlon(x_m, y_m))
-            for x_m, y_m in geometry["polygon_local_m"]
-        ]
-    else:
-        raise ValueError(
-            "geometry must contain 'polygon_lonlat' (list of [lon, lat] pairs) "
-            "or 'polygon_local_m' (list of [x_m, y_m] pairs in plaza-local metres) "
-            "to call the live Infrared SDK."
-        )
+    # ── Location = polygon centroid (drives sun position + nearest weather) ──
+    lons = [p[0] for p in ring[:-1]]
+    lats = [p[1] for p in ring[:-1]]
+    centroid_lon = sum(lons) / len(lons)
+    centroid_lat = sum(lats) / len(lats)
 
-    # GeoJSON Polygon — ensure ring is closed (first == last point)
-    ring = [list(pair) for pair in lonlat_pairs]
-    if ring[0] != ring[-1]:
-        ring.append(ring[0])
-    polygon = {"type": "Polygon", "coordinates": [ring]}
+    poly_hash = _geometry_hash({"ring": ring})
+    weather_key = f"{round(centroid_lat, 5)},{round(centroid_lon, 5)}"
 
-    # ── CRS round-trip guard (D-07, T-05-01) ─────────────────────────────────
-    # Assert <1 m WGS84->UTM->WGS84 round-trip before calling the live API.
-    # Fails closed: CRSConsistencyError propagates out — SDK call is unreachable.
-    # Touches only geometry; INFRARED_API_KEY is never read, logged, or formatted
-    # in this code path (T-05-02).
-    from coolspend.spatial_engine import assert_crs_roundtrip  # noqa: PLC0415
-    assert_crs_roundtrip(ring)
+    tp = TimePeriod(**UTCI_TIME_PERIOD)
 
-    # ── Infrared SDK call ─────────────────────────────────────────────────────
-    # TODO (May-27 wiring): confirm the exact UTCI request class and AnalysesName
-    # member against the installed infrared_sdk version. The single variable
-    # `utci_request` below is the one-line change needed after SDK inspection.
     with InfraredClient() as client:
-        area = client.buildings.get_area(polygon)
-        utci_request = AnalysesName.utci  # confirm member name at May-27 wiring
+        # ── Site context: fetch ONCE per polygon, reuse across configs ────────
+        if poly_hash not in _AREA_CTX_CACHE:
+            area = client.buildings.get_area(polygon)
+            try:
+                gm = client.ground_materials.get_area(polygon)
+                # Keep ONLY valid Infrared material names. The fetch can return
+                # extra keys (e.g. 'building') that are not recognised materials;
+                # passing them through corrupts the UTCI surface energy balance
+                # (server warning: "unrecognised material names"). byo-inputs.md.
+                ground_layers = {
+                    k: v for k, v in gm.layers.items() if k in _VALID_GROUND_MATERIALS
+                }
+            except Exception as exc:  # ground materials optional — degrade, don't fail
+                logger.warning("ground_materials.get_area failed (%s); proceeding without", type(exc).__name__)
+                ground_layers = {}
+            _AREA_CTX_CACHE[poly_hash] = (area.buildings, ground_layers)
+        buildings, ground_layers = _AREA_CTX_CACHE[poly_hash]
+
+        # ── Weather: nearest station, single-month window, fetch once ─────────
+        if weather_key not in _WEATHER_CACHE:
+            stations = client.weather.get_weather_file_from_location(
+                lat=centroid_lat, lon=centroid_lon, radius=50,
+            )
+            if not stations:
+                raise RuntimeError(
+                    f"No Infrared weather station within 50 km of ({weather_key})."
+                )
+            weather_data = client.weather.filter_weather_data(
+                identifier=stations[0]["uuid"], time_period=tp,
+            )
+            _WEATHER_CACHE[weather_key] = weather_data
+        weather_data = _WEATHER_CACHE[weather_key]
+
+        # ── Vegetation: placed trees (intervention) or none (baseline) ────────
+        vegetation = _trees_to_vegetation(geometry.get("trees_lonlat", []))
+
+        # ── UTCI payload + run (single tile auto-detected for small sites) ────
+        payload = UtciModelRequest.from_weatherfile_payload(
+            payload=UtciModelBaseRequest(
+                analysis_type=AnalysesName.thermal_comfort_index,
+            ),
+            location=Location(latitude=centroid_lat, longitude=centroid_lon),
+            time_period=tp,
+            weather_data=weather_data,
+        )
         result = client.run_area_and_wait(
-            utci_request,
+            payload,
             polygon,
-            buildings=area.buildings,
+            buildings=buildings,
+            vegetation=vegetation,           # {} for baseline -> skipped
+            ground_materials=ground_layers,  # {} if fetch failed -> skipped
         )
 
-    # Reduce merged_grid to a site-mean scalar felt temperature
-    utci_c = float(np.mean(result.merged_grid))
+    # Reduce the merged grid. Cells outside the polygon are NaN.
+    #   utci_c              = site-mean felt temperature (conservative scalar)
+    #   heat_stress_area_m2 = ground area above the strong-heat-stress threshold;
+    #                         1 m pitch -> 1 m² per cell, so it is just the count.
+    grid = np.asarray(result.merged_grid, dtype=float)
+    utci_c = float(np.nanmean(grid))
+    valid = ~np.isnan(grid)
+    grid_cells_total = int(valid.sum())
+    # (grid > thresh) is False on NaN, so this counts only real cells above it.
+    heat_stress_cells = int(np.count_nonzero(grid > UTCI_HEAT_STRESS_C))
+    heat_stress_area_m2 = float(heat_stress_cells)  # 1 m²/cell
 
+    n_trees = len(geometry.get("trees_lonlat", []))
     return UTCIResult(
         utci_c=round(utci_c, 2),
         metric="utci_at_1.1m",
         backend="live",
         geometry_hash=_geometry_hash(geometry),
-        disclaimer="LIVE Infrared SDK result",
-        source="infrared.city SDK run_area_and_wait (UTCI)",
+        disclaimer="LIVE Infrared SDK result (thermal-comfort-index, July 09-17 window).",
+        source=(
+            f"infrared.city run_area_and_wait UTCI; {n_trees} trees as vegetation; "
+            "buildings+ground fetched from Infrared/OSM for site polygon."
+        ),
+        heat_stress_area_m2=round(heat_stress_area_m2, 1),
+        grid_cells_total=grid_cells_total,
     )
 
 
@@ -332,7 +479,9 @@ def _dispatch(metric_key: str, mock_fn, geometry: dict) -> UTCIResult:
     if backend == "cached":
         if cache_file.exists():
             raw = json.loads(cache_file.read_text(encoding="utf-8"))
-            result = UTCIResult(**{k: raw[k] for k in UTCIResult.__dataclass_fields__})
+            # .get(k) so optional fields added later (heat_stress_area_m2, ...)
+            # don't KeyError when replaying cache files written before they existed.
+            result = UTCIResult(**{k: raw.get(k) for k in UTCIResult.__dataclass_fields__})
             # Audit fix (H-2): label the replayed result as "cached" so provenance
             # is unambiguous in call logs and UI. Preserve the original backend in
             # `source` so the origin (mock or live) is still auditable.
