@@ -72,7 +72,7 @@ Plans:
 
 Plans:
 - [x] 03-01-PLAN.md — app_pipeline.run_decision (UI-agnostic pipeline wrapper + safe GeoJSON parse + visible SDK call-log) and app_viz.render_before_after (headless matplotlib before/after map) (completed 2026-05-21)
-- [ ] 03-02-PLAN.md — app.py Gradio Blocks UI: polygon + budget + TOPSIS sliders + backend selector → headline + before/after map + allocation table + call log; headless launch smoke test
+- [x] 03-02-PLAN.md — app.py Gradio Blocks UI: polygon + budget + TOPSIS sliders + backend selector → headline + before/after map + allocation table + call log; headless launch smoke test (completed 2026-05-21)
 - [ ] 03-03-PLAN.md — HF Spaces deployability: pinned requirements.txt + README Spaces header + deploy/mock-vs-live steps + dependency-contract test
 
 **UI hint**: yes
@@ -98,5 +98,5 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Foundation & SDK Boundary | 3/3 | Complete    | 2026-05-21 |
 | 2. Optimizer Core | 5/5 | Complete    | 2026-05-21 |
-| 3. Web App & Decision UI | 1/3 | In progress | - |
+| 3. Web App & Decision UI | 2/3 | In progress | - |
 | 4. Ship | 0/TBD | Not started | - |

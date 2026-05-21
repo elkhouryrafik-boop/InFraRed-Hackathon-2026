@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 03-01-PLAN.md — app_pipeline.run_decision + app_viz.render_before_after, 99 tests green, APP-01 call-log capture implemented
-last_updated: "2026-05-21T11:00:00.000Z"
+stopped_at: Completed 03-02-PLAN.md — Gradio Blocks UI (app.py + test_app.py), 102 tests green, APP-01 delivered
+last_updated: "2026-05-21T01:48:22Z"
 last_activity: 2026-05-21
 progress:
   total_phases: 4
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-21)
 ## Current Position
 
 Phase: 03
-Plan: 01 complete, 02 next
+Plan: 02 complete, 03 next
 Status: In progress
 Last activity: 2026-05-21
 
@@ -61,6 +61,7 @@ Progress: [█████████░] 90% (Phase 02 complete + Phase 03 Pla
 | Phase 02-optimizer-core P02-04 | 25m | 3 tasks | 2 files |
 | Phase 02-optimizer-core P02-05 | 25m | 3 tasks | 6 files |
 | Phase 03-web-app-decision-ui P03-01 | 5m | 2 tasks | 4 files |
+| Phase 03-web-app-decision-ui P03-02 | 4m | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -105,6 +106,9 @@ Recent decisions affecting current work:
 - 03-01: sdk_client logger level temporarily set to INFO for call-log capture (root logger at WARNING suppresses INFO by default)
 - 03-01: parse_site_geojson raises ValueError on invalid input; run_decision catches and sets error field (clean separation)
 - 03-01: render_before_after accepts before_after dict with chosen_validated_utci_c and headline_delta_utci_c matching run_decision contract
+- 03-02: build_demo() factory separates Blocks construction from launch — tests import without side effects
+- 03-02: gradio 4.44.1 requires huggingface_hub <1.0 (HfFolder removed in 1.x) — pinned to 0.36.2
+- 03-02: test_headless_launch_smoke skips on httpx.ConnectError (Gradio 4.x health-check ping fails on Windows with server_port=0)
 
 ### Pending Todos
 

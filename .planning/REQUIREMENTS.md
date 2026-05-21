@@ -41,7 +41,7 @@ Scope for the infrared.city Buildathon (Tree Budget track). v1 = what we demo Ma
 - [x] **DEC-02**: Emit a before/after comparison (baseline UTCI vs chosen intervention) with the headline delta.
 
 ### Web App
-- [ ] **APP-01**: Gradio app takes a polygon + budget and returns the allocation table + before/after map.
+- [x] **APP-01**: Gradio app takes a polygon + budget and returns the allocation table + before/after map.
 - [ ] **APP-02**: Deployable to Hugging Face Spaces; real API calls visible/loggable in the demo.
 
 ### Ship
@@ -81,7 +81,7 @@ Scope for the infrared.city Buildathon (Tree Budget track). v1 = what we demo Ma
 | OPT-03 | Phase 2 — Optimizer Core | Complete |
 | DEC-01 | Phase 2 — Optimizer Core | Complete (02-05) |
 | DEC-02 | Phase 2 — Optimizer Core | Complete (02-05) |
-| APP-01 | Phase 3 — Web App & Decision UI | Pending |
+| APP-01 | Phase 3 — Web App & Decision UI | Complete (03-02) |
 | APP-02 | Phase 3 — Web App & Decision UI | Pending |
 | SHIP-01 | Phase 4 — Ship | Pending |
 | SHIP-02 | Phase 4 — Ship | Pending |
