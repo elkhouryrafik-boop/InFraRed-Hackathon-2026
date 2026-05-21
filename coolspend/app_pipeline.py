@@ -1,0 +1,353 @@
+"""
+coolspend/app_pipeline.py — UI-agnostic pipeline wrapper for CoolSpend.
+
+Provides run_decision() — a single callable that drives the full pipeline
+(optimize -> validate Top-3 -> TOPSIS) and returns a structured result dict
+suitable for any UI layer (Gradio, CLI, tests).
+
+Key contracts:
+  - Fully offline on INFRARED_BACKEND=mock (no API key required)
+  - Safe GeoJSON parsing via json.loads ONLY (never eval/exec) — T-03-01
+  - Every Infrared SDK call is captured into call_log via a logging.Handler
+    attached to coolspend.sdk_client logger for the duration of the run
+  - SimBudget(max_live_calls=3) caps live Infrared calls per run — T-03-02
+  - INFRARED_API_KEY is never read, logged, or returned — T-03-03
+  - Honesty: mock backend always surfaces "NOT MEASURED DATA" in disclaimer
+  - Deterministic: seed 42 through the pipeline; identical args -> identical output
+
+Public API:
+  parse_site_geojson(text) -> str | None   (path to temp .geojson, or None)
+  run_decision(...)        -> dict          (structured result)
+"""
+from __future__ import annotations
+
+import json
+import logging
+import os
+import tempfile
+from pathlib import Path
+
+from coolspend.optimizer import (
+    DEFAULT_BUDGET_EUR,
+    run_optimisation,
+    select_top3,
+    topsis_rank,
+    validate_top3_with_infrared,
+)
+from coolspend.sdk_client import SimBudget
+from coolspend.spatial_engine import DEFAULT_SITE
+
+logger = logging.getLogger(__name__)
+
+
+# ── Logging capture handler ───────────────────────────────────────────────────
+
+
+class _CaptureHandler(logging.Handler):
+    """Append each log record's message to a provided list (no formatting)."""
+
+    def __init__(self, target_list: list[str]) -> None:
+        super().__init__(level=logging.DEBUG)
+        self._target = target_list
+
+    def emit(self, record: logging.LogRecord) -> None:  # type: ignore[override]
+        try:
+            self._target.append(record.getMessage())
+        except Exception:  # noqa: BLE001
+            pass  # never let logging machinery crash the pipeline
+
+
+# ── GeoJSON parsing ───────────────────────────────────────────────────────────
+
+
+def parse_site_geojson(text: str | None) -> str | None:
+    """Parse user-supplied GeoJSON text and write it to a temporary file.
+
+    Accepts:
+    - A FeatureCollection with a feature having properties.kind == "site_boundary"
+    - A bare {"type": "Polygon", ...} geometry — wrapped into a minimal FeatureCollection
+
+    On valid input: writes a temp .geojson and returns its path string.
+    On invalid/empty input: returns None.
+
+    SECURITY: uses json.loads ONLY — never eval or exec (T-03-01).
+
+    Args:
+        text: GeoJSON string from the user. None or empty returns None.
+
+    Returns:
+        Path string to a temporary .geojson file, or None if invalid/empty.
+
+    Raises:
+        ValueError: with a short human-readable message for truly unparseable input
+                    so the caller can convert it to the error field.
+    """
+    if not text or not text.strip():
+        return None
+
+    try:
+        data = json.loads(text)  # ONLY safe parse — NEVER eval/exec (T-03-01)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON: {exc}") from exc
+
+    if not isinstance(data, dict):
+        raise ValueError("GeoJSON must be a JSON object (dict)")
+
+    geojson_type = data.get("type")
+
+    if geojson_type == "FeatureCollection":
+        # Validate that at least one feature has kind == "site_boundary"
+        features = data.get("features", [])
+        has_boundary = any(
+            f.get("properties", {}).get("kind") == "site_boundary"
+            for f in features
+            if isinstance(f, dict)
+        )
+        if not has_boundary:
+            raise ValueError(
+                "GeoJSON FeatureCollection has no feature with properties.kind='site_boundary'"
+            )
+        fc = data
+
+    elif geojson_type == "Polygon":
+        # Wrap bare Polygon into a minimal FeatureCollection
+        fc = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "kind": "site_boundary",
+                        "name": "User-supplied site boundary",
+                        "note": "Wrapped from bare Polygon by app_pipeline.parse_site_geojson",
+                    },
+                    "geometry": data,
+                }
+            ],
+        }
+
+    else:
+        raise ValueError(
+            f"Unsupported GeoJSON type {geojson_type!r}. "
+            "Expected 'FeatureCollection' or 'Polygon'."
+        )
+
+    # Write to a temp file; caller is responsible for cleanup if desired
+    tmp = tempfile.NamedTemporaryFile(
+        suffix=".geojson", mode="w", encoding="utf-8", delete=False
+    )
+    try:
+        json.dump(fc, tmp, ensure_ascii=False)
+        tmp.flush()
+        return tmp.name
+    finally:
+        tmp.close()
+
+
+# ── Pipeline ──────────────────────────────────────────────────────────────────
+
+
+def run_decision(
+    budget_eur: float = DEFAULT_BUDGET_EUR,
+    weights: tuple[float, float] = (0.6, 0.4),
+    geojson_text: str | None = None,
+    backend: str = "mock",
+) -> dict:
+    """Drive the full CoolSpend pipeline and return a structured result dict.
+
+    Pipeline: optimize (NSGA-II) -> validate Top-3 (mock/live) -> TOPSIS rank
+
+    Args:
+        budget_eur:   Planting budget in EUR (default: 1 000 000).
+        weights:      TOPSIS weight tuple (w_thermal, w_ecological). These are
+                      user-adjustable sliders per CONCERNS 1.6 / APP-01 — not
+                      calibrated constants.
+        geojson_text: Optional GeoJSON string from user UI. None -> use default
+                      bundled site fixture (angels_site.geojson).
+        backend:      "mock" | "cached" | "live". Sets INFRARED_BACKEND env var
+                      for the duration of this call only. Never reads/sets
+                      INFRARED_API_KEY (T-03-03).
+
+    Returns:
+        {
+          "configurations":  list[dict],   # ranked Top-3 from topsis_rank()
+          "before_after":    dict,          # baseline/chosen/headline_delta_utci_c
+          "headline":        str,           # human summary string
+          "backend":         str,           # backend used ("mock"|"cached"|"live")
+          "disclaimer":      str,           # honesty notice (NOT MEASURED DATA for mock)
+          "call_log":        list[str],     # all SDK calls captured during this run
+          "site_path":       str | None,    # path used for load_site (None = default)
+          "error":           str | None,    # set iff pipeline failed; configs=[] then
+        }
+
+    Security:
+        - T-03-01: GeoJSON parsed via json.loads only (no eval)
+        - T-03-02: SimBudget(max_live_calls=3) caps live Infrared calls
+        - T-03-03: INFRARED_API_KEY never accessed here
+    """
+    call_log: list[str] = []
+    site_path: str | None = None
+
+    # ── Step 0: Parse GeoJSON (if supplied) ──────────────────────────────────
+    geojson_error: str | None = None
+    if geojson_text is not None:
+        try:
+            site_path = parse_site_geojson(geojson_text)
+        except ValueError as exc:
+            geojson_error = str(exc)
+        except Exception as exc:  # noqa: BLE001
+            geojson_error = f"GeoJSON parse error: {exc}"
+
+        if geojson_error is not None:
+            return {
+                "configurations": [],
+                "before_after": {},
+                "headline": "",
+                "backend": backend,
+                "disclaimer": "",
+                "call_log": [],
+                "site_path": None,
+                "error": geojson_error,
+            }
+
+    # ── Step 1: Attach SDK call-log capture handler ──────────────────────────
+    # SimBudget.record() logs at INFO level. The sdk_client logger inherits
+    # from the root logger whose effective level may be WARNING (common default).
+    # We temporarily lower sdk_logger's level to INFO so records propagate to
+    # our capture handler, then restore the original level in the finally block.
+    sdk_logger = logging.getLogger("coolspend.sdk_client")
+    prior_sdk_level = sdk_logger.level   # may be NOTSET (0) — restore exactly
+    sdk_logger.setLevel(logging.INFO)
+    capture_handler = _CaptureHandler(call_log)
+    sdk_logger.addHandler(capture_handler)
+
+    # ── Step 2: Flip INFRARED_BACKEND for the duration of this call ──────────
+    prior_backend = os.environ.get("INFRARED_BACKEND")
+    os.environ["INFRARED_BACKEND"] = backend
+
+    try:
+        return _run_pipeline(
+            budget_eur=budget_eur,
+            weights=weights,
+            site_path=site_path,
+            backend=backend,
+            call_log=call_log,
+        )
+    finally:
+        # Always remove capture handler and restore logger level + env regardless of outcome
+        sdk_logger.removeHandler(capture_handler)
+        sdk_logger.setLevel(prior_sdk_level)  # restore (may set back to NOTSET)
+        if prior_backend is None:
+            os.environ.pop("INFRARED_BACKEND", None)
+        else:
+            os.environ["INFRARED_BACKEND"] = prior_backend
+
+
+def _run_pipeline(
+    budget_eur: float,
+    weights: tuple[float, float],
+    site_path: str | None,
+    backend: str,
+    call_log: list[str],
+) -> dict:
+    """Internal pipeline runner. Wrapped in try/except by run_decision caller.
+
+    Returns the structured result dict on success, or an error dict on failure.
+    Never raises (all exceptions are caught and returned as error strings).
+    """
+    try:
+        # Stage 1: NSGA-II on surrogate (seed 42, zero live SDK calls)
+        result = run_optimisation(budget_eur=budget_eur)
+
+        # Stage 2: Select Top-3 Pareto representatives
+        top3 = select_top3(result)
+
+        # Stage 3: Validate Top-3 with Infrared SDK (SimBudget-capped at 3 calls)
+        budget = SimBudget(max_live_calls=3)
+        top3 = validate_top3_with_infrared(top3, budget=budget)
+
+        # Stage 4: TOPSIS rank by EUR/degC KPI
+        top3 = topsis_rank(top3, weights=weights)
+
+        # Stage 5: Build structured result
+        rank1 = top3[0]  # best EUR/degC after topsis_rank
+
+        before_after = _build_before_after(rank1)
+        headline = _build_headline(rank1, before_after)
+        disclaimer = _build_disclaimer(rank1, backend)
+
+        return {
+            "configurations": top3,
+            "before_after": before_after,
+            "headline": headline,
+            "backend": backend,
+            "disclaimer": disclaimer,
+            "call_log": list(call_log),  # snapshot of captured log entries
+            "site_path": site_path,
+            "error": None,
+        }
+
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("run_decision pipeline failed: %s", exc)
+        return {
+            "configurations": [],
+            "before_after": {},
+            "headline": "",
+            "backend": backend,
+            "disclaimer": "",
+            "call_log": list(call_log),
+            "site_path": site_path,
+            "error": f"Pipeline error: {exc}",
+        }
+
+
+# ── Result builders ───────────────────────────────────────────────────────────
+
+
+def _build_before_after(rank1: dict) -> dict:
+    """Build the before/after comparison dict from the rank-1 config.
+
+    All values read directly from validated config fields — nothing fabricated.
+    """
+    return {
+        "baseline_utci_c": rank1.get("baseline_utci_c"),
+        "chosen_label": rank1.get("label"),
+        "chosen_validated_utci_c": rank1.get("validated_utci_c"),
+        "headline_delta_utci_c": rank1.get("delta_utci_c"),
+        "source": rank1.get("validated_disclaimer", rank1.get("validated_backend", "")),
+        "note": "before = baseline UTCI; after = rank-1 intervention validated UTCI",
+    }
+
+
+def _build_headline(rank1: dict, before_after: dict) -> str:
+    """Build the human-readable headline string from rank-1 config.
+
+    Format: "Spend EUR {cost:,.0f} -> cools the plaza {delta:.2f} degC -- plant these {n} locations."
+
+    If cost_per_utci_degree value is None, notes KPI unavailable but still
+    renders the delta + tree count. Does not fabricate any value.
+    """
+    cost_eur = rank1.get("cost_eur", 0.0) or 0.0
+    delta = before_after.get("headline_delta_utci_c") or 0.0
+    n = rank1.get("tree_count", 0)
+    kpi = rank1.get("cost_per_utci_degree", {}).get("value")
+
+    base = f"Spend EUR {cost_eur:,.0f} -> cools the plaza {delta:.2f} degC -- plant these {n} locations."
+    if kpi is None:
+        base += " (KPI unavailable: non-positive delta)"
+    return base
+
+
+def _build_disclaimer(rank1: dict, backend: str) -> str:
+    """Build the honesty disclaimer for the run result.
+
+    For mock backend: always includes "NOT MEASURED DATA" verbatim (APP-01).
+    For live backend: uses the validated_disclaimer from the rank-1 config.
+    """
+    if backend == "mock":
+        return (
+            "NOT MEASURED DATA — results are synthetic mock values for UI integration only. "
+            "SURROGATE-DERIVED delta_tmrt with ±4°C uncertainty. "
+            "Use INFRARED_BACKEND=live with a real API key for measured UTCI."
+        )
+    return rank1.get("validated_disclaimer", f"Backend: {backend}")
