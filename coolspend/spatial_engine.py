@@ -86,8 +86,11 @@ class CRSConsistencyError(RuntimeError):
 # The NSGA-II optimizer reads these module-level values for its decision-variable
 # bounds — they automatically follow whatever polygon was last set. (D-06)
 
-SITE_WIDTH_M: float = 60.0       # E-W extent in metres; updated per-site by set_site_origin_from_polygon
-SITE_DEPTH_M: float = 42.0       # N-S usable extent in metres; updated per-site
+_DEFAULT_SITE_WIDTH_M: float = 60.0  # immutable default E-W extent (Plaça dels Àngels), metres
+_DEFAULT_SITE_DEPTH_M: float = 42.0  # immutable default N-S extent (Plaça dels Àngels), metres
+
+SITE_WIDTH_M: float = _DEFAULT_SITE_WIDTH_M  # E-W extent in metres; updated per-site by set_site_origin_from_polygon
+SITE_DEPTH_M: float = _DEFAULT_SITE_DEPTH_M  # N-S usable extent in metres; updated per-site
 SITE_ORIGIN_LON: float = 2.1670  # WGS84 longitude — DEFAULT fallback (Plaça dels Àngels centroid)
 SITE_ORIGIN_LAT: float = 41.3826 # WGS84 latitude  — DEFAULT fallback (Plaça dels Àngels centroid)
 HERITAGE_BUFFER_M: float = 5.0   # MACBA north-edge no-tree buffer, metres
@@ -154,6 +157,43 @@ def set_site_origin_from_polygon(
     _CORE_RECT_CACHE.clear()
 
     return SITE_WIDTH_M, SITE_DEPTH_M
+
+
+def reset_site_origin() -> None:
+    """Reset the per-site UTM origin + extents to the default (uninitialized) state.
+
+    Restores SITE_WIDTH_M/SITE_DEPTH_M to their module defaults, clears the stored
+    UTM origin, and marks the origin uninitialized so the next coordinate conversion
+    lazily re-loads the default angels_site.geojson (see _ensure_origin_initialized).
+
+    Why this exists (D-06 follow-up): the per-site origin is mutable module state.
+    Without an explicit reset, processing site A then site B in one process — or one
+    test after another — leaves stale extents that silently corrupt the next caller's
+    frame. Call this between sites in a multi-site run, and it is invoked autouse before
+    every test (coolspend/tests/conftest.py) to guarantee deterministic test isolation.
+    """
+    global _SITE_ORIGIN_E, _SITE_ORIGIN_N, SITE_WIDTH_M, SITE_DEPTH_M, _ORIGIN_INITIALIZED
+    _SITE_ORIGIN_E = None
+    _SITE_ORIGIN_N = None
+    SITE_WIDTH_M = _DEFAULT_SITE_WIDTH_M
+    SITE_DEPTH_M = _DEFAULT_SITE_DEPTH_M
+    _ORIGIN_INITIALIZED = False
+    _SITE_RECT_CACHE.clear()
+    _CORE_RECT_CACHE.clear()
+
+
+def ensure_site_origin() -> None:
+    """Public: guarantee the site origin + extents are initialized before use.
+
+    Callers that read SITE_WIDTH_M/SITE_DEPTH_M (e.g. the NSGA-II optimizer building
+    its decision-variable bounds) MUST call this first so the active-site extents are
+    stable for the whole run. Without it, the first coordinate conversion could lazily
+    change the extents MID-run, desyncing the optimizer's bounds from the geometry
+    frame and making the surrogate result depend on init timing (non-deterministic).
+
+    Idempotent — does nothing if the origin is already initialized.
+    """
+    _ensure_origin_initialized()
 
 
 def _ensure_origin_initialized() -> None:

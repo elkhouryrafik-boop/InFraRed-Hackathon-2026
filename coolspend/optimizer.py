@@ -46,15 +46,18 @@ from pymoo.operators.sampling.rnd import FloatRandomSampling
 from pymoo.termination import get_termination
 from pymoo.optimize import minimize
 
+from coolspend import spatial_engine as _se
 from coolspend.spatial_engine import (
     core_weighted_coverage_fraction,
     is_valid_location,
     local_m_to_latlon,
     thermal_relief,
-    SITE_WIDTH_M,
-    SITE_DEPTH_M,
     TREE_CANOPY_RADIUS_M,
 )
+# NOTE: SITE_WIDTH_M / SITE_DEPTH_M are per-site MUTABLE module state in spatial_engine
+# (set by set_site_origin_from_polygon / lazy init). They MUST be read dynamically via
+# `_se.SITE_WIDTH_M` — never `from ... import SITE_WIDTH_M`, which would freeze the
+# import-time value (60x42) and ignore the active site's real UTM extents (defeats D-06).
 from coolspend.rules_engine import ecological_score
 from coolspend.cost_model import total_cost
 
@@ -138,7 +141,7 @@ class TreeBudgetProblem(ElementwiseProblem):
 
     def __init__(self, budget_eur: float = DEFAULT_BUDGET_EUR) -> None:
         xl = np.zeros(2 * N_TREES)
-        xu = np.tile([SITE_WIDTH_M, SITE_DEPTH_M], N_TREES)
+        xu = np.tile([_se.SITE_WIDTH_M, _se.SITE_DEPTH_M], N_TREES)
         super().__init__(n_var=2 * N_TREES, n_obj=2, n_ieq_constr=1, xl=xl, xu=xu)
         self.budget_eur = budget_eur
 
@@ -187,6 +190,13 @@ def run_optimisation(
     Returns:
         pymoo Result object.  result.F: objective matrix, result.X: decision vars.
     """
+    # Pin the site frame BEFORE constructing the problem so the decision-variable
+    # bounds ([0, SITE_WIDTH_M] x [0, SITE_DEPTH_M]) and the surrogate geometry use the
+    # same, stable per-site extents for the whole run. Without this, lazy origin-init
+    # could change the extents mid-run, desyncing bounds from geometry and making the
+    # surrogate result depend on init timing (non-determinism — see conftest/CRS notes).
+    _se.ensure_site_origin()
+
     problem = TreeBudgetProblem(budget_eur=budget_eur)
 
     algorithm = NSGA2(
@@ -344,9 +354,9 @@ def _config_to_geometry(cfg: dict) -> dict:
     # Site boundary polygon in lon/lat (SPATIAL-03 — single CRS conversion point)
     polygon_lonlat = [
         list(local_m_to_latlon(0.0, 0.0)),
-        list(local_m_to_latlon(SITE_WIDTH_M, 0.0)),
-        list(local_m_to_latlon(SITE_WIDTH_M, SITE_DEPTH_M)),
-        list(local_m_to_latlon(0.0, SITE_DEPTH_M)),
+        list(local_m_to_latlon(_se.SITE_WIDTH_M, 0.0)),
+        list(local_m_to_latlon(_se.SITE_WIDTH_M, _se.SITE_DEPTH_M)),
+        list(local_m_to_latlon(0.0, _se.SITE_DEPTH_M)),
         list(local_m_to_latlon(0.0, 0.0)),   # closed ring
     ]
 
@@ -384,9 +394,9 @@ def _build_baseline_geometry() -> dict:
     """
     polygon_lonlat = [
         list(local_m_to_latlon(0.0, 0.0)),
-        list(local_m_to_latlon(SITE_WIDTH_M, 0.0)),
-        list(local_m_to_latlon(SITE_WIDTH_M, SITE_DEPTH_M)),
-        list(local_m_to_latlon(0.0, SITE_DEPTH_M)),
+        list(local_m_to_latlon(_se.SITE_WIDTH_M, 0.0)),
+        list(local_m_to_latlon(_se.SITE_WIDTH_M, _se.SITE_DEPTH_M)),
+        list(local_m_to_latlon(0.0, _se.SITE_DEPTH_M)),
         list(local_m_to_latlon(0.0, 0.0)),   # closed ring
     ]
     return {
