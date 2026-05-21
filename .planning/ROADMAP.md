@@ -48,7 +48,14 @@ Plans:
   4. `outputs/top3_configurations.json` contains three ranked configs in `€/°C` order, each with `rank`, `label`, `delta_tmrt_c` (surrogate), `topsis_score`, and a real validated UTCI delta
   5. `outputs/pareto_front.png` renders and `outputs/audit_record.json` includes the honesty provenance trail (surrogate note, uncertainty ±4°C, data source tags)
 
-**Plans**: TBD
+**Plans:** 5 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — rules_engine: min-spacing penalty (RULES-01) + species-diversity score (RULES-02), pure/offline
+- [ ] 02-02-PLAN.md — thermal surrogate in spatial_engine (OPT-02): fixed delta_tmrt_surrogate (porosity bug pinned) + thermal_relief
+- [ ] 02-03-PLAN.md — wire real live Infrared backend in sdk_client (OPT-03 live path), live→cache, key-from-env, mock default
+- [ ] 02-04-PLAN.md — optimizer: NSGA-II 2-objective + budget constraint (OPT-01), select_top3 + validate_top3_with_infrared (OPT-03)
+- [ ] 02-05-PLAN.md — decision artifact: TOPSIS €/°C ranking + top3_configurations.json (DEC-01) + before/after (DEC-02) + main.py CLI
 
 ### Phase 3: Web App & Decision UI
 **Goal**: A user can open a URL, submit a site polygon and budget, and receive an interactive before/after map with a ranked allocation table — all within a running Gradio app on Hugging Face Spaces
@@ -84,6 +91,6 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & SDK Boundary | 3/3 | Complete    | 2026-05-21 |
-| 2. Optimizer Core | 0/TBD | Not started | - |
+| 2. Optimizer Core | 0/5 | Not started | - |
 | 3. Web App & Decision UI | 0/TBD | Not started | - |
 | 4. Ship | 0/TBD | Not started | - |
