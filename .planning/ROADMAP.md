@@ -14,7 +14,7 @@ Four phases deliver a live hackathon demo: stand up a clean, offline-testable sk
 - [x] **Phase 4: Ship** - requirements.txt, README with architecture diagram, MOCKS ledger, demo video and submission description (completed 2026-05-21)
 - [x] **Phase 5: Surrogate Ground-Truth & Honesty Reset** - Validate the ΔTmrt surrogate against real Infrared UTCI across varied configs, convert to UTCI before the KPI, single CRS end-to-end, and relabel every overclaim down to what is actually proven (v2.0 keystone)
  (completed 2026-05-21)
-- [ ] **Phase 6: Cost-Model Credibility** - Replace placeholder per-tree costs with a fully-loaded, cited, per-city-configurable lifecycle figure with growth-horizon discounting
+- [x] **Phase 6: Cost-Model Credibility** - Replace placeholder per-tree costs with a fully-loaded, cited, per-city-configurable lifecycle figure with growth-horizon discounting (completed 2026-05-21)
 - [ ] **Phase 7: Real Geometry & Multi-Site Ingestion** - Load arbitrary OSM/cadastre geometry, reject collisions against real building/footway polygons, support N candidate sites per project
 - [ ] **Phase 8: Multi-Intervention & Portfolio Triage** - Make intervention type a parameter (trees + cool roofs), allocate one budget across competing types and across N citywide sites with equity weighting
 - [ ] **Phase 9: Workflow, Grant Packaging & Audit** - GIS layer import/export (GeoPackage/Shapefile), procurement and grant-compliance exports, stakeholder-elicited weights, and a reproducible per-run audit manifest
@@ -133,12 +133,12 @@ Plans:
   1. Per-tree cost reflects a fully-loaded lifecycle figure (pit excavation, structural soil, guarding, multi-year establishment OpEx) anchored to a cited procurement source, replacing the €350/€35 placeholders
   2. A user can edit the cost table per city/locale through inputs rather than recompiling hardcoded constants, and the KPI recomputes from the edited values
   3. The €/°C KPI applies a growth-horizon discount so the modeled cooling benefit follows the establishment/growth curve instead of assuming full canopy on day one
-**Plans:** 2/3 plans complete
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 06-01-PLAN.md — Itemized fully-loaded CostTable (6 sourced line items, €3,000 CapEx / €180/yr OpEx) replacing €350/€35 + MOCKS ledger (COST-03) (completed 2026-05-21)
 - [x] 06-02-PLAN.md — Growth-curve ramp + 3.5% discount over 40-yr horizon routed into the €/°C KPI, preserving Phase 5 dict shape (COST-05) (completed 2026-05-21)
-- [ ] 06-03-PLAN.md — Editable cost_config.json + Gradio cost/discount inputs with live KPI recompute (COST-04)
+- [x] 06-03-PLAN.md — Editable cost_config.json + Gradio cost/discount inputs with live KPI recompute (COST-04)
 
 
 ### Phase 7: Real Geometry & Multi-Site Ingestion
@@ -195,7 +195,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 5. Surrogate Ground-Truth & Honesty Reset | 5/5 | Complete    | 2026-05-21 |
-| 6. Cost-Model Credibility | 0/3 | Planned | - |
+| 6. Cost-Model Credibility | 3/3 | Complete    | 2026-05-21 |
 | 7. Real Geometry & Multi-Site Ingestion | 0/TBD | Not started | - |
 | 8. Multi-Intervention & Portfolio Triage | 0/TBD | Not started | - |
 | 9. Workflow, Grant Packaging & Audit | 0/TBD | Not started | - |

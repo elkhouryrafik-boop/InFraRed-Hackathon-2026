@@ -132,6 +132,6 @@ T-05-01 (Tampering) and T-05-02 (Information disclosure) from the plan's threat 
 
 No new threat surface introduced beyond what was planned.
 
-## Self-Check
+## Self-Check: PASSED
 
-Verified below.
+All key files exist. All 3 task commits found (3aa4f14, 81c2433, 48b042c). 33/33 tests pass.
