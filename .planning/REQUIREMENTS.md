@@ -10,9 +10,12 @@ Scope for the infrared.city Buildathon (Tree Budget track). v1 = what we demo Ma
 - [x] **SDK-03**: A `SimBudget` guard caps the number of real (`live`) UTCI calls per run and logs each call.
 
 ### Spatial Engine
-- [ ] **SPATIAL-01**: Load a site as OSM/GeoJSON (buildings, streets, site boundary).
-- [ ] **SPATIAL-02**: `is_valid_location(x, y)` rejects points inside buildings, on street centerlines, or outside the site boundary.
-- [ ] **SPATIAL-03**: Coordinates handled consistently (document EPSG:4326 ↔ plaza-local-meters conversion at one boundary).
+- [x] **SPATIAL-01
+**: Load a site as OSM/GeoJSON (buildings, streets, site boundary).
+- [x] **SPATIAL-02
+**: `is_valid_location(x, y)` rejects points inside buildings, on street centerlines, or outside the site boundary.
+- [x] **SPATIAL-03
+**: Coordinates handled consistently (document EPSG:4326 ↔ plaza-local-meters conversion at one boundary).
 
 ### Rules Engine
 - [ ] **RULES-01**: Minimum-spacing penalty (trees too close are penalized).

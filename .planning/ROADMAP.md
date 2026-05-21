@@ -31,7 +31,7 @@ Four phases deliver a live hackathon demo: stand up a clean, offline-testable sk
 
 Plans:
 - [x] 01-01-PLAN.md — Package skeleton, dedup SDK client (mock|cached|live), SimBudget guard, MOCKS.md seed
-- [ ] 01-02-PLAN.md — Spatial engine: GeoJSON site load, is_valid_location collision, single CRS boundary
+- [x] 01-02-PLAN.md — Spatial engine: GeoJSON site load, is_valid_location collision, single CRS boundary
 - [ ] 01-03-PLAN.md — Cost model: CapEx+OpEx per-tree cost and €/°C KPI
 
 ### Phase 2: Optimizer Core
@@ -83,7 +83,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & SDK Boundary | 1/3 | Executing | 01-01 complete 2026-05-21 |
+| 1. Foundation & SDK Boundary | 2/3 | Executing | 01-01 2026-05-21, 01-02 2026-05-21 |
 | 2. Optimizer Core | 0/TBD | Not started | - |
 | 3. Web App & Decision UI | 0/TBD | Not started | - |
 | 4. Ship | 0/TBD | Not started | - |

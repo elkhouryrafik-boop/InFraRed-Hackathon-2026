@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-01-PLAN.md (sdk boundary + SimBudget + MOCKS.md)
-last_updated: "2026-05-21T00:12:20Z"
-last_activity: 2026-05-21 -- Phase 01 Plan 01 completed
+stopped_at: Completed 01-02-PLAN.md — spatial_engine + GeoJSON fixture + CRS boundary + tests
+last_updated: "2026-05-21T00:21:15.600Z"
+last_activity: 2026-05-21
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
-  percent: 8
+  completed_plans: 2
+  percent: 67
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-21)
 ## Current Position
 
 Phase: 01-foundation-sdk-boundary (1) — EXECUTING
-Plan: 2 of 3 (01-01 COMPLETE; 01-02 next)
-Status: Executing Phase 01
-Last activity: 2026-05-21 -- Phase 01 Plan 01 completed
+Plan: 3 of 3 (01-01 COMPLETE; 01-02 next)
+Status: Ready to execute
+Last activity: 2026-05-21
 
-Progress: [█░░░░░░░░░] 8%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [█░░░░░░░░░] 8%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 01-foundation-sdk-boundary P01-02 | 5m | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,9 @@ Recent decisions affecting current work:
 - Pre-build: YAML P01 bounds loader must be replaced with hardcoded fallback bounds in optimizer.py — do not port cookbooks/ directory
 - Pre-build: `INFRARED_BACKEND=live` must be unreachable from inside NSGA-II `_evaluate()` — SimBudget guard is a hard Phase 1 requirement
 - Pre-build: ladybug/ladybug-rhino is a heavy install risk; consider inlining the UTCI equation (Bröde 2012) instead of taking the full dependency
+- equirectangular + cos-latitude correction for CRS conversion — accurate within +/-200m of plaza centroid, no geodesy dep
+- STREET_BUFFER_M=1.5m rejection radius around street centerlines — prevents tree placement on pavement edge
+- load_site() caches by resolved path in _SITE_CACHE — avoids repeated disk reads in NSGA-II hot path
 
 ### Pending Todos
 
@@ -91,8 +95,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-21
-Stopped at: Completed 01-01-PLAN.md — coolspend package + sdk_client + tests + MOCKS.md
+Last session: 2026-05-21T00:21:15.589Z
+Stopped at: Completed 01-02-PLAN.md — spatial_engine + GeoJSON fixture + CRS boundary + tests
 Resume file: None
 
 **Planned Phase:** 1 (Foundation & SDK Boundary) — 3 plans — 2026-05-21T00:07:58.203Z
