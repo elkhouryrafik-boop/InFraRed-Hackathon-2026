@@ -16,7 +16,8 @@ Derived from the 3-review synthesis (`docs/review/SYNTHESIS-market-ready.md`). G
 **: Geometry is handled in one projected metric CRS (UTM 31N) end-to-end, with a round-trip consistency assertion before any live SDK call.
 
 ### Cost Model Credibility
-- [ ] **COST-03**: Per-tree cost is a fully-loaded lifecycle figure (pit excavation, structural soil, guarding, multi-year establishment OpEx) anchored to a cited procurement source — replacing the €350/€35 placeholders.
+- [x] **COST-03
+**: Per-tree cost is a fully-loaded lifecycle figure (pit excavation, structural soil, guarding, multi-year establishment OpEx) anchored to a cited procurement source — replacing the €350/€35 placeholders.
 - [ ] **COST-04**: A user can configure the cost table per city/locale (editable inputs, not hardcoded constants).
 - [ ] **COST-05**: The €/°C KPI applies a growth-horizon discount so cooling benefit is modeled over the establishment/growth curve, not assumed day-one.
 

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Market-Ready CoolSpend
-status: ready_to_plan
-stopped_at: "Completed 05-05: Prose overclaim scrub + UI interval KPI (D-11/D-13/D-14/D-15 all HONEST-01..04)"
-last_updated: "2026-05-21T17:02:08.049Z"
+status: executing
+stopped_at: "Completed 06-01: itemized CostTable (6-line lifecycle cost; CapEx=3000, OpEx=180/yr)"
+last_updated: "2026-05-21T17:48:34.009Z"
 last_activity: 2026-05-21 -- Phase --phase execution started
 progress:
   total_phases: 9
-  completed_phases: 6
-  total_plans: 18
-  completed_plans: 18
-  percent: 67
+  completed_phases: 5
+  total_plans: 21
+  completed_plans: 19
+  percent: 90
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-21)
 
 **Core value:** Given a polygon and a budget, output a defensible ranked tree-planting allocation maximizing UTCI relief per euro — proved with a real Infrared UTCI before/after on the top picks
-**Current focus:** Phase --phase — 5
+**Current focus:** Phase --phase — 6
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-21
+Phase: --phase (6) — EXECUTING
+Plan: 1 of --name
+Status: Executing Phase --phase
+Last activity: 2026-05-21 -- Phase --phase execution started
 
 Progress: [████████░░] 78%
 
@@ -73,6 +73,7 @@ Progress: [████████░░] 78%
 | Phase 05-surrogate-ground-truth-honesty-reset P03 | 25m | 2 tasks | 2 files |
 | Phase 05 P04 | 5m | 2 tasks | 5 files |
 | Phase 05-surrogate-ground-truth-honesty-reset P05 | 8m | 2 tasks | 7 files |
+| Phase 06-cost-model-credibility P01 | 4 | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -134,6 +135,9 @@ Recent decisions affecting current work:
 - D-11/D-15: app.py table shows EUR/degC KPI as [lo,hi] interval + EUR/UTCI-hr secondary unit + Band source label, all read from cost_per_utci_degree dict; never a bare point estimate
 - D-13 docs: MOCKS.md re-anchored to Schrodi 2023 (arXiv:2310.05691, venue PENDING) + Rahman 2022 (DOI PENDING); Garcia-Nevado 2020 demoted to surface-temp analogue; naive row tombstoned REMOVED; no fabricated DOIs
 - D-14: out-of-scope exclusions list (subsurface utilities, soil volume, irrigation/water demand, sightlines, solar access, root-vs-pavement) added to README.md and CONCEPT_REPORT.md with geometric feasibility framing
+- D-15 backward-compat: CAPEX_PER_TREE_EUR/OPEX_PER_TREE_YEAR_EUR derived from DEFAULT_COST_TABLE (single source of truth — no dual definition)
+- OPEX_HORIZON_YEARS changed 10->40 yr per D-09 (urban sealed-site functional lifespan)
+- DEFAULT_COST_TABLE: CapEx=3000 EUR/tree (5 itemized lines), OpEx=180 EUR/tree/yr; label='illustrative European mid-range — verify locally'
 
 ### Pending Todos
 
@@ -160,8 +164,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-21T17:02:08.038Z
-Stopped at: Completed 05-05: Prose overclaim scrub + UI interval KPI (D-11/D-13/D-14/D-15 all HONEST-01..04)
+Last session: 2026-05-21T17:48:33.997Z
+Stopped at: Completed 06-01: itemized CostTable (6-line lifecycle cost; CapEx=3000, OpEx=180/yr)
 Resume file: None
 
-**Planned Phase:** 5 (Surrogate Ground-Truth & Honesty Reset) — 5 plans — 2026-05-21T16:15:19.750Z
+**Planned Phase:** 6 (Cost-Model Credibility) — 3 plans — 2026-05-21T17:42:27.847Z
