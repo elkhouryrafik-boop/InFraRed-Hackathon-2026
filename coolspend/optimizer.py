@@ -382,7 +382,7 @@ def _build_naive_baseline(budget: "SimBudget | None" = None) -> dict:  # type: i
     cfg["delta_tmrt_c"] = round(thermal_relief(cfg), 3)
     cfg["ecological_score"] = round(ecological_score(cfg), 4)
 
-    baseline = get_baseline_utci({})
+    baseline = get_baseline_utci(_build_baseline_geometry())
     budget.record("intervention NAIVE_GRID")
     geom = _config_to_geometry(cfg)
     intervention = get_intervention_utci(geom)
@@ -461,6 +461,45 @@ def _config_to_geometry(cfg: dict) -> dict:
     }
 
 
+# ── BASELINE GEOMETRY BUILDER ─────────────────────────────────────────────────
+
+
+def _build_baseline_geometry() -> dict:
+    """Build the open-site (no-trees) geometry for the baseline UTCI call.
+
+    Returns the same site polygon ring that _config_to_geometry produces for
+    interventions, but with coverage_fraction=0 and width_m=0 (no canopy).
+
+    On the mock backend, the mock ignores polygon_lonlat and reads only width_m
+    (0 → returns 41.0 °C baseline), so mock behaviour is unchanged.
+
+    On the live backend, _live_utci requires 'polygon_lonlat' to build the
+    WGS84 GeoJSON payload; passing {} causes a ValueError (no polygon keys) —
+    this function supplies the required polygon so the live baseline call works.
+
+    Returns:
+        {
+          "width_m": 0.0,
+          "coverage_fraction": 0.0,
+          "tree_count": 0,
+          "polygon_lonlat": [...],   # closed WGS84 ring of the site boundary
+        }
+    """
+    polygon_lonlat = [
+        list(local_m_to_latlon(0.0, 0.0)),
+        list(local_m_to_latlon(SITE_WIDTH_M, 0.0)),
+        list(local_m_to_latlon(SITE_WIDTH_M, SITE_DEPTH_M)),
+        list(local_m_to_latlon(0.0, SITE_DEPTH_M)),
+        list(local_m_to_latlon(0.0, 0.0)),   # closed ring
+    ]
+    return {
+        "width_m": 0.0,
+        "coverage_fraction": 0.0,
+        "tree_count": 0,
+        "polygon_lonlat": polygon_lonlat,
+    }
+
+
 # ── TOP-3 VALIDATION (OPT-03) ────────────────────────────────────────────────
 
 
@@ -501,8 +540,11 @@ def validate_top3_with_infrared(
     if budget is None:
         budget = SimBudget(max_live_calls=3)
 
-    # Baseline: open-site geometry — no budget record (baseline is pre-intervention)
-    site_geometry: dict = {}   # empty geometry -> mock returns 41.0 °C baseline
+    # Baseline: real site polygon with no trees/canopy.
+    # Using _build_baseline_geometry() ensures the live path has a valid
+    # polygon_lonlat (preventing ValueError in _live_utci) while keeping mock
+    # behaviour identical (mock reads only width_m=0 → returns 41.0 °C).
+    site_geometry = _build_baseline_geometry()
     baseline = get_baseline_utci(site_geometry)
 
     for cfg in top3:

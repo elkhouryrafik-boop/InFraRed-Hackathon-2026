@@ -25,6 +25,7 @@ from coolspend.optimizer import (
     N_TREES,
     DEFAULT_BUDGET_EUR,
     TreeBudgetProblem,
+    _build_baseline_geometry,
     decode,
     naive_baseline_config,
     run_optimisation,
@@ -353,3 +354,69 @@ def test_select_top3_always_returns_three():
     assert ranks == [1, 2, 3], f"Ranks must be 1,2,3: {ranks}"
     labels = [c["label"] for c in top3]
     assert len(set(labels)) == 3, f"Labels must be distinct (incl. padded): {labels}"
+
+
+# ── WAVE-2 REMEDIATION: baseline geometry tests ───────────────────────────────
+
+
+def test_baseline_geometry_has_polygon_lonlat():
+    """_build_baseline_geometry returns a non-empty polygon_lonlat key.
+
+    On the live backend, _live_utci requires 'polygon_lonlat' (or 'polygon_local_m')
+    to build a WGS84 GeoJSON payload; passing {} raises ValueError (no polygon keys).
+    This test verifies that the baseline geometry is never the empty dict that caused
+    that crash (Fix 1 — Code Reviewer M-4, HIGH).
+    """
+    geom = _build_baseline_geometry()
+
+    assert "polygon_lonlat" in geom, (
+        "_build_baseline_geometry must include 'polygon_lonlat' for the live path"
+    )
+    assert isinstance(geom["polygon_lonlat"], list), "polygon_lonlat must be a list"
+    assert len(geom["polygon_lonlat"]) >= 4, (
+        f"polygon_lonlat ring too short: {len(geom['polygon_lonlat'])} points"
+    )
+    # Closed ring: first == last
+    assert geom["polygon_lonlat"][0] == geom["polygon_lonlat"][-1], (
+        "polygon_lonlat ring must be closed (first == last point)"
+    )
+    # Zero coverage — open-site baseline has no canopy
+    assert geom["width_m"] == 0.0, "baseline geometry must have width_m=0"
+    assert geom["coverage_fraction"] == 0.0, "baseline geometry must have coverage_fraction=0"
+
+
+def test_validate_top3_calls_get_baseline_utci_with_nonempty_geometry(
+    monkeypatch, top3_configs
+):
+    """validate_top3_with_infrared calls get_baseline_utci with non-empty geometry.
+
+    Before Fix 1, get_baseline_utci was called with {} (empty dict). On the live
+    backend that causes a ValueError inside _live_utci (no polygon key). This test
+    records what geometry is passed and asserts it is not the empty dict.
+    """
+    import coolspend.sdk_client as sdk_module
+
+    captured_geoms: list[dict] = []
+
+    original_get_baseline = sdk_module.get_baseline_utci
+
+    def _capture_baseline(geometry: dict):
+        captured_geoms.append(geometry)
+        return original_get_baseline(geometry)
+
+    monkeypatch.setattr(sdk_module, "get_baseline_utci", _capture_baseline)
+    monkeypatch.delenv("INFRARED_BACKEND", raising=False)
+
+    budget = SimBudget(max_live_calls=3)
+    validate_top3_with_infrared(list(top3_configs), budget=budget)
+
+    assert len(captured_geoms) >= 1, "get_baseline_utci was not called"
+    for geom in captured_geoms:
+        assert geom != {}, (
+            "get_baseline_utci was called with empty geometry {}; "
+            "this would crash the live backend (no polygon key). "
+            "Use _build_baseline_geometry() instead."
+        )
+        assert "polygon_lonlat" in geom, (
+            f"baseline geometry missing 'polygon_lonlat' key: {list(geom.keys())}"
+        )
