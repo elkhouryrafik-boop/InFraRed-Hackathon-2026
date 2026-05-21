@@ -462,3 +462,104 @@ class TestGrowthDiscountParams:
     def test_default_horizon_years(self) -> None:
         """Default horizon_years == 40 (D-09: tree functional lifespan)."""
         assert GrowthDiscountParams().horizon_years == 40
+
+
+# ── Task 2: KPI routing through growth+discount (COST-05) ────────────────────
+
+class TestCostPerUtciDegreeGrowthDiscount:
+    """cost_per_utci_degree routes through discounted °C + discounted cost."""
+
+    # ── backward-compat: existing callers still work with no extra args ───────
+
+    def test_existing_keys_preserved(self) -> None:
+        """All Phase 5 KPI dict keys are preserved in the discounted result."""
+        config = {"tree_count": 10, "delta_utci_c": 0.5, "coverage_fraction": 0.2}
+        result = cost_per_utci_degree(config)
+        required_keys = {
+            "value", "value_lo", "value_hi", "unit", "confidence",
+            "sources", "note", "metric_id",
+            "utci_hours_reduced", "cost_per_utci_hour",
+            "cost_per_utci_hour_lo", "cost_per_utci_hour_hi",
+            "utci_hours_unit", "band_c", "band_source",
+        }
+        assert required_keys.issubset(result.keys()), (
+            f"Missing keys: {required_keys - result.keys()}"
+        )
+
+    def test_new_param_echo_keys_present(self) -> None:
+        """New keys (discount_rate, ramp_years, horizon_years, growth_note) are additive."""
+        config = {"tree_count": 10, "delta_utci_c": 0.5, "coverage_fraction": 0.2}
+        result = cost_per_utci_degree(config)
+        assert result["discount_rate"] == pytest.approx(0.035)
+        assert result["ramp_years"] == pytest.approx(25.0)
+        assert result["horizon_years"] == 40
+        assert "growth_note" in result
+
+    def test_unit_unchanged(self) -> None:
+        """unit key stays 'EUR/degC' after discounting."""
+        config = {"tree_count": 10, "delta_utci_c": 0.5, "coverage_fraction": 0.2}
+        result = cost_per_utci_degree(config)
+        assert result["unit"] == "EUR/degC"
+
+    def test_discounted_value_higher_than_undiscounted(self) -> None:
+        """
+        Discounted KPI > equivalent undiscounted day-one KPI.
+
+        Because discounted_lifetime_degc < full_canopy_degc (ramp + discount both
+        reduce the denominator), the discounted €/°C is costlier per °C — value rises.
+        """
+        config = {"tree_count": 10, "delta_utci_c": 0.5, "coverage_fraction": 0.2}
+        discounted_result = cost_per_utci_degree(config)
+
+        # Simulate day-one full canopy: ramp_years=0 (instant) + discount_rate=0.0
+        no_growth_no_discount = GrowthDiscountParams(
+            ramp_years=25.0,
+            initial_fraction=1.0,   # fraction is 1.0 from year 0 = no ramp effect
+            discount_rate=0.0,      # no discounting
+            horizon_years=40,
+        )
+        undiscounted_result = cost_per_utci_degree(config, growth_discount=no_growth_no_discount)
+
+        if discounted_result["value"] is not None and undiscounted_result["value"] is not None:
+            assert discounted_result["value"] > undiscounted_result["value"], (
+                f"Expected discounted {discounted_result['value']} > undiscounted "
+                f"{undiscounted_result['value']}"
+            )
+
+    def test_zero_negative_guard_preserved(self) -> None:
+        """Zero/negative-delta guard still returns value=None, confidence=LOW."""
+        result = cost_per_utci_degree({"tree_count": 10, "delta_utci_c": 0.0,
+                                       "coverage_fraction": 0.0})
+        assert result["value"] is None
+        assert result["confidence"] == "LOW"
+
+    def test_negative_guard_preserved(self) -> None:
+        """Negative delta still returns value=None, confidence=LOW."""
+        result = cost_per_utci_degree({"tree_count": 10, "delta_utci_c": -0.5,
+                                       "coverage_fraction": 0.0})
+        assert result["value"] is None
+        assert result["confidence"] == "LOW"
+
+    def test_interval_ordering_preserved(self) -> None:
+        """value_lo < value < value_hi interval ordering still holds."""
+        config = {"tree_count": 10, "coverage_fraction": 0.20}
+        result = cost_per_utci_degree(config)
+        if result["value"] is not None and result["value_lo"] is not None and result["value_hi"] is not None:
+            assert result["value_lo"] < result["value"] < result["value_hi"]
+
+    def test_custom_growth_discount_param_honoured(self) -> None:
+        """Passing a custom GrowthDiscountParams instance overrides defaults."""
+        config = {"tree_count": 10, "delta_utci_c": 0.5, "coverage_fraction": 0.2}
+        custom_p = GrowthDiscountParams(discount_rate=0.07, horizon_years=30)
+        result = cost_per_utci_degree(config, growth_discount=custom_p)
+        assert result["discount_rate"] == pytest.approx(0.07)
+        assert result["horizon_years"] == 30
+
+    def test_guard_result_still_has_new_keys(self) -> None:
+        """Even when value=None (zero/negative guard), the new param-echo keys are present."""
+        result = cost_per_utci_degree({"tree_count": 10, "delta_utci_c": 0.0,
+                                       "coverage_fraction": 0.0})
+        assert "discount_rate" in result
+        assert "ramp_years" in result
+        assert "horizon_years" in result
+        assert "growth_note" in result
