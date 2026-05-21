@@ -115,7 +115,14 @@ Plans:
   3. A user can see whether the Top-3 picks chosen on the surrogate stay the Top-3 when re-simulated with real Infrared UTCI, with any rank shift reported explicitly
   4. All geometry runs through one projected metric CRS (UTM 31N) end-to-end, and a round-trip consistency assertion fires before any live SDK call
   5. External copy contains no "validated with Infrared" or "88% vs naive" claims; `CONCEPT_REPORT.md` matches `MOCKS.md`; the surrogate ceiling cites a tree/pedestrian-Tmrt source (Schrodi 2023 / Rahman 2022) with Garcia-Nevado demoted; and unmodeled siting constraints are listed as explicit out-of-scope exclusions
-**Plans**: TBD
+**Plans:** 5 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — UTM-31N (EPSG:32631) CRS migration: per-site origin + <1m fail-closed round-trip guard before every live call (VALID-05)
+- [ ] 05-02-PLAN.md — KPI routed through utci_hours_above (UTCI not raw Tmrt), dual units, [lo,hi] uncertainty interval (VALID-02, VALID-04)
+- [ ] 05-03-PLAN.md — Calibration study: 10-config coverage sweep, live-recorded RMSE/R²/band + ranking stability both ways, separate SimBudget (VALID-01, VALID-03)
+- [ ] 05-04-PLAN.md — Honesty (code): delete naive-baseline/improvement_vs_naive, re-anchor surrogate citation (Schrodi/Rahman), fix artifact JSON phrasing (HONEST-02, HONEST-03)
+- [ ] 05-05-PLAN.md — Honesty (docs+UI): scrub CONCEPT_REPORT/README/demo/MOCKS/app overclaims, out-of-scope exclusions list (HONEST-01, HONEST-02, HONEST-03, HONEST-04)
 
 ### Phase 6: Cost-Model Credibility
 **Goal**: The €/°C denominator survives a budget auditor — per-tree cost is a fully-loaded, sourced lifecycle figure that the user can localize per city, with cooling benefit discounted over the establishment/growth curve rather than assumed day-one.
@@ -180,7 +187,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 5. Surrogate Ground-Truth & Honesty Reset | 0/TBD | Not started | - |
+| 5. Surrogate Ground-Truth & Honesty Reset | 0/5 | Not started | - |
 | 6. Cost-Model Credibility | 0/TBD | Not started | - |
 | 7. Real Geometry & Multi-Site Ingestion | 0/TBD | Not started | - |
 | 8. Multi-Intervention & Portfolio Triage | 0/TBD | Not started | - |
