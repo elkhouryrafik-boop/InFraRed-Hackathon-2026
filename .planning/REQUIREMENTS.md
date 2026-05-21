@@ -31,7 +31,8 @@ Scope for the infrared.city Buildathon (Tree Budget track). v1 = what we demo Ma
 
 ### Optimizer
 - [ ] **OPT-01**: NSGA-II (pymoo) over a fixed-length vector of tree coordinates, 2 objectives (thermal relief + ecological coherence) under a budget constraint.
-- [ ] **OPT-02**: Fitness uses the fast `delta_tmrt_surrogate` inside the loop — no live SDK call per chromosome.
+- [x] **OPT-02
+**: Fitness uses the fast `delta_tmrt_surrogate` inside the loop — no live SDK call per chromosome.
 - [ ] **OPT-03**: Validate the Top-3 Pareto configurations with real (or cached) Infrared UTCI; rank by €-per-°C.
 
 ### Decision Artifact

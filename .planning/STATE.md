@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 02-01-PLAN.md — rules_engine spacing_penalty + species_diversity_score + 31 tests
-last_updated: "2026-05-21T00:57:09.077Z"
+stopped_at: Completed 02-02-PLAN.md — thermal surrogate (delta_tmrt_surrogate + thermal_relief) in spatial_engine, 18 tests green, porosity bug pinned
+last_updated: "2026-05-21T01:02:32.218Z"
 last_activity: 2026-05-21
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 8
-  completed_plans: 4
-  percent: 50
+  completed_plans: 5
+  percent: 63
 ---
 
 # Project State
@@ -30,7 +30,7 @@ Plan: Not started
 Status: Ready to plan
 Last activity: 2026-05-21
 
-Progress: [█████░░░░░] 50%
+Progress: [██████░░░░] 63%
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Progress: [█████░░░░░] 50%
 | Phase 01-foundation-sdk-boundary P01-02 | 5m | 3 tasks | 4 files |
 | Phase 01-foundation-sdk-boundary P01-03 | 10m | 2 tasks | 3 files |
 | Phase 02-optimizer-core P02-01 | 3m | 1 tasks | 3 files |
+| Phase 02-optimizer-core P02-02 | 5m | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,10 @@ Recent decisions affecting current work:
 - RULES-02 Shannon index normalised by ln(n_distinct) — monoculture=0.0, balanced N-species=1.0 exactly
 - Pollinator corridor objective explicitly excluded (CONCERNS 1.2) — documented in module docstring
 - MIN_SPACING_M=4.0 and SPECIES_PALETTE tagged SOURCE: DECLARED + REQUIRES_VERIFICATION — no fabricated citation
+- 02-02: delta_tmrt_surrogate uses math (not numpy) to keep spatial_engine numpy-light for NSGA-II hot path
+- 02-02: porosity_pct retained in signature for call-site compatibility but intentionally unused in body (CONCERNS 4.2)
+- 02-02: thermal_relief site-coverage capped at 0.90 — prevents unrealistic 100% canopy scenario
+- 02-02: TREE_SHADE_FRACTION=0.80 and TREE_CANOPY_RADIUS_M=3.0 tagged DECLARED/REQUIRES_VERIFICATION — no fabricated citation
 
 ### Pending Todos
 
@@ -103,8 +108,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-21T00:57:09.068Z
-Stopped at: Completed 02-01-PLAN.md — rules_engine spacing_penalty + species_diversity_score + 31 tests
+Last session: 2026-05-21T01:02:32.208Z
+Stopped at: Completed 02-02-PLAN.md — thermal surrogate (delta_tmrt_surrogate + thermal_relief) in spatial_engine, 18 tests green, porosity bug pinned
 Resume file: None
 
 **Planned Phase:** 1 (Foundation & SDK Boundary) — 3 plans — 2026-05-21T00:07:58.203Z

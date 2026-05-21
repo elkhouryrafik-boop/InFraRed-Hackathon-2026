@@ -52,7 +52,7 @@ Plans:
 
 Plans:
 - [x] 02-01-PLAN.md — rules_engine: min-spacing penalty (RULES-01) + species-diversity score (RULES-02), pure/offline (completed 2026-05-21)
-- [ ] 02-02-PLAN.md — thermal surrogate in spatial_engine (OPT-02): fixed delta_tmrt_surrogate (porosity bug pinned) + thermal_relief
+- [x] 02-02-PLAN.md — thermal surrogate in spatial_engine (OPT-02): fixed delta_tmrt_surrogate (porosity bug pinned) + thermal_relief (completed 2026-05-21)
 - [ ] 02-03-PLAN.md — wire real live Infrared backend in sdk_client (OPT-03 live path), live→cache, key-from-env, mock default
 - [ ] 02-04-PLAN.md — optimizer: NSGA-II 2-objective + budget constraint (OPT-01), select_top3 + validate_top3_with_infrared (OPT-03)
 - [ ] 02-05-PLAN.md — decision artifact: TOPSIS €/°C ranking + top3_configurations.json (DEC-01) + before/after (DEC-02) + main.py CLI
@@ -91,6 +91,6 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & SDK Boundary | 3/3 | Complete    | 2026-05-21 |
-| 2. Optimizer Core | 1/5 | In progress | - |
+| 2. Optimizer Core | 2/5 | In progress | - |
 | 3. Web App & Decision UI | 0/TBD | Not started | - |
 | 4. Ship | 0/TBD | Not started | - |
