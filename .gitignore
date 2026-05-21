@@ -2,3 +2,7 @@
 __pycache__/
 *.pyc
 .planning/spikes/*/audit_record.json
+coolspend/outputs/
+coolspend/cache/
+.venv/
+*.egg-info/
