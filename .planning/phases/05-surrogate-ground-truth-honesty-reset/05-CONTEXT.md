@@ -147,8 +147,13 @@ belong to Phases 6–9).
   `coolspend/app_viz.py` (UI strings)
 
 ### Citations (D-13)
-- Schrodi et al. 2023 (NeurIPS CCAI, tree/pedestrian-Tmrt) — anchor (verify DOI; tag PENDING if unconfirmed)
-- Rahman et al. 2022 — supporting tree-Tmrt anchor
+- Schrodi et al. 2023 — **arXiv:2310.05691** "Climate-sensitive Urban Planning through
+  Optimization of Tree Placements" (code: github.com/lmb-freiburg/tree-planting). VERIFIED
+  as a tree + point-wise ΔTmrt anchor. **Correction (web-verified 2026-05-21):** the
+  "NeurIPS CCAI" attribution is UNCONFIRMED — cite as arXiv preprint, tag venue PENDING.
+  Note it is an **ML** method (NN-estimated Tmrt/SVF) — cite for the Tmrt magnitude anchor
+  only, do NOT imply we use their ML approach (ML stays ruled out).
+- Rahman et al. 2022 — supporting tree-Tmrt anchor (verify DOI; tag PENDING if unconfirmed)
 - Garcia-Nevado 2020 — DEMOTE to shade-structure/surface-temp analogue
 
 </canonical_refs>
