@@ -2,7 +2,7 @@
 
 ## One-line pitch
 
-A budget-to-decision tool that tells a city Chief Heat Officer where to plant trees for the most degrees of UTCI thermal relief per euro — optimised with NSGA-II on an analytical surrogate, then validated with the Infrared SDK on the Top-3 picks when run live (live wiring implemented; confirmation pending May 27 API key).
+A budget-to-decision tool that tells a city Chief Heat Officer where to plant trees for the most degrees of UTCI thermal relief per euro — optimised with NSGA-II on an analytical surrogate, with the Top-3 picks re-simulated with Infrared UTCI when run live (live wiring implemented; confirmation pending May 27 API key).
 
 ---
 
@@ -32,7 +32,7 @@ CoolSpend reframes "where is it hot?" as "where does each euro buy the most cool
 
 ## Real-world impact
 
-The primary user persona is Maria, a city Chief Heat Officer with a fixed annual tree-planting budget and a heatwave forecast. CoolSpend gives her a ranked allocation she can hand to a budget committee with a defensible cost figure attached. On the mock backend the optimizer finds a genuinely differentiated ranking: EUR 1,700/degC (rank-1 MAX_THERMAL_RELIEF) vs EUR 14,737/degC for a naive evenly-spaced grid — an 88% improvement in cost efficiency per degree of cooling, illustrative until confirmed with live API data. The framework generalises to any city polygon: swap the GeoJSON polygon text box and re-run. District-scale triage — prioritising which blocks get trees first during a multi-year canopy expansion programme — is a direct application. The tool respects the constraints of real municipal procurement: cost constants are declared assumptions that require verification against local data, and all outputs carry explicit confidence levels and data-source tags.
+The primary user persona is Maria, a city Chief Heat Officer with a fixed annual tree-planting budget and a heatwave forecast. CoolSpend gives her a ranked allocation she can hand to a budget committee with a defensible cost figure attached. On the mock backend the optimizer finds a genuinely differentiated ranking: EUR 1,700/degC (rank-1 MAX_THERMAL_RELIEF) vs EUR 2,084/degC (BALANCED) vs EUR 3,194/degC (MAX_ECOLOGICAL) — illustrative mock values; when run live, the final picks are re-simulated with Infrared UTCI and the real EUR/°C numbers replace these. The framework generalises to any city polygon: swap the GeoJSON polygon text box and re-run. District-scale triage — prioritising which blocks get trees first during a multi-year canopy expansion programme — is a direct application. The tool respects the constraints of real municipal procurement: cost constants are declared assumptions that require verification against local data, and all outputs carry explicit confidence levels and data-source tags.
 
 ---
 

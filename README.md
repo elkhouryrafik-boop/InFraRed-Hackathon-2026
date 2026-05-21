@@ -60,7 +60,7 @@ Space → Settings → Variables and secrets:
 - `INFRARED_BACKEND=live`
 - `INFRARED_API_KEY=<your key from the infrared.city hackathon dashboard>`
 
-With these set the app calls the Infrared UTCI API for the Top-3 validated configurations
+With these set the app calls the Infrared UTCI API to re-simulate the Top-3 configurations
 and shows the real measured UTCI deltas in the call-log panel. **Never commit the key to the
 repository.**
 
@@ -81,6 +81,19 @@ guard the live backend behind an additional server-side environment flag (e.g.
 `INFRARED_BACKEND`, and add a per-IP or per-session rate limit at the Space level.
 The current implementation does not enforce either — treat this as a pre-production
 limitation before opening the Space to the public.
+
+## Out-of-Scope / Not Modeled
+
+This tool provides **geometric feasibility, not engineering siting sign-off.** The following factors are explicitly not modeled:
+
+- **Subsurface utilities** — underground pipes, cables, and conduits
+- **Soil volume** — rooting volume constraints and subgrade conditions
+- **Irrigation / water demand** — tree water requirements and irrigation infrastructure
+- **Sightlines** — visual obstruction and traffic sight-distance impacts
+- **Solar access to buildings** — winter shading of facades or photovoltaic panels
+- **Root-vs-pavement conflict** — long-term root uplift and pavement damage potential
+
+All proposed placements must be reviewed by municipal engineering, arboriculture, and infrastructure teams before implementation.
 
 ## Honesty / MOCKS note
 
@@ -132,7 +145,7 @@ maximising two objectives simultaneously: thermal relief (via an analytical surr
 delta mean-radiant-temperature, `delta_tmrt_surrogate`, with ±4 degC uncertainty) and
 ecological coherence (spacing + species diversity from `rules_engine`).
 The analytical surrogate runs with zero SDK calls, keeping the hot path fast.
-Third, the Top-3 Pareto candidates are validated with Infrared UTCI calls (SimBudget
+Third, the Top-3 Pareto candidates are re-simulated with Infrared UTCI (SimBudget
 cap = 3) when run live, replacing surrogate values with real measured UTCI deltas.
 Rankings use the headline KPI — euros per degree Celsius of UTCI relief
 (`cost_per_utci_degree`) — and are emitted as a ranked decision artifact.
