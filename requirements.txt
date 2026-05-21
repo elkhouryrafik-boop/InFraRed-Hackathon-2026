@@ -1,0 +1,11 @@
+# CoolSpend — Hugging Face Spaces (Gradio SDK) dependency set.
+# infrared-sdk is only required for the live Infrared backend (INFRARED_BACKEND=live);
+# it is lazily imported and absence does not break offline/mock operation.
+pymoo==0.6.1
+gradio==4.44.1
+shapely>=2.0,<3.0
+numpy>=1.26,<2.0
+matplotlib>=3.7,<4.0
+geojson>=3.0,<4.0
+infrared-sdk
+huggingface_hub==0.36.2
