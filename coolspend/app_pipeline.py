@@ -347,6 +347,26 @@ def _run_pipeline(
         headline = _build_headline(rank1, before_after)
         disclaimer = _build_disclaimer(rank1, backend)
 
+        # Measured existing-canopy context (ICGC+CREAF LiDAR) for an anywhere-run.
+        # auto_download=False: never trigger the 166 MB raster fetch mid-pipeline —
+        # use it only if already cached locally; otherwise degrade to None. Graceful.
+        measured_site_canopy = None
+        if center_lonlat is not None:
+            try:
+                from coolspend.bcn_lidar import canopy_height_m, ATTRIBUTION  # noqa: PLC0415
+                lon, lat = center_lonlat
+                h = canopy_height_m(lon, lat, auto_download=False)
+                measured_site_canopy = {
+                    "measured_canopy_height_m": h,
+                    "interpretation": (
+                        "no measured tree canopy at this 20 m cell (bare / high planting opportunity)"
+                        if h is None else f"existing measured canopy ~{h:.0f} m at this locale"
+                    ),
+                    "source": ATTRIBUTION,
+                }
+            except Exception:  # noqa: BLE001 — optional context, never break the run
+                measured_site_canopy = None
+
         return {
             "configurations": top3,
             "before_after": before_after,
@@ -357,6 +377,7 @@ def _run_pipeline(
             "site_path": site_path,
             "site_polygon_lonlat": site_polygon_lonlat,
             "center_lonlat": center_lonlat,
+            "measured_site_canopy": measured_site_canopy,
             "error": None,
         }
 

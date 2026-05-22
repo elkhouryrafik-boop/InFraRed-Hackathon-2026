@@ -37,8 +37,14 @@ measured per-species value — and currently does not.
 > rank is a literature-based heuristic for selection; the cooling value itself is the simulation's."
 
 ## What's MISSING (to strengthen, not block)
-1. **Measured per-tree dimensions** — ICGC LiDAR canopy-height model (rubric 12) would replace Verd Urbà
-   bands with measured height/crown. Highest-value upgrade; closes the dominant input-geometry gap.
+1. **Measured per-tree dimensions** — ICGC LiDAR canopy-height was WIRED (2026-05-22, `coolspend/bcn_lidar.py`)
+   and the hypothesis was empirically REVISED: the Hmitjana product is FOREST-oriented (20 m mean) and
+   dense urban Barcelona — where we place street trees — is largely NoData=0. So it does NOT replace
+   Verd Urbà per-tree dims; instead it serves as a measured EXISTING-CANOPY site-context signal (bare hot
+   target → "high planting opportunity"; leafy locale → real height, e.g. Tibidabo 10.3 m). Also: the open
+   WMS/`vsicurl` paths return only rendered RGB / 0 — only the local 166 MB raster sampled with rasterio
+   gives real values (see data-sheets/icgc-lidar-canopy.md). True measured PER-URBAN-TREE dims would need
+   raw LIDARCAT3 (2021-23) LAZ processing — heavy, deferred.
 2. **Verd Urbà license clarity** — confirm reuse terms before any redistribution of the scraped table.
 3. **Sim validation** — a surrogate-vs-Infrared RMSE band (the planned calibration study) is the
    credibility bridge; independent field-UTCI validation remains out of scope and should be disclosed.
