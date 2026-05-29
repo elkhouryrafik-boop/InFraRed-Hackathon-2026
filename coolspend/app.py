@@ -18,8 +18,16 @@ Threat mitigations:
 """
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
+
+# Load .env BEFORE any coolspend imports (sdk_client reads INFRARED_API_KEY at import)
+from dotenv import load_dotenv as _load_dotenv
+
+_env_path = Path(__file__).resolve().parent.parent / ".env"
+if _env_path.exists():
+    _load_dotenv(_env_path)
 
 logger = logging.getLogger("coolspend.app")
 
@@ -56,12 +64,22 @@ except Exception:  # noqa: BLE001 - never block launch on the patch itself
 
 from coolspend.app_pipeline import DEFAULT_BUDGET_EUR, run_decision
 from coolspend.app_viz import render_before_after
+from coolspend.bcn_species import get_species
 from coolspend.cost_model import (
     GrowthDiscountParams,
     cost_table_from_dict,
     load_cost_table,
 )
 from coolspend.spatial_engine import DEFAULT_SITE
+
+# ── Calibration metadata (loaded once at import) ─────────────────────────────────
+_CALIBRATION: dict = {}
+try:
+    _cal_path = Path(__file__).resolve().parent.parent / "outputs" / "calibration_study.json"
+    if _cal_path.exists():
+        _CALIBRATION = json.loads(_cal_path.read_text(encoding="utf-8")).get("fit", {})
+except Exception:  # noqa: BLE001
+    pass
 
 # ── Default polygon pre-fill ──────────────────────────────────────────────────
 _DEFAULT_POLYGON_TEXT: str = Path(DEFAULT_SITE).read_text(encoding="utf-8")
@@ -78,14 +96,62 @@ _TABLE_HEADERS = [
     "Rank",
     "Label",
     "Trees",
+    "Species",
     "Cost EUR",
+    "Cooled m²",
     "EUR/degC [lo–hi]",
     "EUR/UTCI-hr",
     "Band source",
     "delta UTCI degC",
+    "Felt-peak °C (base→int)",
     "TOPSIS",
     "Provenance",
 ]
+
+
+# ── Existing-canopy context loader ─────────────────────────────────────────────
+
+
+def _load_existing_context_trees(
+    site_polygon_lonlat: list, site_width_m: float, site_depth_m: float
+) -> list[dict]:
+    """Load real BCN street trees inside the scanned site, in the local-meter frame.
+
+    Returns [{x_m, y_m, crown_diameter_m, height_m}, ...] for trees whose WGS84
+    position falls inside the site box. Crown/height come from the species table
+    when the species is known (else sensible street-tree defaults). Fully optional:
+    any failure (offline, no cache, bad CRS) degrades to [] and the scene still
+    renders without existing-canopy context.
+    """
+    try:
+        from coolspend.bcn_data import load_trees  # noqa: PLC0415
+        from coolspend.bcn_species import get_species  # noqa: PLC0415
+        from coolspend.spatial_engine import latlon_to_local_m  # noqa: PLC0415
+
+        lons = [p[0] for p in site_polygon_lonlat]
+        lats = [p[1] for p in site_polygon_lonlat]
+        bbox = (min(lons), min(lats), max(lons), max(lats))
+        raw = load_trees(bbox=bbox)
+    except Exception:  # noqa: BLE001 — context is optional, never break the run
+        logger.debug("existing-tree context load failed", exc_info=True)
+        return []
+
+    out: list[dict] = []
+    for tr in raw:
+        try:
+            x_m, y_m = latlon_to_local_m(float(tr["lon"]), float(tr["lat"]))
+        except Exception:  # noqa: BLE001
+            continue
+        if not (0.0 <= x_m <= site_width_m and 0.0 <= y_m <= site_depth_m):
+            continue
+        sp = get_species(tr.get("species") or "")
+        out.append({
+            "x_m": x_m,
+            "y_m": y_m,
+            "crown_diameter_m": sp.crown_diameter_m if sp else 5.0,
+            "height_m": sp.height_m if sp else 8.0,
+        })
+    return out
 
 
 # ── Callback ──────────────────────────────────────────────────────────────────
@@ -97,6 +163,9 @@ def on_submit(
     w_thermal: float,
     w_ecological: float,
     backend: str,
+    center_lat: float | None,
+    center_lon: float | None,
+    site_size_m: float,
     # Cost line item values (one per line from _SHIPPED_COST_TABLE, in lines order)
     *cost_line_values: float,
 ) -> tuple:
@@ -108,16 +177,21 @@ def on_submit(
         w_thermal:        TOPSIS thermal weight slider value (0.0 – 1.0).
         w_ecological:     TOPSIS ecological weight slider value (0.0 – 1.0).
         backend:          "mock" | "cached" | "live" from the radio selector.
+        center_lat:       Latitude for "scan anywhere" (None -> use GeoJSON).
+        center_lon:       Longitude for "scan anywhere" (None -> use GeoJSON).
+        site_size_m:      Site square side length in meters.
         *cost_line_values: Edited cost line values (6 cost lines + 4 growth/discount),
                            in the order: [line0..line5, ramp_years, initial_fraction,
                            discount_rate, horizon_years].
 
     Returns:
-        4-tuple: (banner_md, img_path, table_rows, call_log_text)
+        6-tuple: (banner_md, img_path, table_rows, call_log_text, glb_path, diff_glb_path)
           - banner_md:     str  — Markdown headline + disclaimer banner
           - img_path:      str | None — path to before/after PNG (or None on error)
           - table_rows:    list[list] — rows for gr.Dataframe
           - call_log_text: str  — captured Infrared/SimBudget call lines
+          - glb_path:      str | None — path to 3D .glb scene (or None on error)
+          - diff_glb_path: str | None — path to cooling diff .glb (or None on error)
     """
     # ── Assemble edited CostTable + GrowthDiscountParams from Gradio inputs ──
     n_lines = len(_SHIPPED_COST_TABLE.lines)
@@ -155,6 +229,11 @@ def on_submit(
         }
         edited_table, edited_gd = cost_table_from_dict(d)
 
+    # Build center_lonlat from lat/lon inputs (None if either is missing)
+    center_lonlat = None
+    if center_lat is not None and center_lon is not None:
+        center_lonlat = (float(center_lon), float(center_lat))
+
     # Run pipeline
     try:
         result = run_decision(
@@ -164,13 +243,15 @@ def on_submit(
             backend=backend,
             cost_table=edited_table,
             growth_discount=edited_gd,
+            center_lonlat=center_lonlat,
+            site_size_m=float(site_size_m),
         )
     except Exception as exc:  # noqa: BLE001  — never crash the UI
         # T-03-09: log full traceback server-side; show only a generic message to the
         # UI to prevent path/internal leakage on a public Space (Security L1).
         logger.exception("on_submit: unexpected exception from run_decision: %s", exc)
         banner = "**ERROR** — An unexpected error occurred — see server logs."
-        return (banner, None, [], "An unexpected error occurred — see server logs.")
+        return (banner, None, [], "An unexpected error occurred — see server logs.", None, None)
 
     # ── Error path ────────────────────────────────────────────────────────────
     if result.get("error"):
@@ -180,7 +261,7 @@ def on_submit(
             f"_Backend: {backend}_"
         )
         call_log_text = "\n".join(result.get("call_log", []))
-        return (banner, None, [], call_log_text or err)
+        return (banner, None, [], call_log_text or err, None, None)
 
     # ── Success path ──────────────────────────────────────────────────────────
     headline = result["headline"]
@@ -194,9 +275,29 @@ def on_submit(
         )
     else:
         disclaimer_line = f"_Disclaimer: {result.get('disclaimer', '')}_ "
+        # Append calibration band when available
+        if _CALIBRATION:
+            rmse = _CALIBRATION.get("rmse")
+            band = _CALIBRATION.get("error_band_c")
+            r2 = _CALIBRATION.get("r2")
+            if rmse is not None:
+                band_str = f"±{band:.2f}" if band is not None else "?"
+                r2_str = f"{r2:.2f}" if r2 is not None else "?"
+                disclaimer_line += (
+                    f" | Surrogate calibration: RMSE {rmse:.3f}°C "
+                    f"(95% band {band_str}°C), R² {r2_str}"
+                )
+
+    # Measured canopy context (LiDAR, "anywhere" runs only)
+    canopy_ctx = result.get("measured_site_canopy")
+    canopy_line = ""
+    if canopy_ctx:
+        h = canopy_ctx.get("measured_canopy_height_m")
+        interp = canopy_ctx.get("interpretation", "")
+        canopy_line = f"\n\n**Site context:** {interp}"
 
     backend_line = f"_Backend: **{backend}**_"
-    banner_md = f"### {headline}\n\n{disclaimer_line}\n\n{backend_line}"
+    banner_md = f"### {headline}\n\n{disclaimer_line}{canopy_line}\n\n{backend_line}"
 
     # Before/after image
     try:
@@ -239,15 +340,42 @@ def on_submit(
         provenance_full = cfg.get("disclaimer", cfg.get("validated_disclaimer", ""))
         provenance = provenance_full[:60] + "…" if len(provenance_full) > 60 else provenance_full
 
+        # Cooled footprint
+        cooled = cfg.get("cooled_footprint_m2")
+        cooled_str = f"{cooled:,.0f}" if cooled is not None else "N/A"
+
+        # Species breakdown (common names, abbreviated)
+        species_parts: list[str] = []
+        trees = cfg.get("trees", [])
+        for t in trees:
+            if t.get("active", True):
+                sp = get_species(t.get("species", ""))
+                if sp:
+                    species_parts.append(sp.common)
+                else:
+                    species_parts.append(t.get("species", "?")[:20])
+        species_str = ", ".join(species_parts) if species_parts else "—"
+
+        # Felt-peak (p90 sun-exposed cell) baseline → intervention
+        base_peak = cfg.get("baseline_utci_peak_c")
+        int_peak = cfg.get("validated_utci_peak_c")
+        felt_peak_str = (
+            f"{base_peak:.1f}→{int_peak:.1f}"
+            if base_peak is not None and int_peak is not None else "—"
+        )
+
         table_rows.append([
             cfg.get("rank", ""),
             cfg.get("label", ""),
             cfg.get("tree_count", 0),
+            species_str,
             f"{cfg.get('cost_eur', 0.0):,.0f}",
+            cooled_str,
             eur_per_deg,
             eur_per_hour,
             band_source,
             f"{cfg.get('delta_utci_c', 0.0):.3f}",
+            felt_peak_str,
             f"{cfg.get('topsis_score', 0.0):.4f}",
             provenance,
         ])
@@ -255,7 +383,69 @@ def on_submit(
     # Call log — visible Infrared/SimBudget call lines (ROADMAP #3)
     call_log_text = "\n".join(result.get("call_log", []))
 
-    return (banner_md, img_path, table_rows, call_log_text)
+    # ── 3D .glb export ──────────────────────────────────────────────────────
+    glb_path: str | None = None
+    diff_glb_path: str | None = None
+    if result.get("site_polygon_lonlat") and result.get("configurations"):
+        try:
+            from coolspend.app_3d import build_glb_scene, build_cooling_diff_glb  # noqa: PLC0415
+            from coolspend.sdk_client import get_buildings_for_polygon  # noqa: PLC0415
+
+            buildings = get_buildings_for_polygon(result["site_polygon_lonlat"])
+            rank1 = result["configurations"][0]
+            ba = result["before_after"]
+            sw = result.get("site_width_m", 120.0)
+            sd = result.get("site_depth_m", 120.0)
+
+            # Existing street trees as context — real BCN inventory, converted into
+            # the SAME local-meter frame as the proposed trees (latlon_to_local_m is
+            # the single CRS boundary), filtered to the site box.
+            existing_trees = _load_existing_context_trees(
+                result["site_polygon_lonlat"], float(sw), float(sd)
+            )
+
+            glb_path = build_glb_scene(
+                rank1, ba,
+                buildings=buildings or None,
+                baseline_grid=ba.get("baseline_utci_grid"),
+                intervention_grid=ba.get("intervention_utci_grid"),
+                site_width_m=float(sw),
+                site_depth_m=float(sd),
+                existing_trees=existing_trees or None,
+            )
+            diff_glb_path = build_cooling_diff_glb(
+                rank1, ba,
+                buildings=buildings or None,
+                baseline_grid=ba.get("baseline_utci_grid"),
+                intervention_grid=ba.get("intervention_utci_grid"),
+                site_width_m=float(sw),
+                site_depth_m=float(sd),
+                existing_trees=existing_trees or None,
+            )
+        except Exception:
+            logger.debug("3D .glb export failed", exc_info=True)
+
+    # ── Presentation bundle export (for deck.gl + claude-design) ──────────────
+    # Write a clean self-contained bundle (decision.json, boundary/trees GeoJSON,
+    # UTCI heatmap PNGs, scene.glb) to outputs/web_bundle/. Never blocks the UI.
+    # ONLY for live/cached runs — a mock run has no measured data and must NOT
+    # overwrite a real presentation bundle (honesty + avoids clobbering live output).
+    if (
+        backend in ("live", "cached")
+        and result.get("site_polygon_lonlat")
+        and result.get("configurations")
+    ):
+        try:
+            from coolspend.export_web import export_web_bundle, DEFAULT_OUT_DIR  # noqa: PLC0415
+            export_web_bundle(result)
+            banner_md += (
+                f"\n\n_Presentation bundle exported → `{DEFAULT_OUT_DIR}` "
+                "(decision.json, boundary/trees GeoJSON, UTCI heatmaps, scene.glb)._"
+            )
+        except Exception:
+            logger.debug("web bundle export failed", exc_info=True)
+
+    return (banner_md, img_path, table_rows, call_log_text, glb_path, diff_glb_path)
 
 
 # ── UI builder ────────────────────────────────────────────────────────────────
@@ -282,11 +472,33 @@ def build_demo() -> gr.Blocks:
             with gr.Column(scale=1):
                 gr.Markdown("### Inputs")
 
+                gr.Markdown("**Scan anywhere in Barcelona** — pick a lat/lon.")
+                with gr.Row():
+                    center_lat_inp = gr.Number(
+                        label="Latitude",
+                        value=41.4036,
+                        precision=4,
+                    )
+                    center_lon_inp = gr.Number(
+                        label="Longitude",
+                        value=2.1895,
+                        precision=4,
+                    )
+                site_size_inp = gr.Slider(
+                    minimum=50,
+                    maximum=500,
+                    value=120,
+                    step=10,
+                    label="Site size (m, square side)",
+                )
+
+                gr.Markdown("_— or paste GeoJSON below (overrides lat/lon) —_")
                 geojson_box = gr.Textbox(
                     label="Site polygon (GeoJSON FeatureCollection or bare Polygon)",
-                    value=_DEFAULT_POLYGON_TEXT,
-                    lines=8,
-                    placeholder="Paste GeoJSON here (default = Plaça dels Àngels, Barcelona)",
+                    value="",
+                    lines=4,
+                    placeholder="Paste GeoJSON here (default = Plaça dels Àngels, Barcelona). "
+                                "Leave empty to use lat/lon above.",
                 )
 
                 budget_slider = gr.Slider(
@@ -317,9 +529,9 @@ def build_demo() -> gr.Blocks:
                 )
 
                 backend_radio = gr.Radio(
-                    choices=["mock", "cached", "live"],
-                    value="mock",
-                    label="Infrared backend (mock = offline, no key)",
+                    choices=["live", "cached", "mock"],
+                    value="live",
+                    label="Infrared backend (live = real API, requires key in .env)",
                 )
 
                 # ── Cost table accordion (COST-04 / D-05 / D-06) ─────────────
@@ -329,8 +541,9 @@ def build_demo() -> gr.Blocks:
                     "Cost table (per-city — edit to localize)", open=False
                 ):
                     gr.Markdown(
-                        "_Defaults = illustrative European mid-range — verify "
-                        "against local procurement (COST-03/COST-04)._"
+                        "_Defaults = Barcelona-anchored (BCN IMPJ 2023 OpEx VERIFIED, "
+                        "CapEx DECLARED Diputació grant)._"
+
                     )
 
                     # One gr.Number per cost line, pre-filled from shipped defaults
@@ -382,6 +595,16 @@ def build_demo() -> gr.Blocks:
                     type="filepath",
                 )
 
+                with gr.Row():
+                    glb_out = gr.File(
+                        label="3D Scene (.glb) — import into Rhino/Blender",
+                        file_types=[".glb"],
+                    )
+                    diff_glb_out = gr.File(
+                        label="Cooling Diff 3D (.glb) — cell-wise cooling map",
+                        file_types=[".glb"],
+                    )
+
                 table_out = gr.Dataframe(
                     headers=_TABLE_HEADERS,
                     label="Ranked allocation table (Top-3 configurations)",
@@ -407,13 +630,16 @@ def build_demo() -> gr.Blocks:
                 w_thermal_slider,
                 w_ecological_slider,
                 backend_radio,
+                center_lat_inp,
+                center_lon_inp,
+                site_size_inp,
                 *cost_line_inputs,       # 6 cost-line Number inputs
                 gd_ramp_years,           # growth/discount: 4 Number inputs
                 gd_initial_fraction,
                 gd_discount_rate,
                 gd_horizon_years,
             ],
-            outputs=[banner_out, map_out, table_out, calllog_out],
+            outputs=[banner_out, map_out, table_out, calllog_out, glb_out, diff_glb_out],
         )
 
     return demo

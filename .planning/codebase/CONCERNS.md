@@ -1,482 +1,317 @@
-# Codebase Concerns — coolspend Hackathon Port
+# Codebase Concerns
 
-**Analysis Date:** 2026-05-21
-**Context:** Porting selected logic from NatureGooddest parent project into a new
-`coolspend` app for the Infrared City Hackathon (3-day build, May 27–31 2026).
-Source files analysed: `nature_nsga2_coolstock.py`, `nature_metrics.py`,
-`infrared_client_v2.py`, `nature_infrared_client.py`, `nature_architecture.md`,
-`HANDOFF.md`, `CONCEPT_REPORT.md`.
+**Analysis Date:** 2026-05-27
 
----
+## Critical Issues
 
-## 1. Mocks / Unverified Data
+### 1. Unsourced 12 degC Surrogate Cap
 
-Per the NatureGooddest honesty contract: every mock, surrogate, or DECLARED data
-source must be tracked and must not be presented as measured data. All items below
-carry over to coolspend unless explicitly replaced.
+- **Issue:** `delta_tmrt_surrogate()` hardcaps max thermal reduction at 12.0 degC (`MAX_TMRT_REDUCTION_C = 12.0` at line 589). No citation, literature reference, or empirical basis exists for this value. It is an arbitrary ceiling bounding the optimizer search space.
+- **Files:** `coolspend/spatial_engine.py` lines 40, 160, 589
+- **Impact:** If real UTCI reductions for dense Platanus clusters exceed 12 degC, the surrogate caps them, potentially discarding Pareto-optimal solutions the live validator would confirm as superior. If real reductions always fall below 12 degC, the cap is harmless but creates false confidence in the surrogate's upper range.
+- **Fix approach:** Either (a) derive the cap from published literature with an explicit DOI citation, or (b) remove the cap entirely and let the analytical surrogate's own non-linearity bound the range, or (c) mark as UNCALIBRATED and flag in the UI disclaimer.
 
-### 1.1 `delta_tmrt_surrogate()` — primary thermal model
+### 2. Live Infrared Backend Never Verified End-to-End
 
-- **Status:** MOCK / analytical proxy. Explicitly marked `DEPRECATED 2026-05-19`
-  in parent; kept only to serve the legacy `demo_app.py /surrogate` POST route.
-  The parent project's own production path **does not use this function** for
-  reported results — it uses cached Infrared SDK UTCI runs.
-- **File:** `nature_nsga2_coolstock.py` lines 106–155
-- **What it is:** Linear interpolation between two literature ceilings
-  (Garcia-Nevado 2020 surface-temp proxy + Vanos 2020 shade-component lower bound).
-  `MAX_TMRT_REDUCTION = 12.0 °C` is an **unsourced hard-coded cap** with no error
-  bar and no validation against any Ladybug or Infrared simulation.
-- **Known bug (fixed upstream, NOT yet reflected in cached outputs):** The
-  porosity penalty was applied twice (squared). Fixed 2026-05-20 (audit C10) but
-  all existing `top3_configurations.csv/json`, `audit_record.json`, and
-  `placement_*.geojson` files in the parent project are stale relative to the fix.
-  If coolspend copies any of those cached outputs, the ΔTmrt figures are biased
-  ~12–15% low.
-- **Citation mismatch:** Garcia-Nevado 2020 measures infrared thermography of
-  pavement surface temperature, NOT mean radiant temperature at 1.1 m pedestrian
-  height. The function's docstring acknowledges this explicitly.
-- **Replacement path for coolspend:** Do NOT port this as a truth-producing model.
-  Use it offline only (NSGA-II surrogate loop); validate the top-3 outputs with
-  real Infrared SDK UTCI calls. Uncertainty must be quoted as ±4 °C per the parent
-  audit record.
-- **Severity:** HIGH — using this function's output as a Tmrt prediction without
-  a disclaimer is a honesty violation and will fail jury scrutiny.
+- **Issue:** `_live_utci()` in `sdk_client.py` has never been executed against the real Infrared API in a full pipeline run. `MOCKS.md` explicitly states "WIRED - UNVERIFIED until real SDK confirmation". This means the entire validation stage has never produced a real result.
+- **Files:** `coolspend/sdk_client.py` line 328 (`_live_utci`), `coolspend/app_pipeline.py` lines 314-315 (validation call), `DOCS/MOCKS.md`
+- **Impact:** The Rank-1 validated UTCI, cooled-footprint metric, and heat-stress-area removal are all speculative until the SDK key is exercised. The Gradio UI would crash on live backend if `_live_utci()` sends malformed requests or cannot parse real responses.
+- **Fix approach:** On key reissue day, run the calibration study (`calibration.py` main) which executes 10 live calls + 1 baseline. Fix any parse/response errors before the demo.
 
-### 1.2 `pollinator_corridor_score()` — third NSGA-II objective (F3)
+### 3. Stale Cached Results from Pre-Species-Gene Optimizer
 
-- **Status:** DEGENERATE in practice. Documented audit finding 2026-05-20 (C10 /
-  09 C-1) in `nature_nsga2_coolstock.py` lines 169–180.
-- **File:** `nature_nsga2_coolstock.py` lines 158–193
-- **What it is:** Because `_evaluate()` hard-clamps `y_m = max(y_m, HERITAGE_BUFFER_M)`,
-  solutions pinned to the buffer dominate the Pareto front and all return a
-  `north_score` ≈ 1.0. The third objective is effectively constant — the stated
-  3-objective problem degenerates to 2-objective (cooling vs. material).
-- **Impact for coolspend:** If the tree-budget app keeps an ecology objective,
-  port the concept but re-implement the scoring without the y-clamp collapse. If
-  not porting ecology, this can simply be dropped.
-- **Severity:** MEDIUM — misleading if presented as a genuine tri-objective
-  optimisation. Low severity if coolspend drops ecology objective entirely.
+- **Issue:** Cached UTCI results on disk (e.g. the Glories result of EUR 122,400 to 12 trees cool 2,130 sqm) were generated by the pre-species-aware optimizer. The species-aware optimizer (chromosome 3*N_TREES) changes geometry, making cached results structurally incompatible.
+- **Files:** `coolspend/cache/infrared/` (cached results), `coolspend/sdk_client.py` (cache key logic), `HANDOFF.md` line 26-27
+- **Impact:** When `INFRARED_BACKEND=cached` is used, the pipeline replays geometries from the old optimizer. Per-tree lon/lat and species IDs no longer match the current optimizer encoding. The "validated" UTCI corresponds to trees that do not match what the optimizer selected.
+- **Fix approach:** Purge all cached Infrared results on species-gene optimizer deployment. Add a cache format version tag (integer) in the cache JSON so schema changes invalidate old caches automatically. Bump version when optimizer encoding changes.
 
-### 1.3 Infrared mock backend — `infrared_client_v2.py` / `nature_infrared_client.py`
+### 4. Monkeypatched Gradio Dependency at Runtime
 
-- **Status:** MOCK. Both files are identical content (see §2.1 for the duplicate
-  concern). The `_mock_tmrt_field()`, `_mock_utci_field()`, and `_mock_wind_field()`
-  functions return deterministic synthetic grids built from `math.sin/cos`
-  oscillations anchored to hand-crafted base values:
-  - Bare plaza Tmrt: 58.2 °C (`base_open`) — sourced from Garcia-Nevado midterm S0
-  - Under-canopy Tmrt: 39.5 °C (`base_canopy`) — sourced from midterm r1 (ΔTmrt ~18.7)
-  - Open UTCI: 41.0 °C; under-canopy UTCI: 30.5 °C
-  - Wind speed open plaza: 4.2 m/s (EPW Barcelona July mean)
-- **File:** `infrared_client_v2.py` lines 155–295 (identical in
-  `nature_infrared_client.py`)
-- **Critical:** `INFRARED_BACKEND=live` raises `NotImplementedError` in both files
-  (line 343): `"INFRARED_BACKEND=live not wired yet"`. The live path was never
-  wired inside this module — the parent project went directly to the Infrared SDK
-  (`from infrared_sdk import InfraredClient`) in a separate script, bypassing this
-  module entirely.
-- **For coolspend:** Import only if you need a mock backend for offline dev.
-  The live path in these files is a dead stub — wire the Infrared SDK directly
-  as coolspend's `infrared_runner.py` (do not resurrect the `INFRARED_BACKEND`
-  env-var dispatch).
-- **Severity:** HIGH if mock fields are inadvertently used in demo output and
-  not labelled. Low if used strictly as an offline stand-in with an explicit
-  "MOCK DATA" label (the parent project overlaid a hatch in the UI).
+- **Issue:** `app.py` (lines 43-55) monkeypatches `gradio_client.utils._json_schema_to_python_type` and `get_type` to handle boolean schema values. This is a workaround for a known incompatibility between `gradio 4.44.1` and its bundled `gradio-client 1.3.0`. Without these patches, `app.py` crashes at launch with "bool is not iterable".
+- **Files:** `coolspend/app.py` lines 43-55, `requirements.txt` lines 6-8 (version pins)
+- **Impact:** Any change to Gradio or gradio-client dependency versions may silently break the monkeypatch. The patch intercepts low-level client internals, making future upgrades risky. If a new Gradio version fixes this upstream, the monkeypatch would conflict.
+- **Fix approach:** Pin exact versions (done). Document the monkeypatch with the Gradio issue/PR number in a comment. Add a test that imports `app.py` and verifies the patch applied successfully. When upgrading, remove the patch first and test.
 
-### 1.4 ULMA scaffold inventory — declared, not verified
+## Security Concerns
 
-- **Status:** `DECLARED` (partner data, not independently verified).
-- **File:** `nature_nsga2_coolstock.py` line 79: `ULMA_STOCK = 500 # ulma_inventory_mock.json`
-- **What it is:** The NSGA-II constraint `G1: modules ≤ 500` comes from a mock
-  JSON file, not a verified ULMA inventory. Named `ulma_inventory_mock.json`
-  in the comment.
-- **For coolspend:** This constraint is irrelevant (coolspend is tree-placement,
-  not scaffold). Drop entirely.
-- **Severity:** LOW for coolspend (out of scope).
+### S-01: No Input Validation on center_lonlat
 
-### 1.5 Girbau LAB / Almeria HDPE material quantities
+- **Issue:** `run_decision(center_lonlat=(lon, lat))` accepts arbitrary coordinates. No validation that coordinates fall within Barcelona's administrative boundary, within EPSG:32631 UTM zone, or represent plausible Earth coordinates. A user could pass coordinates far outside Barcelona, generating garbage results or wasting Infrared API calls.
+- **Files:** `coolspend/app_pipeline.py` lines 293-305, `coolspend/spatial_engine.py` lines 242-262 (`square_ring_lonlat`)
+- **Current mitigation:** None. `square_ring_lonlat()` computes a metric square around any lat/lon without bounds checking.
+- **Recommendation:** Add a coordinate bounds validator checking `center_lonlat` is within greater Barcelona area (approx 41.32-41.48 N, 2.05-2.25 E) and reject outside coordinates with a clear user-facing message.
 
-- **Status:** DECLARED (partner/literature data, quantities are placeholders).
-- **File:** `nature_nsga2_coolstock.py` lines 344–347:
-  `"upcycled_material_kg": 0.0  # placeholder — Girbau LAB declared available`
-- **For coolspend:** Not relevant to tree-placement. Drop.
-- **Severity:** LOW for coolspend (out of scope).
+### S-02: Broad Except Clauses Swallow Errors
 
-### 1.6 TOPSIS weights — arbitrary, not elicited
+- **Issue:** Multiple modules use bare `except Exception` with `# noqa: BLE001` and empty or logging-only except blocks. Programming errors (e.g. `NameError`, `TypeError`, `AttributeError`) are silently consumed, indistinguishable from expected runtime failures.
+- **Files:**
+  - `coolspend/app.py` line 168
+  - `coolspend/app_pipeline.py` lines 215, 264, 367, 384
+  - `coolspend/spatial_engine.py` line 69
+  - `coolspend/cost_model.py` line 813
+  - `coolspend/sdk_client.py` lines 433, 551
+  - `coolspend/bcn_lidar.py` lines 68, 97
+  - `coolspend/bcn_data.py` line 139
+- **Impact:** During a live demo, a programming error would be silently swallowed. The UI shows a generic "Pipeline error" or empty result with no stack trace visible to the user or operator.
+- **Recommendation:** Replace bare `except Exception` with specific exception types where possible. Where broad catch is intentional (graceful degradation for optional features), log the full exception at `logger.exception()` level before swallowing.
 
-- **Status:** Undocumented assumption. Author acknowledges in code comment
-  (lines 370–380) that weights `(0.5, 0.3, 0.2)` are "not derived from a
-  stakeholder survey, AHP pairwise comparison, or any documented elicitation."
-- **File:** `nature_nsga2_coolstock.py` lines 361–408
-- **For coolspend:** Port the TOPSIS method (canonical Hwang & Yoon 1981
-  implementation is correct). Present weights as a jury-adjustable slider, not
-  as a derived constant. The code comment itself says this.
-- **Severity:** MEDIUM — low technical risk, high presentation risk if weights
-  are framed as objective.
+### S-03: No User-Input Sanitization in Gradio UI
 
-### 1.7 `utci_hours_above()` Tmrt derivation — SOLWEIG-style proxy
+- **Issue:** The Gradio UI accepts free-text GeoJSON and numeric budget/size inputs. There is no size limit on GeoJSON text, no validation that the polygon is within reasonable bounds, and no protection against extremely large payloads that could cause memory issues.
+- **Files:** `coolspend/app.py` (gr.Textbox for GeoJSON), `coolspend/app_pipeline.py` `parse_site_geojson()`
+- **Current mitigation:** `parse_site_geojson()` uses `json.loads` only (safe). No size limit or polygon complexity check.
+- **Recommendation:** Add a 10 MB input size limit for GeoJSON text. Validate polygon vertex count (max 1000). Add a coordinate bounds check that rejects polygons outside the Barcelona area.
 
-- **Status:** Approximation, not a simulation. Confidence rated MED in the code
-  unless `x4_raval_uhi_validation.json` is present.
-- **File:** `nature_metrics.py` lines 93–122
-- **What it is:** `Tmrt ≈ Tdb + k * (GHI/1000) * (1 - shade_fraction)` where
-  `k = 25.0 °C` is calibrated against Garcia-Nevado 2020 peak (58 °C). Used to
-  estimate 8,760 hourly UTCI values without a CFD simulation.
-- **For coolspend:** This is the cheapest pre-key offline UTCI estimate available.
-  It is acceptable for the NSGA-II surrogate loop (same role as
-  `delta_tmrt_surrogate`). Must be replaced or labelled when presenting to jury
-  after the real API key arrives.
-- **Severity:** MEDIUM — acceptable in surrogate loop; deceptive if quoted as
-  Infrared SDK output.
+## Performance Bottlenecks
 
-### 1.8 `carbon_headroom_kgco2e()` — historical fabricated citation (now fixed upstream)
+### P-01: LiDAR Raster Download Is Heavy and Synchronous
 
-- **Status:** Fixed in parent (commit 4f3d2a9, 2026-05-17), but the fix history
-  is important context. The original function claimed a "Pla Clima 300 kgCO2e/m²
-  target" that does not exist in the document. A second attempted fix re-cited
-  LETI Climate Emergency Design Guide (buildings only — wrong domain). Both were
-  wrong. Current implementation drops the % budget framing and reports absolute
-  kgCO2e + per-capita comparison.
-- **File:** `nature_metrics.py` lines 441–534
-- **For coolspend:** Port the corrected version only. Do NOT port the headroom/
-  budget framing. The ÖKOBAUDAT steel coefficient (`oekobaudat_coolstock_materials.json`)
-  must be present at the path `L1_INGEST_data/carbon/oekobaudat_coolstock_materials.json`
-  or the function returns `LOW` confidence with a null value.
-- **Severity:** LOW now that upstream is fixed — but flag if the JSON data file
-  is not copied into the coolspend workspace.
+- **Issue:** `bcn_lidar.ensure_raster()` downloads a 166 MB GeoTIFF synchronously when `auto_download=True`. This blocks the pipeline for minutes. The raster is gitignored, so each fresh deployment (e.g. Hugging Face Space cold start) triggers a full download.
+- **Files:** `coolspend/bcn_lidar.py` lines 49-69, `coolspend/app_pipeline.py` line 358 (passes `auto_download=False`)
+- **Current mitigation:** Pipeline passes `auto_download=False`, so LiDAR context is effectively missing on fresh deployments. Degradation is silent.
+- **Improvement path:** Either (a) bundle a lightweight pre-sampled Barcelona-point grid JSON, (b) add a progress bar visible in the UI during download, or (c) document that LiDAR context is cold-start unavailable.
 
-### 1.9 `avoided_heat_mortality()` — Iungman 2023 column attribution inferred
+### P-02: Mutable Module-Level State Prevents Concurrency
 
-- **Status:** MED confidence. Coefficient extracted from PDF page 29 by pattern
-  inference; cross-check against supplementary appendix is open work per the
-  code comment.
-- **File:** `nature_metrics.py` lines 316–369
-- **For coolspend:** HIGH-RISK for jury scrutiny — a mortality claim based on
-  inferred PDF column attribution is easy to challenge. Either omit this metric
-  or label it explicitly as policy-framing (city-wide extrapolation, not a
-  per-plaza claim). The `honest_per_plaza_framing` key in the source JSON was
-  built precisely for this framing guard.
-- **Severity:** MEDIUM-HIGH — reputational risk if challenged.
+- **Issue:** `spatial_engine.py` maintains mutable module-level variables (`SITE_WIDTH_M`, `SITE_DEPTH_M`, `_SITE_ORIGIN_E/N`, `_ACTIVE_SITE`). Modified in-place by `set_active_site()`, `set_site_origin_from_polygon()`, `reset_site_origin()`. Two concurrent requests race on these globals, producing corrupted results.
+- **Files:** `coolspend/spatial_engine.py` lines 92-93, 110-111, 119 (state), lines 194-204 (`set_active_site`), lines 242-262 (`set_site_origin_from_polygon`), `coolspend/app_pipeline.py` lines 267-269 (reset in finally block)
+- **Impact:** Under concurrent load, User A's site geometry gets overwritten by User B's `set_site_origin_from_polygon()` call. User A's optimizer evaluates trees at User B's location.
+- **Improvement path:** Refactor `spatial_engine` to use a context-managed `Site` object passed explicitly through the pipeline. Remove all module-level mutable state.
 
----
+### P-03: NSGA-II No Timeout or Progress Callback
 
-## 2. Port Hazards
+- **Issue:** `run_optimisation()` does not expose a timeout, early-stopping callback, or progress reporting. If population size or generations are increased, the UI hangs silently with no user feedback.
+- **Files:** `coolspend/optimizer.py` lines 111-160
+- **Improvement path:** Add a `progress_callback` argument reporting generation number and current best fitness. Wire to Gradio's `gr.Progress()`. Add a `max_seconds` timeout that terminates optimization early and returns best-so-far.
 
-### 2.1 Duplicate files: `infrared_client_v2.py` vs `nature_infrared_client.py`
+## Technical Debt
 
-- **Issue:** Both files have byte-for-byte identical content (same docstring,
-  same class definitions, same mock functions, same `INFRARED_BACKEND=live` dead
-  stub). The names differ only in prefix convention.
-- **Files:** `infrared_client_v2.py`, `nature_infrared_client.py`
-- **Which to keep for coolspend:** Neither as a live-path client. If offline
-  mock backend is needed during days 1–2 (pre-API key), keep **one file** renamed
-  `mock_infrared_client.py`. Delete the other. Never import from either for
-  production paths.
-- **Risk:** Accidentally importing the wrong one. Both default to
-  `INFRARED_BACKEND=mock`, so a missing env var silently returns fake data.
-- **Severity:** MEDIUM — confusing at import time; high risk of silent mock
-  data leaking into demo if the env var is not set before the demo run.
+### TD-01: Cost Constants All Declared/Pending
 
-### 2.2 Parent-project coupling to leave behind
+- **Issue:** All unit costs in `cost_config.json` (tree_stock=900, pit_excavation=450, structural_soil=750, guarding=300, planting_labour=600, annual_opex=180) are marked "DECLARED / PENDING" in comments. Not validated against actual Barcelona municipal contracts, nursery prices, or landscape contractor quotes. Growth discount parameters (ramp_years=25, discount_rate=0.035, horizon_years=40) are similarly unvalidated.
+- **Files:** `coolspend/cost_config.json` (all fields), `coolspend/cost_model.py` lines 38-56
+- **Impact:** Headline "EUR/sq.m. cooled" metric propagates any error. If real tree_stock is 1,200 EUR (33% underestimate), the KPI is proportionally wrong.
+- **Fix approach:** Replace "DECLARED / PENDING" with citations to actual Barcelona municipal price lists. Until then, add a prominent disclaimer in the UI that cost constants are provisional.
 
-The following modules and layers exist in the NatureGooddest parent and must NOT
-be ported to coolspend. Porting them would add dead weight and coupling with no
-hackathon value.
+### TD-02: Dual-Unit KPI Reporting Disconnect
 
-| Layer / Module | Why Not Needed |
-|---|---|
-| `evaluator.py` + `HARD_BLOCK` gate | Full 27-pattern provenance gate; way beyond coolspend scope. Port only the data-labelling concept (confidence tiers). |
-| `sparql_engine.py` + rdflib SPARQL | Pattern firing via OWL/TTL + in-memory RDF graph. coolspend has no pattern library. |
-| `cookbooks/` YAML pattern library | 22-pattern cookbook, P01–P29 YAMLs. Not needed. |
-| Neo4j / `populate_neo4j.py` | Optional scale-out store; not on any demo path. Adds install complexity for zero benefit. |
-| `demo_app.py` Flask app (parent's) | Full multi-route Flask app serving NG3D viewer, `/run`, `/audit_json`, etc. Build a new minimal Flask/CLI for coolspend. |
-| Three.js NG3D viewer (`/` route) | WebGL 3D scene for the parent's 3D canopy drag-editor. Out of scope. |
-| `bcn_opendata.py` CKAN connector | Runtime Open Data BCN fetch. Only relevant if coolspend uses the same Barcelona site. |
-| `generate_june_pitch_deck.py` | Slide generator that imports `evaluator`. Not needed. |
-| `firing_trace.py` | Pattern firing trace utility. Not needed. |
-| `cookbook_runner.py` | Cookbook execution orchestrator. Not needed. |
-| `scripts/kg/` (OWL TTL emitter) | Knowledge-graph tooling. Not needed. |
-| ML / permaculture "urban coherence" scorer | Explicitly ruled out in `HANDOFF.md` "what didn't work": `"Do not retry ML for the core optimizer."` |
+- **Issue:** `cost_per_utci_degree()` reports KPI as interval `[lo, hi]` in two units (EUR/degC per tree AND per site). TOPSIS ranker consumes the scalar midpoint, while the UI displays the interval. The ranker ignores uncertainty, treating solutions with different interval widths as equal.
+- **Files:** `coolspend/cost_model.py` lines 690-969, `coolspend/optimizer.py` lines 285-310 (TOPSIS consumes `value` key)
+- **Fix approach:** Either (a) add interval half-width as a third TOPSIS criterion (minimize uncertainty), or (b) show interval only in detail view not ranked output, or (c) document clearly that interval is the 95% confidence range from growth/discount uncertainty.
 
-### 2.3 Field-name mismatch: `x_m`/`y_m` vs `x_position_m`/`y_position_m`
+### TD-03: Dead Code -- Deprecated Modules
 
-- **Issue:** `nature_nsga2_coolstock.py` uses `x_m` and `y_m` as internal
-  variable names (lines 13–14, 205, 291). The parent architecture doc notes that
-  the YAML pattern P01 uses `x_position_m` and `y_position_m` as the canonical
-  names (`VAR_ORDER` at line 48). The parent added fallback handling in JS
-  (commit `d0c181c`, 2026-05-16) but a third name variant would proliferate the
-  problem.
-- **Files:** `nature_nsga2_coolstock.py` (uses `x_m`/`y_m` internally),
-  `cookbooks/urban-cooling/patterns/P01_sun_path_canopy.yaml` (uses `x_position_m`).
-- **For coolspend:** Choose ONE naming convention at the start and use it
-  everywhere. Recommended: `x_m`/`y_m` (shorter, used in the Python core). Do
-  not import the P01 YAML — `load_pattern_bounds()` at line 41 will fail unless
-  `cookbooks/` is also ported (it should not be). Use the `FALLBACK_XL`/`FALLBACK_XU`
-  arrays directly (lines 50–51).
-- **Severity:** MEDIUM — silent wrong bounds if YAML load fails and fallback
-  silently activates without log visibility.
+- **Issue:** Three deprecated modules remain: `nature_nsga2_coolstock.py` (original 3-objective optimizer, deprecated thermal surrogate), `infrared_client_v2.py` and `nature_infrared_client.py` (identical, both with live path raising `NotImplementedError`).
+- **Files:** `nature_nsga2_coolstock.py`, `infrared_client_v2.py`, `nature_infrared_client.py`
+- **Fix approach:** Delete all three after confirming no imports reference them. Git history preserves old code.
 
-### 2.4 Coordinate-system footgun: EPSG:4326 vs plaza-local metres
+### TD-04: Monkeypatch Not Isolated
 
-- **Issue:** Three coordinate systems coexist in the parent (per `nature_architecture.md`
-  § Coordinate systems):
-  1. EPSG:4326 (WGS84 lat/lon) — raw OSM / GBIF inputs
-  2. Plaza-local metres — NSGA-II `x_m`/`y_m` with plaza SW corner at origin
-  3. EPSG:25831 (UTM 31N) — Spanish cadastre headers only, not used at runtime
-  Additionally, the 3D scene's plaza is centred at `(0, 0)` with SW corner at
-  `(-30, -30)`, so NSGA-II `(x_m=30, y_m=5)` maps to 3D `(0, -25)` — a
-  non-obvious offset documented only in `drawPlanView()`.
-- **Files:** `nature_nsga2_coolstock.py` (plaza-local), `nature_metrics.py`
-  (`plaza_shaded_fraction()` line 560–578 uses a second local origin with
-  `SITE_HALF = 30` and a `cz = cfg.y_m - SITE_HALF + w/2` calculation).
-- **For coolspend:** Define ONE coordinate frame at project start. The cleanest
-  choice for a tree optimizer is projected metres (e.g. UTM 31N or a local
-  metre grid). Whatever you choose, document the origin explicitly in code
-  constants and test that OSM geometries and optimizer outputs share the same
-  frame before the first Infrared API call.
-- **Severity:** HIGH — a coordinate mismatch produces plausible-looking but
-  wrong geometry in the Infrared API payload. Silent failure: the API accepts
-  any polygon and returns valid-looking UTCI numbers that are spatially wrong.
+- **Issue:** The Gradio monkeypatch lives in `app.py` at module level, running on every import including test imports. Not isolated to a compatibility shim module.
+- **Files:** `coolspend/app.py` lines 43-55
+- **Fix approach:** Extract monkeypatch into dedicated `_gradio_patch.py` module with `apply()` and `remove()` functions. Add unit tests verifying clean apply/remove cycle.
 
-### 2.5 `load_pattern_bounds()` YAML dependency
+## Architectural Risks
 
-- **Issue:** `COOLSTOCKProblem.__init__()` calls `load_pattern_bounds(P01_YAML)`
-  at line 201. `P01_YAML` resolves to `cookbooks/urban-cooling/patterns/P01_sun_path_canopy.yaml`
-  relative to the source file's parent (line 38). If coolspend does not copy
-  the cookbooks directory, this silently falls back to `FALLBACK_XL/FALLBACK_XU`
-  with only a `print()` warning (no exception raised, no flag in output JSON).
-- **File:** `nature_nsga2_coolstock.py` lines 38–63
-- **Mitigation:** Remove the YAML load entirely in the ported version. Hardcode
-  the bounds for coolspend's tree-placement variables directly in the Problem
-  class. This also removes the `yaml` import dependency.
-- **Severity:** LOW severity (fallback is correct for hackathon bounds) but
-  HIGH confusion risk — developers may not notice the fallback was triggered.
+### AR-01: Mutable Module State in spatial_engine
 
----
+- **Issue:** As detailed in P-02, mutable module-level state is the single biggest architectural risk for deployment. The entire pipeline depends on side effects from `set_active_site()` and `set_site_origin_from_polygon()` mutating globals.
+- **Files:** `coolspend/spatial_engine.py` lines 92-119 (state), lines 194-262 (mutators), `coolspend/app_pipeline.py` lines 267-269 (finally-block reset)
+- **Why fragile:** The `finally` block calls `reset_site_origin()` only when `center_lonlat is not None`. Calling `run_decision()` without `center_lonlat` after an anywhere-run permanently corrupts the default-site geometry. No thread-local storage or request-scoped isolation.
+- **Safe modification:** Wrap site configuration into a dataclass passed through the pipeline as an explicit argument. Remove all module-level mutable state.
 
-## 3. Hackathon-Specific Risks
+### AR-02: Analytical Surrogate Only in Evaluator
 
-### 3.1 Simulation budget: NSGA-II × 10k evals cannot call live Infrared
+- **Issue:** `TreeBudgetProblem._evaluate()` (line 178) calls only the analytical surrogate. The live Infrared validator runs AFTER optimization on exactly 3 candidates, not during. The optimizer explores a search space bounded by the surrogate with unsourced 12 degC cap and +/-4 degC uncertainty.
+- **Files:** `coolspend/optimizer.py` line 178, `coolspend/app_pipeline.py` lines 313-315 (post-hoc validation)
+- **Impact:** If the surrogate has systematic bias (e.g. always overestimates cooling), the optimizer converges on configurations that look good on surrogate but underperform in reality. The post-hoc Top-3 validator catches this only if the ranking error is large enough to swap the Top-3.
+- **Fix approach:** After calibration study determines surrogate RMSE and bias, document systematic error in the UI disclaimer. Post-hackathon, use live validator as secondary criterion during optimization.
 
-- **Issue:** NSGA-II with `pop_size=100, n_gen=100` produces 10,000 evaluations
-  (100 × 100, accounting for duplicates slightly fewer). The Infrared SDK performs
-  CFD-level UTCI computation, which takes seconds to tens of seconds per call.
-  At even 5 s per call, 10k evaluations = ~14 hours. The hackathon has 3 days
-  total, with the API key not available until May 27.
-- **Reference code check:** The parent project DOES follow the correct pattern.
-  `nature_nsga2_coolstock.py`'s `delta_tmrt_surrogate()` is the hot path inside
-  `_evaluate()`. The Infrared SDK is called ONLY in
-  `scripts/sim/run_infrared_utci_angels.py` (separate, offline script) for the
-  top-3 validation. The audit record labels results `"demo_version": "v1-surrogate"`.
-  coolspend MUST replicate this two-phase pattern:
-  - Phase A: full NSGA-II run on analytical surrogate (Ladybug UTCI proxy or
-    SOLWEIG-style proxy from `nature_metrics.py`) — no live API calls
-  - Phase B: post-optimisation, call Infrared SDK for top-3 configs only (~3 calls)
-- **Mitigation:** Implement a `SimBudget` guard at the top of `_evaluate()` that
-  raises an error if called with `backend=live`. The live path must be a separate
-  function `validate_top3_with_infrared()` called explicitly after NSGA-II
-  terminates.
-- **Severity:** CRITICAL — if the live API is wired into `_evaluate()` the run
-  will either time out or exhaust any API quota within minutes.
+### AR-03: Tiered KPI Validation Gap
 
-### 3.2 API key not available until May 27 — offline test coverage
+- **Issue:** The pipeline computes KPIs in stages: analytical surrogate during NSGA-II, cost-per-UTCI-degree after TOPSIS, cooled-footprint from live validator. TOPSIS ranker uses cost KPI, but headline metric is cooled-footprint. The "best" config per TOPSIS may not have the best cooled-footprint.
+- **Files:** `coolspend/optimizer.py` (topsis_rank), `coolspend/app_pipeline.py` lines 332-341 (KPI ordering), `coolspend/sdk_client.py` (cooled_footprint_m2)
+- **Fix approach:** Either (a) add cooled-footprint as a TOPSIS criterion, or (b) rank by cooled-footprint directly and show EUR/degC as secondary, or (c) at minimum show cooled-footprint for all Top-3 in the results table.
 
-- **Issue:** The `INFRARED_API_KEY` is not issued until the hackathon opens
-  (May 27). Any code path that imports or calls `infrared_sdk.InfraredClient`
-  directly will fail before that date. All days-1-2 development and testing must
-  run against the mock backend.
-- **Affected files:** Any coolspend module that imports from `infrared_sdk`.
-  The parent's `infrared_client_v2.py` / `nature_infrared_client.py` mocks provide
-  a usable contract (`simulate_tmrt()`, `simulate_utci()`, `simulate_wind()` with
-  `INFRARED_BACKEND=mock|cached`).
-- **Mitigation:**
-  1. Gate all SDK imports behind a try/except or `INFRARED_AVAILABLE` flag read
-     from the environment: `INFRARED_AVAILABLE = os.getenv("INFRARED_API_KEY") is not None`.
-  2. Write all integration tests against the mock backend so the full pipeline
-     can be validated before May 27.
-  3. On May 27 morning, run `scripts/validate_infrared_connection.py` (to be
-     created) that calls the real API with a single test geometry and asserts
-     the response shape matches the mock contract.
-- **Severity:** HIGH — unprotected SDK import breaks `pytest` and every CI run
-  before May 27.
+## Data Quality Risks
 
-### 3.3 Plan V2 ends at CLI — no web demo (presentation risk)
+### DQ-01: LiDAR Returns 0 = NoData in Dense Urban
 
-- **Issue:** `HANDOFF.md` describes a Plan V2 that delivers results as CLI
-  output (CSV + JSON + PNG pareto plot). The parent project's demo was a full
-  Flask app with an interactive Three.js viewer. At a hackathon judged on
-  presentation, a CLI output is a significant disadvantage versus teams with
-  interactive demos.
-- **Evidence:** `nature_nsga2_coolstock.py`'s `save_outputs()` (lines 499–546)
-  saves `pareto_front.png`, `top3_configurations.csv`, `top3_configurations.json`,
-  and `audit_record.json` to `L1_INGEST_data/nsga2_output/`. There is no web
-  server in the port plan.
-- **Mitigation options (in order of build effort):**
-  1. Minimal: serve the PNG + JSON via a 30-line Flask route with an HTML wrapper.
-     The pareto PNG is already generated — just serve it as `<img>`.
-  2. Better: a single-page Jinja2 template that renders the top-3 configs as
-     cards with the UTCI values and a site plan SVG (port `drawPlanView()` from
-     the parent's `demo_app.py`).
-  3. Do NOT attempt to port the full Three.js NG3D viewer — 3D scene setup alone
-     took the parent project multiple sessions.
-- **Address in:** Day 3 (May 29/30), after NSGA-II + Infrared validation are
-  working.
-- **Severity:** MEDIUM-HIGH — does not affect correctness but directly affects
-  jury scoring. Most hackathon judges will not read JSON files.
+- **Issue:** ICGC+CREAF LiDAR (20m mean canopy height) was built for forest stands. In dense urban Barcelona (Glories, Eixample, Ciutadella) it returns 0 (NoData). `bcn_lidar.py` line 95 correctly converts 0 to None, but the entire existing urban canopy (street trees, small parks) is invisible.
+- **Files:** `coolspend/bcn_lidar.py` lines 89-96, `coolspend/app_pipeline.py` lines 354-368
+- **Current mitigation:** Returns None with interpretation "bare / high planting opportunity". This may be misleading -- a site with many existing street trees appears as bare.
+- **Recommendation:** Add caveat in interpretation: "LiDAR product is forest-oriented; urban street trees may not register. Zero/NoData does not guarantee absence of existing canopy."
 
-### 3.4 Scope creep — parent project's 6-layer architecture
+### DQ-02: Cooling Score Is Explicitly a Heuristic
 
-- **Issue:** The NatureGooddest parent has 6 layers (L1–L6): INGEST, COOKBOOK,
-  GENERATE, SIMULATE, DEFEND, MONITOR. The coolspend port is intended to be
-  layers L3 (NSGA-II) + L4 (Infrared) + a lightweight L1 (OSM geometry) only.
-  Layers L2 (SPARQL/cookbook), L5 (evaluator `HARD_BLOCK`), and L6 (MOCKS.md
-  audit ledger) are explicitly out of scope per the HANDOFF and the scope decision
-  that rejected ML/permaculture.
-- **Specific out-of-scope items confirmed by HANDOFF.md "what didn't work":**
-  - ML-based "urban coherence" scorer → ruled out
-  - Full permaculture guild logic → ruled out in favour of rule-based scoring
-  - `evaluator.py` provenance gate → too complex for 3-day build
-- **Risk trigger:** The `CONCEPT_REPORT.md` §3.3 still describes a "Rule-Based
-  Permaculture Engine" with minimum spacing + diversity index. These are
-  lightweight fitness penalties, not the full cookbook — but the language invites
-  scope expansion. If the ecology rule-set grows beyond 2–3 simple penalties,
-  it will consume day-2 time needed for Infrared integration.
-- **Mitigation:** Cap the ecology/permaculture rules at exactly two penalties:
-  (1) minimum tree spacing (collision detection via `shapely`), and (2) a simple
-  species-diversity bonus (at most a lookup table). If either penalty takes
-  more than 2 hours to implement, cut it and use a single-species model.
-- **Severity:** MEDIUM — the risk is time loss, not correctness.
+- **Issue:** Each species in `bcn_species.py` has a `cooling_score` (0.43-0.73) from inverted canopy-volume-related proxies. Explicitly labelled "ranking-only proxy" in code comments and HANDOFF. But the optimizer uses it to guide species selection.
+- **Files:** `coolspend/bcn_species.py` (all entries), `coolspend/optimizer.py` (species gene weighting), `HANDOFF.md` line 29
+- **Impact:** Optimizer species recommendations are only as good as the cooling_score ranking. If Platanus actually cools less than the proxy suggests, the optimizer systematically recommends the wrong species.
+- **Fix approach:** Keep as heuristic. After live Infrared validation, add a note comparing heuristic-expected vs measured cooling per species. Do not use cooling_score as a hard constraint.
 
-### 3.5 NSGA-II run time on hackathon hardware
+### DQ-03: Incomplete Species Palette (12 of 287)
 
-- **Issue:** The parent project clocks NSGA-II at ~30 s on a 2024 laptop
-  (`nature_architecture.md` § Performance characteristics). That is for 100 pop
-  × 100 gen with a pure-Python analytical surrogate. For coolspend, if the
-  SOLWEIG-style `_derive_hourly_tmrt()` from `nature_metrics.py` (8,760-iteration
-  inner loop) is placed inside `_evaluate()`, each evaluation costs ~0.1 s, making
-  10k evaluations ~17 minutes — too slow for an interactive demo.
-- **File:** `nature_metrics.py` lines 93–122 (`_derive_hourly_tmrt`)
-- **Mitigation:**
-  1. Pre-compute the baseline UTCI array once (as `nature_metrics.py` does via
-     `_EPW_CACHE`) and pass it to `_evaluate()` as a read-only array.
-  2. Keep the NSGA-II surrogate as a simple analytical function (the
-     `delta_tmrt_surrogate` pattern) and reserve `utci_hours_above()` for
-     post-selection reporting only.
-  3. Reduce pop/gen for demo runs: `pop_size=50, n_gen=50` gives the same
-     qualitative Pareto shape in ~8 s and is sufficient for a live demo.
-- **Severity:** MEDIUM — missed only if UTCI loop is placed inside the hot path.
+- **Issue:** `bcn_species.py` defines only 12 of the 287 species in the full Barcelona inventory (145,392 trees). The optimizer cannot select any of the other 275 species. This artificially constrains the solution space.
+- **Files:** `coolspend/bcn_species.py` (12 entries), `coolspend/bcn_data.py` (145,392 trees, 287 species)
+- **Fix approach:** Add an "any species" mode where the optimizer can select any species from the inventory, falling back to genus-level defaults when individual cooling data is unavailable.
+
+### DQ-04: Single-Month UTCI Window (July Only)
+
+- **Issue:** UTCI time window is hardcoded to a single month (July) due to server-side limitation on multi-month windows. Cooling benefits vary by season -- deciduous trees provide shade in summer but allow solar gain in winter.
+- **Files:** `coolspend/sdk_client.py` (TimePeriod construction), `coolspend/calibration.py`
+- **Impact:** KPI overstates annual cooling benefits for deciduous species and may understate benefits of evergreens.
+- **Fix approach:** Document July-only limitation in the disclaimer. Post-hackathon, consider sampling multiple months at lower temporal resolution for a summer-average KPI.
+
+## Operational Risks
+
+### OR-01: No Rate Limiting on Infrared API for Public Space
+
+- **Issue:** `SimBudget` limits to 3 live calls per `run_decision()` invocation, but there is NO limit on `run_decision()` calls per user, per IP, or per time window. A malicious user or runaway script could exhaust the Infrared API quota.
+- **Files:** `coolspend/app.py` (no rate limiting), `coolspend/sdk_client.py` (SimBudget caps per-run, not per-hour)
+- **Recommendation:** Add server-side rate limiter (e.g. `slowapi` for FastAPI, or simple IP-based counter) limiting to N runs per minute. Add per-user daily cap. Export rate limit as environment variable.
+
+### OR-02: No Caching for Optimizer Results
+
+- **Issue:** SDK client has file-based cache keyed by geometry hash. There is no application-level cache for optimizer results. Two users querying the same site both trigger a full optimizer run (~1-2 seconds).
+- **Files:** `coolspend/optimizer.py` (no caching), `coolspend/sdk_client.py` (Infrared-only caching)
+- **Recommendation:** Add simple in-memory LRU cache keyed by `(center_lonlat, site_size_m, budget_eur, weights)` for optimizer results. Clear on config change.
+
+### OR-03: No Health Check Endpoint
+
+- **Issue:** The Gradio app has no `/health` or `/readyz` endpoint. No way to programmatically verify app is running, LiDAR raster is available, or Infrared cache is populated.
+- **Files:** `coolspend/app.py` (no health endpoint)
+- **Recommendation:** Add a hidden Gradio tab or API endpoint reporting internal component status (cache hit ratio, LiDAR presence, optimizer load time, last run call_log).
+
+### OR-04: No Graceful Degradation When Infrared Key Missing
+
+- **Issue:** If `INFRARED_BACKEND=live` is set but `INFRARED_API_KEY` is missing or invalid, the pipeline crashes with an opaque SDK error. No fallback to cached or mock mode.
+- **Files:** `coolspend/sdk_client.py` (assumes key present when backend=live), `coolspend/app_pipeline.py` (no backend fallback logic)
+- **Recommendation:** In `_live_utci()`, check for API key presence explicitly and raise a clear error message: "Live Infrared backend requires INFRARED_API_KEY. Set INFRARED_BACKEND=cached or mock to operate offline."
+
+## Missing Error Handling
+
+### EH-01: Generic Error Messages in Gradio UI
+
+- **Issue:** `on_submit()` catches all exceptions with `except Exception as exc: # noqa: BLE001` and displays generic "Error: {exc}" in the UI. No guidance on what went wrong or how to fix it.
+- **Files:** `coolspend/app.py` line 168
+- **Impact:** During a live demo, if the optimizer fails (e.g. invalid GeoJSON, empty result set), the user sees "Error: 'NoneType' object has no attribute 'get'" with no remediation steps.
+- **Fix approach:** Implement an error-handling layer mapping exception types to user-facing messages. `InvalidGeoJSONError` -> "The site boundary is not valid GeoJSON." `InfraredAPIError` -> "Cooling simulation failed. Try again or switch to mock mode."
+
+### EH-02: No Validation of Optimizer Output Quality
+
+- **Issue:** `select_top3()` extracts three best configurations but does not check they are actually distinct (same species, same positions) or that the Pareto front has meaningful spread.
+- **Files:** `coolspend/optimizer.py` lines 163-200
+- **Impact:** If optimizer converges to a single point, `select_top3()` returns three identical configurations. User sees "Top 3" but they are all the same plan.
+- **Fix approach:** Add dedup check in `select_top3()` comparing decision vectors. Return only distinct solutions and note count in result dict.
+
+### EH-03: Empty Results Displayed Without Error
+
+- **Issue:** When `run_decision()` hits an error, it returns `{"configurations": [], "headline": "", ...}`. The Gradio UI renders empty tables and blank headline with no error indication.
+- **Files:** `coolspend/app_pipeline.py` lines 219-228 (error return), `coolspend/app.py` (UI rendering)
+- **Fix approach:** When `configurations` is empty, display the `error` field prominently in a red alert box. Do not render empty tables.
+
+## Testing Gaps
+
+### TG-01: No Live Backend Integration Tests
+
+- **Issue:** All tests pass with mock or cached backend. Zero tests exercise the live Infrared SDK path. `_live_utci()` has never been called in a test.
+- **Files:** `coolspend/tests/` (all 15 files), `coolspend/sdk_client.py` lines 328-450
+- **Risk:** A deployment with `INFRARED_BACKEND=live` will be the first integration test. Parse errors, authentication issues, or schema mismatches surface during the live demo.
+- **Priority:** High
+
+### TG-02: No Calibration Study Results Committed
+
+- **Issue:** `calibration.py` defines a 10-config coverage sweep computing RMSE, R-squared, and 95% confidence band. These results have never been generated (no API key) and no output file is committed.
+- **Files:** `coolspend/calibration.py` lines 200-450, `coolspend/calibration/` output directory
+- **Risk:** The surrogate's true error characteristics are unknown. The +/-4 degC uncertainty claim in `delta_tmrt_surrogate` is an assumption, not a measured value.
+- **Priority:** High (post-key-reissue)
+
+### TG-03: No Concurrent Access Tests
+
+- **Issue:** No tests verify `spatial_engine` behaves correctly under concurrent calls. Given the mutable module state (AR-01), this is a significant omission.
+- **Files:** `coolspend/tests/test_spatial_engine.py`
+- **Risk:** Thread-safety bugs surface only under load. First concurrent user request will corrupt results.
+- **Priority:** Medium
+
+### TG-04: No Performance or Load Tests
+
+- **Issue:** No tests measure optimizer wall-clock time, memory usage, or API call volume. No benchmark to detect regressions from optimizer encoding changes.
+- **Files:** `coolspend/tests/` (no perf tests)
+
+### TG-05: No UI Tests
+
+- **Issue:** The Gradio UI has no tests. Button clicks, slider changes, and result rendering are untested.
+- **Files:** `coolspend/app.py`, `coolspend/tests/` (no Gradio tests)
+- **Risk:** UI breakage during the demo. `gr.Blocks.test()` exists but is unused.
+
+## Documentation Gaps
+
+### DG-01: README Does Not Document Species Palette Limitation
+
+- **Issue:** README describes optimizer as "species-aware" but does not explain the 12-species limitation, that cooling_score is a heuristic, or the MAX_THERMAL vs MAX_ECOLOGICAL tradeoff.
+- **Files:** `README.md`
+- **Fix:** Add section "Species Palette and Cooling Heuristic" documenting species count, cooling_score derivation, and tradeoff.
+
+### DG-02: Calibration Study Procedure Undocumented
+
+- **Issue:** `calibration.py` has a `main()` outlining steps 1-4 but no written guide on how to run calibration, what output means, or how to interpret RMSE/R-squared.
+- **Files:** `coolspend/calibration.py` (code comments only)
+- **Fix:** Add docstring at top of `calibration.py` with procedure, expected output format, and interpretation guide.
+
+### DG-03: Deprecated Files Not Marked
+
+- **Issue:** Three deprecated files are not mentioned in README. New developers do not know they are dead code.
+- **Files:** `README.md`, `nature_nsga2_coolstock.py`, `infrared_client_v2.py`, `nature_infrared_client.py`
+- **Fix:** Either delete them or add a "Deprecated Modules" section in README.
+
+## Dependency Risks
+
+### DR-01: Gradio Ecosystem Pinned at Fragile Version
+
+- **Issue:** Four transitive dependencies pinned to exact versions due to incompatibilities: `gradio==4.44.1`, `gradio-client==1.3.0`, `fastapi==0.112.4`, `starlette==0.37.2`. Security patches in Starlette or FastAPI cannot be applied without risking the monkeypatch.
+- **Files:** `requirements.txt` lines 5-9
+- **Risk:** Maintenance trap. Critical security patches are blocked.
+- **Priority:** Medium
+
+### DR-02: infrared-sdk Never Installed or Import-Tested
+
+- **Issue:** `infrared-sdk` listed in `requirements.txt` (line 14) but never installed. API surface inferred from documentation. Lazy import in `sdk_client.py` means import error only surfaces when `INFRARED_BACKEND=live` is used.
+- **Files:** `requirements.txt` line 14, `coolspend/sdk_client.py` line 332 (lazy import)
+- **Risk:** SDK may have different method signatures, class names, or import paths than assumed. Entire live pipeline crashes on first live call.
+- **Priority:** High (blocking for live demo)
+
+### DR-03: rasterio Optional but Essential for LiDAR
+
+- **Issue:** `rasterio` marked OPTIONAL in `requirements.txt` (line 16). If missing, `bcn_lidar` degrades silently to None. A deployment without rasterio loses all LiDAR context without warning.
+- **Files:** `requirements.txt` line 16, `coolspend/bcn_lidar.py` lines 87-88 (optional import)
+
+### DR-04: pymoo 0.6.1 -- NSGA-III Not Available
+
+- **Issue:** pymoo 0.6.1 does not support NSGA-III (only NSGA-II). If a third objective is added (e.g. carbon headroom), NSGA-III would be preferable for many-objective problems.
+- **Files:** `requirements.txt` line 4
+- **Risk:** No immediate risk for the current 2-objective problem. Future extensibility constraint.
+
+## Scalability Concerns
+
+### SC-01: Single-Process Gradio App
+
+- **Issue:** Gradio app runs as single-process, single-threaded. `gr.Blocks()` with default settings does not support parallel processing. Long-running optimizations block other users.
+- **Files:** `coolspend/app.py`
+- **Current capacity:** ~1 optimizer run at a time. Multiple users queue.
+- **Scaling path:** Deploy multiple replicas behind load balancer (requires removing mutable module state -- AR-01). Or increase Gradio's thread pool (`--concurrency-count`).
+
+### SC-02: No Database -- All State Is Process-Local
+
+- **Issue:** No database. Results returned to UI session and lost on page refresh. Infrared cache persists on disk but not shared across replicas. Acceptable for demo only.
+- **Files:** `coolspend/` (no database module)
+- **Scaling path:** Post-hackathon, add SQLite or PostgreSQL for result persistence with unique run ID for sharing.
+
+### SC-03: NSGA-II Parameters Hardcoded
+
+- **Issue:** Population size and number of generations hardcoded in `run_optimisation()`. No mechanism to adjust based on problem complexity, site size, or available compute.
+- **Files:** `coolspend/optimizer.py` lines 111-130
+- **Scaling path:** Add `population_size` and `n_gen` as parameters with sensible defaults based on site size.
 
 ---
 
-## 4. Test Coverage Gaps
-
-### 4.1 No tests exist in the hackathon workspace
-
-- **What's not tested:** The entire coolspend codebase (no files yet).
-- **Files:** None yet — workspace is pre-implementation.
-- **Risk:** With a 3-day build, untested code at the boundary between NSGA-II
-  outputs and Infrared API inputs is the highest risk point. A coordinate or
-  field-name error in the geometry payload will produce plausible but spatially
-  wrong UTCI results with no warning.
-- **Priority:** HIGH
-- **Minimum recommended coverage:**
-  1. `test_coordinate_frame.py` — assert that a known plaza polygon in OSM
-     coordinates converts to the correct local-metre frame before being passed
-     to the Infrared SDK.
-  2. `test_nsga2_surrogate.py` — smoke-test that `COOLSTOCKProblem._evaluate()`
-     returns finite, bounded values for edge-case inputs (zero width, max tilt).
-  3. `test_mock_backend.py` — assert that mock infrared fields have the expected
-     `metadata.disclaimer` and are never passed to `save_outputs()` without
-     the surrogate label.
-
-### 4.2 `delta_tmrt_surrogate()` post-fix not regression-tested
-
-- **What's not tested:** The porosity-squared-bug fix (audit C10, 2026-05-20)
-  has no regression test in the parent. If coolspend ports this function and
-  someone changes the `shade_fraction` calculation in the caller, the bug can
-  silently re-appear.
-- **Files:** `nature_nsga2_coolstock.py` lines 106–155
-- **Risk:** Silent ΔTmrt understatement of ~12–20% at typical porosity values.
-- **Priority:** HIGH
-- **Fix:** Add a `test_delta_tmrt_no_double_porosity()` assertion:
-  `assert abs(delta_tmrt_surrogate(0.85, 15.0, 0, 3.75) - delta_tmrt_surrogate(0.88, 12.0, 0, 3.75)) < 3.0`
-  and a direct check that `delta_tmrt_surrogate(shade_fraction=0.85, porosity_pct=15.0, ...)
-  != delta_tmrt_surrogate(shade_fraction=0.85**2, porosity_pct=15.0, ...)`.
-
----
-
-## 5. Dependencies at Risk
-
-### 5.1 `ladybug` / `ladybug_comfort` — heavy install
-
-- **Risk:** `nature_metrics.py` line 34 imports `from ladybug_comfort.utci import
-  universal_thermal_climate_index` and `from ladybug.epw import EPW`. The
-  `ladybug-rhino` ecosystem is large and has platform-specific wheels. On a clean
-  hackathon laptop it may fail to install or conflict with the `infrared_sdk`
-  environment.
-- **Impact:** `utci_hours_above()`, `utci_hourly_histogram()`, and
-  `avoided_heat_mortality()` all depend on this import. If unavailable, M1
-  metric is broken.
-- **Migration plan:** `ladybug_comfort.utci.universal_thermal_climate_index` is
-  a pure-Python function. For coolspend, consider copying just the UTCI equation
-  (Bröde 2012, freely published) as a standalone function rather than taking
-  the full `ladybug` dependency. This removes ~200 MB of install weight.
-- **Severity:** MEDIUM — risk is environment setup time lost on day 1.
-
-### 5.2 `pymoo` version pin
-
-- **Risk:** The parent pins `pymoo 0.6.1` (visible in `nature_nsga2_coolstock.py`
-  line 529 JSON metadata). The `NSGA2`, `SBX`, `PM`, `FloatRandomSampling`
-  import paths changed between pymoo 0.5.x and 0.6.x. If a different version
-  is installed, imports fail silently or with opaque errors.
-- **Files:** `nature_nsga2_coolstock.py` lines 65–70
-- **Migration plan:** Pin `pymoo==0.6.1` in `requirements.txt`. Test imports on
-  day 1 before writing any Problem subclass.
-- **Severity:** LOW — straightforward to fix if caught early.
-
-### 5.3 `shapely` — required for `plaza_shaded_fraction()`
-
-- **Risk:** `nature_metrics.py` line 555 imports `from shapely.geometry import
-  Polygon, MultiPoint` inside the function body (lazy import). If `shapely` is
-  not installed, this silently returns `{"value": 0.0, "confidence": "LOW"}` due
-  to the `if not cfg: return ...` guard — the actual `ImportError` is not caught
-  and will raise at runtime.
-- **File:** `nature_metrics.py` lines 553–619
-- **Migration plan:** Add `shapely` to `requirements.txt`. Add an explicit try/
-  except ImportError around the lazy import with a clear error message.
-- **Severity:** LOW — easy fix, but the silent fallback to 0.0 with LOW confidence
-  masks the missing dependency.
-
----
-
-## 6. Fragile Areas
-
-### 6.1 Dual-path Infrared client state
-
-- **Issue:** The `_dispatch()` function in both `infrared_client_v2.py` and
-  `nature_infrared_client.py` writes cached responses to `cache/infrared/{hash}.json`
-  on every mock call (lines 346–347). If the cache directory is pre-populated with
-  stale mock data from the parent project and `INFRARED_BACKEND=cached` is set
-  by accident, the demo will serve stale data silently.
-- **Safe modification:** Always start with `INFRARED_BACKEND=mock` (the default)
-  during development. Only switch to `cached` intentionally after verifying the
-  cache was generated by the current version of the mock.
-- **Severity:** LOW — deterministic hash keying means geometry changes bust the
-  cache, but the risk remains for identical geometry inputs.
-
-### 6.2 NSGA-II seed pinning vs. demo reproducibility
-
-- **Issue:** `run_optimisation(seed=42)` produces a deterministic Pareto front.
-  This is intentional and correct for a reproducible demo. However, if the problem
-  bounds change (e.g. different site, different variable ranges) the seed-42 result
-  will be a different Pareto front — it will not crash, but the top-3 configs will
-  change, invalidating any hardcoded demo talking points built around the old
-  front.
-- **File:** `nature_nsga2_coolstock.py` line 252
-- **Safe modification:** Treat the seed as a demo-time constant. Run a fresh
-  `n_gen=50, pop_size=50` on the first day with the actual coolspend bounds, then
-  lock in the top-3 outputs as reference values for the demo script.
-- **Severity:** LOW.
-
----
-
-*Concerns audit: 2026-05-21*
+*Concerns audit: 2026-05-27*

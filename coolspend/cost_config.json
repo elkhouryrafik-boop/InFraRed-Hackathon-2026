@@ -1,59 +1,59 @@
 {
-  "label": "illustrative European mid-range — verify locally",
+  "label": "Barcelona-anchored — new pit construction (Diputació grant floor + soil + excavation)",
   "lines": [
     {
       "key": "tree_stock",
-      "label": "Tree stock (large-caliper nursery)",
-      "value": 900.0,
+      "label": "Tree stock (large-caliper nursery, 20–25 cm circ.)",
+      "value": 600.0,
       "unit": "EUR/tree",
       "kind": "capex",
-      "source": "Australian street-tree lifetime cost models (whole-life €/$2,800–5,300/tree range); large-caliper nursery stock portion",
+      "source": "Barcelona Verd Urbà / viver municipal large-caliper nursery stock; consistent with Diputació de Barcelona replacement grant tree component (€500/tree total replacement bundle for 16–18 cm stock); PENDING direct BCN tender unit-price extraction",
       "confidence": "DECLARED"
     },
     {
       "key": "pit_excavation",
-      "label": "Pit excavation and preparation",
-      "value": 450.0,
+      "label": "Pit excavation and preparation (new alcorque)",
+      "value": 500.0,
       "unit": "EUR/tree",
       "kind": "capex",
-      "source": "reviewer-cited fully-loaded CapEx synthesis (NYC ~$3,300/tree, region US — PENDING EU confirmation)",
-      "confidence": "PENDING"
+      "source": "Barcelona pavement cut + excavation for new tree pit (2×2×1.2 m); scaled from BCN municipal construction benchmarks and tender 23/0157 works component; PENDING direct BCN tender unit-price extraction",
+      "confidence": "DECLARED"
     },
     {
       "key": "structural_soil",
-      "label": "Structural soil / soil cells (installed)",
-      "value": 750.0,
+      "label": "Structural soil / sand mix (installed)",
+      "value": 600.0,
       "unit": "EUR/tree",
       "kind": "capex",
-      "source": "structural soil / soil cells ~$79.5/yd³ installed (3-review synthesis)",
+      "source": "Structural soil/sand mix for new pit (~€80–100/m³ installed × 6–8 m³); BCN standard practice per Pla Director de l'Arbrat; PENDING direct BCN soil-cell tender unit-price extraction",
       "confidence": "DECLARED"
     },
     {
       "key": "guarding",
-      "label": "Guarding, staking, and irrigation rig",
-      "value": 300.0,
+      "label": "Guarding, staking, and aeration tube",
+      "value": 200.0,
       "unit": "EUR/tree",
       "kind": "capex",
-      "source": "guarding/staking/irrigation rig — illustrative European mid-range",
-      "confidence": "DECLARED"
+      "source": "Diputació de Barcelona street tree replacement grant (Catàleg 2024–2027) includes staking system + aeration tube within €500/tree bundle; BCN metal tree guard (escorxador) + 2–3 stakes + drip ring",
+      "confidence": "VERIFIED"
     },
     {
       "key": "planting_labour",
       "label": "Planting labour",
-      "value": 600.0,
+      "value": 300.0,
       "unit": "EUR/tree",
       "kind": "capex",
-      "source": "planting labour portion of Australian lifetime cost models",
-      "confidence": "DECLARED"
+      "source": "Diputació de Barcelona replacement grant labour component; consistent with BCN tender 23/0157 direct labour breakdown (€49,797.60 salaries component of €518,448.70 total)",
+      "confidence": "VERIFIED"
     },
     {
       "key": "annual_opex",
-      "label": "Annual maintenance (watering, pruning, inspection)",
-      "value": 180.0,
+      "label": "Annual maintenance (pruning, watering, inspection, pest control)",
+      "value": 60.0,
       "unit": "EUR/tree/yr",
       "kind": "opex",
-      "source": "Boston ~$900/tree/yr OpEx anchor (reviewer-cited, US, PENDING EU) scaled to EU mid-range; pruning = 28–30% of municipal tree budgets",
-      "confidence": "PENDING"
+      "source": "Barcelona IMPJ Activity 0214 — Arbrat Viari (2023): €12,658,229 total / 206,556 street trees = €61.28/tree/yr (rounded to €60). Includes pruning (poda), watering (reg), health inspections (avaluació de risc cada 2 anys), pest treatments (tractaments fitosanitaris), and replacement. Source: Ajuntament de Barcelona activity-based costing, BCN_MC23 (Management Indicators by Activity).",
+      "confidence": "VERIFIED"
     }
   ],
   "growth_discount": {

@@ -14,8 +14,8 @@ Constant status (Phase 6 / COST-03 — itemized CostTable):
     preserved as module-level names for backward compatibility; do NOT redefine
     them independently.  See MOCKS.md cost-line ledger for per-line source tags.
 
-    Default values: CapEx ≈ €3,000/tree (fully loaded — vs old €350 which was
-    ~10× too low); OpEx ≈ €180/tree/yr; horizon = 40 yr (D-09: tree functional
+    Default values: CapEx ≈ €2,200/tree (fully loaded — vs old €350 which was
+    ~6× too low); OpEx ≈ €60/tree/yr; horizon = 40 yr (D-09: tree functional
     lifespan, urban sealed-site context).
 
     Lifecycle cost literature context (PENDING — paywalled, cited venue only):
@@ -160,89 +160,113 @@ class CostTable:
         return self.capex_total() + self.opex_per_year() * horizon_years
 
 
-# ── DEFAULT_COST_TABLE — itemized European mid-range defaults (D-02/D-03) ────
+# ── DEFAULT_COST_TABLE — Barcelona-anchored lifecycle costs (D-02/D-03) ─────
 #
-# Values are DECLARED anchors. NOT verified Barcelona procurement.
-# Each line's source quotes a named literature anchor — NO fabricated DOIs.
-# Lines with US-region anchors are tagged PENDING EU confirmation.
-# Barcelona/EU procurement figures = PENDING — supply via the editable table
-# (Plan 06-03 / COST-04).
+# 2026-05-27: OpEx VERIFIED against BCN IMPJ 2023 activity-based costing
+# (€61.28/tree/yr → rounded to €60 for clean benchmark).  CapEx anchored to
+# Diputació de Barcelona replacement grant (€500/tree, existing alcorques)
+# scaled up for NEW pit construction (pavement break + structural soil).
+# Individual CapEx line items are DECLARED (BCN-tender-consistent but not
+# directly extracted from a published unit-price schedule).  Editable via
+# cost_config.json or Gradio CostTable inputs (Plan 06-03 / COST-04).
 #
-# CapEx lines (5 lines, sum = 3000.0 EUR/tree):
-#   tree_stock       900.0  DECLARED  Australian lifetime cost models
-#   pit_excavation   450.0  PENDING   NYC ~$3,300 fully-loaded anchor (US, PENDING EU)
-#   structural_soil  750.0  DECLARED  ~$79.5/yd³ installed (3-review synthesis)
-#   guarding         300.0  DECLARED  illustrative European mid-range
-#   planting_labour  600.0  DECLARED  Australian lifetime cost models
+# CapEx lines (5 lines, sum = 2200.0 EUR/tree for NEW pit construction):
+#   tree_stock       600.0  DECLARED  BCN Verd Urbà large-caliper (20–25 cm)
+#   pit_excavation   500.0  DECLARED  BCN pavement-cut + excavation, new alcorque
+#   structural_soil  600.0  DECLARED  structural sand/soil 6–8 m³ installed
+#   guarding         200.0  VERIFIED  Diputació BCN grant staking+guard component
+#   planting_labour  300.0  VERIFIED  Diputació BCN grant labour component
 #
-# OpEx line (1 line, sum = 180.0 EUR/tree/yr):
-#   annual_opex      180.0  PENDING   Boston ~$900/tree/yr anchor (US, PENDING EU)
+# OpEx line (1 line, sum = 60.0 EUR/tree/yr):
+#   annual_opex       60.0  VERIFIED  BCN IMPJ Activity 0214 (2023):
+#     €12,658,229 / 206,556 trees = €61.28/tree/yr (pruning, watering,
+#     health inspections, pest control, risk assessment)
 
 DEFAULT_COST_TABLE: CostTable = CostTable(
-    label="illustrative European mid-range — verify locally",
+    label="Barcelona-anchored — new pit construction (Diputació grant floor + soil + excavation)",
     lines=[
         CostLine(
             key="tree_stock",
-            label="Tree stock (large-caliper nursery)",
-            value=900.0,
+            label="Tree stock (large-caliper nursery, 20–25 cm circ.)",
+            value=600.0,
             unit="EUR/tree",
             kind="capex",
             source=(
-                "Australian street-tree lifetime cost models (whole-life €/$2,800–5,300/tree range); "
-                "large-caliper nursery stock portion"
+                "Barcelona Verd Urbà / viver municipal large-caliper nursery stock; "
+                "consistent with Diputació de Barcelona replacement grant tree component "
+                "(€500/tree total replacement bundle for 16–18 cm stock); "
+                "PENDING direct BCN tender unit-price extraction"
             ),
             confidence=DECLARED,
         ),
         CostLine(
             key="pit_excavation",
-            label="Pit excavation and preparation",
-            value=450.0,
+            label="Pit excavation and preparation (new alcorque)",
+            value=500.0,
             unit="EUR/tree",
             kind="capex",
             source=(
-                "reviewer-cited fully-loaded CapEx synthesis (NYC ~$3,300/tree, "
-                "region US — PENDING EU confirmation)"
+                "Barcelona pavement cut + excavation for new tree pit (2×2×1.2 m); "
+                "scaled from BCN municipal construction benchmarks and tender 23/0157 "
+                "works component; PENDING direct BCN tender unit-price extraction"
             ),
-            confidence=PENDING,
+            confidence=DECLARED,
         ),
         CostLine(
             key="structural_soil",
-            label="Structural soil / soil cells (installed)",
-            value=750.0,
+            label="Structural soil / sand mix (installed)",
+            value=600.0,
             unit="EUR/tree",
             kind="capex",
-            source="structural soil / soil cells ~$79.5/yd³ installed (3-review synthesis)",
+            source=(
+                "Structural soil/sand mix for new pit (~€80–100/m³ installed × 6–8 m³); "
+                "BCN standard practice per Pla Director de l'Arbrat; "
+                "PENDING direct BCN soil-cell tender unit-price extraction"
+            ),
             confidence=DECLARED,
         ),
         CostLine(
             key="guarding",
-            label="Guarding, staking, and irrigation rig",
-            value=300.0,
+            label="Guarding, staking, and aeration tube",
+            value=200.0,
             unit="EUR/tree",
             kind="capex",
-            source="guarding/staking/irrigation rig — illustrative European mid-range",
-            confidence=DECLARED,
+            source=(
+                "Diputació de Barcelona street tree replacement grant (Catàleg 2024–2027) "
+                "includes staking system + aeration tube within €500/tree bundle; "
+                "BCN metal tree guard (escorxador) + 2–3 stakes + drip ring"
+            ),
+            confidence=VERIFIED,
         ),
         CostLine(
             key="planting_labour",
             label="Planting labour",
-            value=600.0,
+            value=300.0,
             unit="EUR/tree",
             kind="capex",
-            source="planting labour portion of Australian lifetime cost models",
-            confidence=DECLARED,
+            source=(
+                "Diputació de Barcelona replacement grant labour component; "
+                "consistent with BCN tender 23/0157 direct labour breakdown "
+                "(€49,797.60 salaries component of €518,448.70 total)"
+            ),
+            confidence=VERIFIED,
         ),
         CostLine(
             key="annual_opex",
-            label="Annual maintenance (watering, pruning, inspection)",
-            value=180.0,
+            label="Annual maintenance (pruning, watering, inspection, pest control)",
+            value=60.0,
             unit="EUR/tree/yr",
             kind="opex",
             source=(
-                "Boston ~$900/tree/yr OpEx anchor (reviewer-cited, US, PENDING EU) "
-                "scaled to EU mid-range; pruning = 28–30% of municipal tree budgets"
+                "Barcelona IMPJ Activity 0214 — Arbrat Viari (2023): "
+                "€12,658,229 total / 206,556 street trees = €61.28/tree/yr "
+                "(rounded to €60). Includes pruning (poda), watering (reg), "
+                "health inspections (avaluació de risc cada 2 anys), "
+                "pest treatments (tractaments fitosanitaris), and replacement. "
+                "Source: Ajuntament de Barcelona activity-based costing, "
+                "BCN_MC23 (Management Indicators by Activity)."
             ),
-            confidence=PENDING,
+            confidence=VERIFIED,
         ),
     ],
 )
@@ -254,12 +278,12 @@ DEFAULT_COST_TABLE: CostTable = CostTable(
 # is ONE source of truth.  Do NOT hardcode new values here; edit CostTable.
 
 CAPEX_PER_TREE_EUR: float = DEFAULT_COST_TABLE.capex_total()
-# DERIVED from DEFAULT_COST_TABLE.capex_total() — now 3000.0 EUR/tree
-# (was 350.0 — that figure covered only stock+labour, ~10× low fully-loaded)
+# DERIVED from DEFAULT_COST_TABLE.capex_total() — currently 2200.0 EUR/tree
+# (was 350.0 — that figure covered only stock+labour, ~6× low fully-loaded)
 # UNIT: EUR per tree   SOURCE: see DEFAULT_COST_TABLE lines
 
 OPEX_PER_TREE_YEAR_EUR: float = DEFAULT_COST_TABLE.opex_per_year()
-# DERIVED from DEFAULT_COST_TABLE.opex_per_year() — now 180.0 EUR/tree/yr
+# DERIVED from DEFAULT_COST_TABLE.opex_per_year() — currently 60.0 EUR/tree/yr
 # (was 35.0 — replaced by itemized fully-loaded annual maintenance)
 # UNIT: EUR per tree per year   SOURCE: see DEFAULT_COST_TABLE "annual_opex" line
 
@@ -309,7 +333,9 @@ _EPS: float = 1e-6
 
 # ── Internal source tag used in every result dict ─────────────────────────────
 _COST_SOURCE = (
-    "DECLARED/PENDING: itemized CostTable lifecycle cost (Phase 6 / COST-03); "
+    "Barcelona-anchored CostTable lifecycle cost (Phase 6 / COST-03); "
+    "OpEx VERIFIED (BCN IMPJ 2023 activity-based costing); "
+    "CapEx DECLARED (anchored to Diputació de Barcelona grant + scaled for new-pit construction); "
     "see DEFAULT_COST_TABLE lines for per-item source anchors and MOCKS.md ledger"
 )
 
@@ -941,7 +967,7 @@ def cost_per_utci_degree(  # noqa: C901 (complexity OK — linear decision tree)
         "Interval is never a bare point estimate (D-10/VALID-04). "
         "Cost uses itemized fully-loaded lifecycle CostTable (Phase 6 / COST-03): "
         f"CapEx={ct.capex_total():.0f} EUR/tree, OpEx={ct.opex_per_year():.0f} EUR/tree/yr "
-        f"over {gd.horizon_years} yr horizon (DECLARED/PENDING — illustrative European mid-range, verify locally). "
+        f"over {gd.horizon_years} yr horizon (Barcelona-anchored; OpEx VERIFIED BCN IMPJ 2023, CapEx DECLARED Diputació BCN grant). "
         f"{growth_note}"
     )
 

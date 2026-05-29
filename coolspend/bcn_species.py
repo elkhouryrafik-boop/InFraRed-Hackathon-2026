@@ -67,7 +67,21 @@ SPECIES_TABLE: tuple[Species, ...] = (
     Species("Magnolia grandiflora", "Southern magnolia", 10.0, 5.0, "evergreen", "dense", "Mitjana", "Mitjana"),
 )
 
-_BY_SCIENTIFIC: dict[str, Species] = {s.scientific: s for s in SPECIES_TABLE}
+def _norm_key(name: str) -> str:
+    """Normalise a scientific name for joining table ↔ inventory.
+
+    The Open Data BCN inventory mixes hybrid-marker conventions: some names use the
+    U+00D7 MULTIPLICATION SIGN ("Platanus × acerifolia") while others use ASCII "x"
+    ("Tilia x euchlora"). Our SPECIES_TABLE uses ASCII "x". Without normalisation the
+    single most-planted street species (Platanus × acerifolia, ~28% of the inventory)
+    silently fails the join and degrades to the neutral cooling weight.
+
+    Maps "×" → "x", lowercases, and collapses runs of whitespace.
+    """
+    return " ".join(name.replace("×", "x").lower().split())
+
+
+_BY_SCIENTIFIC: dict[str, Species] = {_norm_key(s.scientific): s for s in SPECIES_TABLE}
 
 
 def crown_projected_area_m2(sp: Species) -> float:
@@ -90,8 +104,12 @@ def cooling_score(sp: Species) -> float:
 
 
 def get_species(scientific: str) -> Species | None:
-    """Look up a species by its scientific name (arbrat-viari cat_nom_cientific)."""
-    return _BY_SCIENTIFIC.get(scientific)
+    """Look up a species by its scientific name (arbrat-viari cat_nom_cientific).
+
+    Join is normalised (hybrid "×"↔"x", case, whitespace) so the real inventory
+    spelling matches the table — see _norm_key.
+    """
+    return _BY_SCIENTIFIC.get(_norm_key(scientific))
 
 
 # Scientific names in palette order (stable index for the optimizer's species gene).
@@ -106,7 +124,7 @@ def cooling_score_by_name(scientific: str) -> float:
     Used to weight the optimizer's thermal objective so it prefers higher-cooling
     species (ranking proxy; the live Infrared UTCI is the ground truth).
     """
-    sp = _BY_SCIENTIFIC.get(scientific)
+    sp = _BY_SCIENTIFIC.get(_norm_key(scientific))
     return cooling_score(sp) if sp is not None else _DEFAULT_COOLING_WEIGHT
 
 

@@ -4,7 +4,7 @@ test_cost_config.py — Tests for cost_config.json + load_cost_table / cost_tabl
 
 Tests cover:
     - Round-trip: DEFAULT_COST_TABLE → dict → cost_table_from_dict equals defaults
-    - load_cost_table() returns CapEx=3000, OpEx=180, discount_rate=0.035
+    - load_cost_table() returns CapEx=2200, OpEx=60, discount_rate=0.035
     - Invalid / missing path falls back to defaults without raising
     - Invalid JSON falls back to defaults without raising
     - An edited dict (annual_opex=400) produces a higher per_tree_cost and a higher
@@ -111,15 +111,15 @@ class TestCostTableRoundTrip:
 class TestLoadCostTable:
     """load_cost_table() reads cost_config.json and returns correct defaults."""
 
-    def test_capex_total_is_3000(self) -> None:
-        """load_cost_table() → table.capex_total() == 3000.0."""
+    def test_capex_total_is_2200(self) -> None:
+        """load_cost_table() → table.capex_total() == 2200.0."""
         table, _ = load_cost_table()
-        assert table.capex_total() == pytest.approx(3000.0)
+        assert table.capex_total() == pytest.approx(2200.0)
 
-    def test_opex_per_year_is_180(self) -> None:
-        """load_cost_table() → table.opex_per_year() == 180.0."""
+    def test_opex_per_year_is_60(self) -> None:
+        """load_cost_table() → table.opex_per_year() == 60.0."""
         table, _ = load_cost_table()
-        assert table.opex_per_year() == pytest.approx(180.0)
+        assert table.opex_per_year() == pytest.approx(60.0)
 
     def test_discount_rate_is_0035(self) -> None:
         """load_cost_table() → gd.discount_rate == 0.035."""
@@ -143,10 +143,10 @@ class TestLoadCostTable:
         assert isinstance(result[0], CostTable)
         assert isinstance(result[1], GrowthDiscountParams)
 
-    def test_label_says_verify_locally(self) -> None:
-        """Loaded table label contains 'verify locally'."""
+    def test_label_says_barcelona_anchored(self) -> None:
+        """Loaded table label contains 'Barcelona-anchored'."""
         table, _ = load_cost_table()
-        assert "verify locally" in table.label
+        assert "Barcelona-anchored" in table.label
 
 
 # ── Fail-open: invalid / missing path ────────────────────────────────────────

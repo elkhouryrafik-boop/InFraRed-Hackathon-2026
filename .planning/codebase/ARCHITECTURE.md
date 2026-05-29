@@ -1,294 +1,471 @@
 # Architecture
 
-**Analysis Date:** 2026-05-21
-**Context:** Architecture of the coolspend hackathon app, clean-extracted from the NatureGooddest reference codebase. coolspend is a focused subset — NOT the full 6-layer NG platform. The core loop maps to roughly L3 (optimize) + L4 (simulate/validate) + L5 (defend/emit) from the parent system.
+**Analysis Date:** 2026-05-27
 
----
+## High-Level Architecture
 
-## Pattern Overview
-
-**Overall:** Surrogate-optimize → validate top-N with real simulation → rank by composite score → emit decision artifact
-
-**Key Characteristics:**
-- Offline NSGA-II Pareto optimization runs on a fast analytical surrogate (no real API calls in the hot optimization loop)
-- Top-3 Pareto representatives are post-hoc validated with the real Infrared SDK UTCI simulation
-- Multi-criteria decision making (TOPSIS) ranks validated results by configurable weights
-- Output is a deterministic JSON artifact: ranked configurations with all provenance fields
-- A Gradio app wraps the full pipeline for hackathon demo interaction
-
----
-
-## Core Loop
+CoolSpend is a pipeline-based decision-support system. Each run starts from a site polygon and a budget, then passes through five sequential stages: surrogate optimization, candidate selection, Infrared validation, multi-criteria ranking, and artifact output.
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│  1. BASELINE                                                         │
-│     sdk_client.py → Infrared SDK → baseline UTCI for the site       │
-│     (one call, result cached to disk)                                │
-└────────────────────────────┬─────────────────────────────────────────┘
+                    ┌─────────────────────────────┐
+                    │  User Inputs                │
+                    │  - Site polygon (GeoJSON)   │
+                    │  - Budget (EUR)             │
+                    │  - TOPSIS weights           │
+                    │  - Infrared backend choice  │
+                    │  - Cost table edits         │
+                    └─────────────┬───────────────┘
+                                  │
+                                  v
+               ┌─────────────────────────────────┐
+               │  Stage 0: Site targeting        │
+               │  app_pipeline._run_pipeline()   │
+               │  - Parse GeoJSON (json.loads)   │
+               │  - Set UTM origin (D-06)        │
+               │  - Create metric-square site    │
+               │  - Set active site override     │
+               └─────────────┬───────────────────┘
                              │
-┌────────────────────────────▼─────────────────────────────────────────┐
-│  2. OPTIMIZE on SURROGATE                                            │
-│     optimizer.py → NSGA-II (pymoo) → COOLSTOCKProblem               │
-│       Variables: x_m, y_m, width_m, height_m, tilt_deg,             │
-│                  porosity_pct  (all in plaza-local metres / degrees) │
-│       Surrogate: spatial_engine.py::delta_tmrt_surrogate()           │
-│                  (analytical proxy, no API call in hot path)         │
-│       Objectives: F1=-ΔTmrt_site, F2=scaffold_modules, F3=-corridor │
-│       Constraint: G1=modules - ULMA_STOCK ≤ 0                       │
-│       Output: Pareto front (100 points)                              │
-└────────────────────────────┬─────────────────────────────────────────┘
+                             v
+               ┌─────────────────────────────────┐
+               │  Stage 1: NSGA-II Optimization  │
+               │  optimizer.run_optimisation()    │
+               │  SURROGATE-ONLY: no SDK calls   │
+               │  Objectives:                    │
+               │    F1 = thermal_relief x        │
+               │         cooling_score_weight    │
+               │    F2 = ecological_score        │
+               │  Constraint: total_cost <=      │
+               │              budget             │
+               │  POP_SIZE=60, N_GEN=60          │
+               └─────────────┬───────────────────┘
                              │
-┌────────────────────────────▼─────────────────────────────────────────┐
-│  3. SELECT TOP-3 REPRESENTATIVES                                     │
-│     optimizer.py::select_top3()                                      │
-│       C1: MAX Tmrt reduction (argmin F[:,0])                         │
-│       C2: MIN material count (argmin F[:,1])                         │
-│       C3: BALANCED — closest to utopia point (argmin ||F_norm||)     │
-└────────────────────────────┬─────────────────────────────────────────┘
+                             v
+               ┌─────────────────────────────────┐
+               │  Stage 2: Top-3 Selection       │
+               │  optimizer.select_top3()        │
+               │  MAX_THERMAL_RELIEF (rank 1)    │
+               │  MAX_ECOLOGICAL (rank 2)        │
+               │  BALANCED (rank 3)              │
+               │  Pareto dedup + padding         │
+               └─────────────┬───────────────────┘
                              │
-┌────────────────────────────▼─────────────────────────────────────────┐
-│  4. VALIDATE TOP-3 WITH REAL UTCI                                    │
-│     sdk_client.py → Infrared SDK per configuration                   │
-│       Input: x_m/y_m/width_m/height_m canopy geometry (plaza-local) │
-│       Output: real UTCI delta vs baseline, cached per geometry hash  │
-│     IMPORTANT: this step is where the surrogate estimate is          │
-│     replaced by ground-truth simulation. The surrogate is used ONLY  │
-│     to drive Pareto search; validated UTCI is what gets quoted.      │
-└────────────────────────────┬─────────────────────────────────────────┘
+                             v
+               ┌─────────────────────────────────┐
+               │  Stage 3: Infrared Validation   │
+               │  validate_top3_with_infrared()  │
+               │  SimBudget(max_live_calls=3)    │
+               │  1 baseline + 3 interventions   │
+               │  mock / cached / live dispatch  │
+               │  Attaches: delta_utci_c,        │
+               │  heat_stress_area_removed_m2,   │
+               │  cooled_footprint_m2            │
+               └─────────────┬───────────────────┘
                              │
-┌────────────────────────────▼─────────────────────────────────────────┐
-│  5. COMPUTE €/°C                                                     │
-│     cost_model.py → derive scaffold cost from modules                │
-│       cost_per_module (€) × scaffold_modules = total_cost_eur        │
-│       €_per_utci_degree = total_cost_eur / validated_delta_utci_c    │
-│     rules_engine.py → apply spatial rules and flags                  │
-│       (heritage buffer, stock limit, porosity range)                 │
-└────────────────────────────┬─────────────────────────────────────────┘
+                             v
+               ┌─────────────────────────────────┐
+               │  Stage 4: TOPSIS Ranking        │
+               │  optimizer.topsis_rank()        │
+               │  Primary: EUR/degC ascending    │
+               │  Tie-break: TOPSIS closeness    │
+               │  Weights: w_thermal, w_eco      │
+               │  Recompute KPI with edited      │
+               │  cost table if provided         │
+               └─────────────┬───────────────────┘
                              │
-┌────────────────────────────▼─────────────────────────────────────────┐
-│  6. RANK BY TOPSIS                                                   │
-│     optimizer.py::topsis_rank()                                      │
-│       Weights: thermal (0.5) / material (0.3) / ecology (0.2)        │
-│       Presented as user-facing sliders in Gradio app                 │
-└────────────────────────────┬─────────────────────────────────────────┘
-                             │
-┌────────────────────────────▼─────────────────────────────────────────┐
-│  7. EMIT DECISION ARTIFACT                                           │
-│     optimizer.py::save_outputs()                                     │
-│       top3_configurations.json — full provenance fields (see schema) │
-│       pareto_front.png — Pareto scatter                              │
-│       audit_record.json — honesty provenance trail                   │
-│     app.py → Gradio renders ranked cards + Pareto plot               │
-└──────────────────────────────────────────────────────────────────────┘
+                             v
+               ┌─────────────────────────────────┐
+               │  Stage 5: Output                │
+               │  save_outputs()                 │
+               │  top3_configurations.json       │
+               │  audit_record.json              │
+               │  pareto_front.png (best-effort) │
+               └─────────────────────────────────┘
 ```
 
----
+### Entry Points
 
-## Output JSON Schema
+Three entry points invoke this pipeline, sharing `optimizer.run_optimisation()` / `select_top3()` / `validate_top3_with_infrared()` / `topsis_rank()`:
 
-The canonical decision artifact is `top3_configurations.json`. Every downstream consumer (Gradio cards, cost display, export) reads from this schema. Field names are locked — do not rename without updating all consumers.
-
-```json
-{
-  "run_metadata": {
-    "algorithm": "NSGA-II (pymoo 0.6.1)",
-    "site": "Plaça dels Àngels, Barcelona",
-    "population": 100,
-    "generations": 100,
-    "seed": 42,
-    "pareto_front_size": 87,
-    "surrogate": "Analytical geometry proxy"
-  },
-  "configurations": [
-    {
-      "rank": 1,
-      "label": "MAX_TMRT_REDUCTION",
-      "x_m": 27.5,
-      "y_m": 5.0,
-      "width_m": 30.0,
-      "height_m": 4.0,
-      "tilt_deg": 22.5,
-      "porosity_pct": 12.0,
-      "scaffold_modules": 144,
-      "delta_tmrt_c": 11.7,
-      "delta_under_canopy_c": 11.7,
-      "delta_tmrt_site_c": 4.42,
-      "delta_tmrt_uncertainty_c": 4.0,
-      "delta_tmrt_source": "Garcia-Nevado 2020 surface temp proxy (not Tmrt at 1.1m)",
-      "utci_class": "Under-canopy estimate (surrogate ±4°C — pending Ladybug D1-04)",
-      "coverage_fraction": 0.237,
-      "embodied_carbon_kgco2e": 0.0,
-      "assembly_time_hours": 36.0,
-      "corridor_score": 0.998,
-      "upcycled_material_kg": 0.0,
-      "local_material_distance_km": 70,
-      "material_shade_factor_pct": "34-70",
-      "material_source": "Girbau LAB post-consumer textile",
-      "topsis_score": null
-    }
-  ]
-}
-```
-
-**Key field name notes:**
-- `x_m` / `y_m` — canopy centroid in plaza-local metres (SW corner = origin). NOT lat/lon.
-- `delta_tmrt_c` — under-canopy reduction (headline for jury)
-- `delta_tmrt_site_c` — site-averaged reduction (= delta_under_canopy × coverage_fraction)
-- `scaffold_modules` — integer bay count (bays_per_side²)
-
----
-
-## Coordinate Systems
-
-**This is a known footgun. Three CRSes coexist. Conversion must happen at explicit boundaries.**
-
-| Layer | CRS | Notes |
+| Entry Point | File | Use Case |
 |---|---|---|
-| Raw geospatial inputs (OSM, GBIF, EPW) | EPSG:4326 (WGS84 lat/lon) | e.g., plaza centroid `(2.1670°E, 41.3826°N)` |
-| NSGA-II decision variables, output JSON, plan-view display | Plaza-local metres | SW corner of plaza rectangle = `(0, 0)`. x_m = East-West [0, 60], y_m = North-South [0, 42]. y=0 is the MACBA (north) edge. |
-| Infrared SDK geometry input | Plaza-local metres (projected) | SDK receives polygon in local metres; centroid anchored at EPSG:4326 site origin for server-side projection |
-| Spanish cadastre / EPSG:25831 | ETRS89 / UTM zone 31N | Declared in audit records for provenance only; not used in any computation |
+| `main()` | `coolspend/main.py` (159 lines) | CLI batch -- `python -m coolspend.main` |
+| `run_decision()` | `coolspend/app_pipeline.py` (466 lines) | UI-agnostic orchestrator -- called by Gradio |
+| `build_demo().launch()` | `coolspend/app.py` (434 lines) | Gradio web UI -- `python -m coolspend.app` |
 
-**Critical origin offset (from `nature_architecture.md`):**
-NSGA-II `(x_m=30, y_m=5)` maps to 3D scene coords `(0, -25)` because the 3D scene centres the plaza at `(0, 0)` with SW corner at `(-30, -30)`. In coolspend this origin offset is only relevant if a spatial visualisation layer is added. The NSGA-II output fields `x_m`/`y_m` always use the SW-corner-origin convention.
+The CLI and Gradio paths converge through `app_pipeline.run_decision()` whose `_run_pipeline()` private method runs stages 0-5.
 
-**Projection for small-area SDK calls:** equirectangular with cos-latitude correction. Accurate within ±200 m of plaza centroid. Degrades at longer range.
+## Design Patterns
 
----
+### Pipeline Pattern
+The dominant pattern. Data flows unidirectionally through stages; each stage enriches the result dict with additional keys. Defined in `app_pipeline._run_pipeline()` which calls optimizer functions in sequence. The CLI `main()` similarly stages with print statements between each.
 
-## Layers
+### Strategy Pattern (Backend Selection)
+`coolspend/sdk_client.py` defines three backends with identical interfaces but different implementations:
+- **mock** (default): `_mock_baseline_utci()` / `_mock_intervention_utci()` -- synthetic scalar values
+- **cached**: reads from `CACHE_DIR / {metric_key}_{ghash}.json` -- replay offline
+- **live**: `_live_utci()` -- real `infrared_sdk.InfraredClient.run_area_and_wait()`
 
-**Spatial Engine:**
-- Purpose: Encode plaza geometry, site constants, surrogate physics
-- Proposed module: `spatial_engine.py`
-- Contains: `shade_efficiency()`, `delta_tmrt_surrogate()`, `pollinator_corridor_score()`, grid-snap helpers, site constants (SITE_WIDTH_M, SITE_DEPTH_M, BAY_SIZE_M, BASELINE_TMRT, HERITAGE_BUFFER_M)
-- Depends on: numpy only
-- Used by: `optimizer.py` (in NSGA-II hot path)
+Selection is via `INFRARED_BACKEND` env var, dispatched in `_dispatch()` (`sdk_client.py:507-557`).
 
-**Rules Engine:**
-- Purpose: Enforce spatial and stock constraints; apply heritage buffer clamp
-- Proposed module: `rules_engine.py`
-- Contains: spatial bound checks, ULMA stock gate, heritage buffer enforcement, porosity range validation
-- Depends on: `spatial_engine.py` constants
-- Used by: `optimizer.py` `_evaluate()` method, `app.py` for user input validation
+### Factory Method (Cost Table Loading)
+`cost_model.load_cost_table()` returns a `(CostTable, GrowthDiscountParams)` tuple from JSON. `cost_table_from_dict()` validates and falls back to defaults per-field. This allows the Gradio UI to build edited tables from slider values.
 
-**Optimizer:**
-- Purpose: Run NSGA-II, select Top-3, run TOPSIS, save outputs
-- Proposed module: `optimizer.py`
-- Contains: `COOLSTOCKProblem(ElementwiseProblem)`, `run_optimisation()`, `select_top3()`, `topsis_rank()`, `save_outputs()`, `write_audit_record()`
-- Depends on: `spatial_engine.py`, `rules_engine.py`, `cost_model.py`, `sdk_client.py`, pymoo
-- Used by: `app.py`
+### Value Object (Dataclasses)
+Key data types are frozen/immutable dataclasses:
+- `CostLine` (frozen) -- single cost item
+- `CostTable` -- collection of CostLines with aggregators
+- `GrowthDiscountParams` -- editable growth/discount parameters
+- `Species` (frozen) -- per-species attributes
+- `UTCIResult` -- mock/cached/live UTCI scalar result with disclaimer
 
-**Cost Model:**
-- Purpose: Translate scaffold module count into euros, compute €/°C ratio
-- Proposed module: `cost_model.py`
-- Contains: `cost_per_module_eur`, `total_cost()`, `cost_per_utci_degree()`, embodied carbon computation
-- Depends on: nothing (pure arithmetic + config constants)
-- Used by: `optimizer.py` post-validation ranking, `app.py` display cards
+### Elementwise Problem (pymoo)
+`TreeBudgetProblem` (line 147-198 of `optimizer.py`) extends `pymoo.core.problem.ElementwiseProblem`. Each chromosome evaluation calls `_evaluate()` on one individual at a time -- pure surrogate (no SDK calls). Uses SBX crossover, PM mutation, FloatRandomSampling.
 
-**SDK Client:**
-- Purpose: Call Infrared.city SDK for baseline UTCI and per-config validation; cache results by geometry hash
-- Proposed module: `sdk_client.py`
-- Contains: `UTCIResult` dataclass, `get_baseline_utci()`, `get_intervention_utci()`, `_geometry_hash()`, `_load_cache()`, `_save_cache()`
-- Depends on: `infrared_sdk` (real SDK), `json`, `hashlib`, `pathlib`
-- Backend selection via `INFRARED_BACKEND` env var: `mock | cached | live`
-- Used by: `optimizer.py` (validation step, post Top-3 selection)
+### Guard Pattern (SimBudget)
+`coolspend/sdk_client.SimBudget` (`sdk_client.py:121-156`) caps live API calls at runtime. Raises `RuntimeError` if `max_live_calls` is exceeded. Enforces the architectural invariant: live calls only in `validate_top3_with_infrared`, never in the NSGA-II hot path.
 
-**App:**
-- Purpose: Gradio UI wrapping the full pipeline; exposes TOPSIS weight sliders, site parameter inputs, ranked result cards
-- Proposed module: `app.py`
-- Contains: Gradio interface definition, `run_pipeline()` callback, result card rendering, Pareto plot display
-- Depends on: all other modules
-- Entry point: `python app.py`
+### Fail-Open / Fail-Closed
+- **Fail-closed**: `assert_crs_roundtrip()` raises `CRSConsistencyError` if WGS84->UTM->WGS84 round-trip exceeds 1 m tolerance (D-07). Blocks live SDK calls.
+- **Fail-open**: `load_cost_table()` returns defaults if JSON is missing. `render_before_after()` falls back to default site fixture. `plot_pareto()` logs warning if matplotlib absent. `canopy_height_m()` returns None on raster failure.
 
----
+### Template Method (Pipeline with Result Builders)
+`app_pipeline._run_pipeline()` calls private result builder functions at the end: `_build_before_after()`, `_build_headline()`, `_build_disclaimer()`. These produce the structured result dict fields.
 
-## Entry Points
+## Key Abstractions
 
-**CLI optimization run (no UI):**
-- Invocation: `python optimizer.py`
-- Responsibilities: run full pipeline, write `outputs/top3_configurations.json`, `outputs/pareto_front.png`, `outputs/audit_record.json`
+### Optimizer Core
 
-**Gradio app:**
-- Invocation: `python app.py`
-- Triggers: user submits site parameters + TOPSIS weights via Gradio form
-- Responsibilities: invoke `optimizer.run_optimisation()`, validate Top-3 via `sdk_client`, rank via TOPSIS, render result cards
+**`TreeBudgetProblem`** (`optimizer.py:147-198`)
+- Extends `ElementwiseProblem` from pymoo
+- 3*N_TREES = 36 decision variables (24 x_m/y_m floats + 12 species-selector floats)
+- 2 objectives (F1=-thermal_relief, F2=-ecological_score), 1 inequality constraint (budget)
+- `_evaluate()` calls surrogate only -- zero SDK imports
+- Decision-variable bounds dynamically follow `spatial_engine.SITE_WIDTH_M / SITE_DEPTH_M`
 
----
+**`decode()`** (`optimizer.py:93-126`)
+- Chromosome decoder: converts flat float vector to `{trees: [...], tree_count}`
+- Supports species-aware (3*N) and legacy (2*N) layouts
+- Each tree slot: x_m, y_m, species (from `bcn_species.SPECIES_TABLE`), active flag
 
-## Data Flow: Variable Lifecycle
+**`run_optimisation()`** (`optimizer.py:204-256`)
+- Pins site origin via `_se.ensure_site_origin()` first (critical for determinism)
+- Constructs TreeBudgetProblem, NSGA2 algorithm, runs pymoo.minimize
+
+### Spatial Engine
+
+**`spatial_engine.py`** (923 lines) -- single CRS boundary, collision detection, thermal surrogate
+
+Core primitives:
+- `latlon_to_local_m()` / `local_m_to_latlon()` (lines 292-343) -- THE ONLY CRS conversion functions (SPATIAL-03). Use UTM-31N (EPSG:32631) via pyproj Transformers.
+- `assert_crs_roundtrip()` (lines 349-394) -- fail-closed guard, raises `CRSConsistencyError` if >1 m
+- `load_site()` (lines 405-502) -- GeoJSON-to-shapely loader with caching
+- `is_valid_location()` (lines 508-551) -- shapely collision gate (inside boundary, not in building, not near street)
+
+Thermal surrogate (OPT-02 hot path):
+- `delta_tmrt_surrogate()` (lines 801-848) -- linear analytical proxy, capped at `MAX_TMRT_REDUCTION_C=12.0`
+- `thermal_relief()` (lines 851-898) -- site-averaged delta Tmrt for a config
+- `core_weighted_coverage_fraction()` (lines 667-736) -- REMEDIATION Option A: core-concentration + spread blend
+
+Per-site state:
+- `SITE_WIDTH_M` / `SITE_DEPTH_M` -- mutable module-level floats, updated by `set_site_origin_from_polygon()`
+- `_SITE_ORIGIN_E` / `_SITE_ORIGIN_N` -- UTM-31N SW corner of polygon bbox
+- `_ACTIVE_SITE` -- override dict for "scan anywhere" (avoids clobbering by default fixture)
+- `reset_site_origin()` -- clears all per-site state (called between tests and after anywhere-runs)
+
+### Cost Model
+
+**`CostTable`** / **`CostLine`** (`cost_model.py:117-161`)
+- Itemized lifecycle cost: 5 CapEx lines + 1 OpEx line
+- `capex_total()` = sum of capex lines (~3,000 EUR/tree)
+- `opex_per_year()` = sum of opex lines (~180 EUR/tree/yr)
+- `per_tree_cost(horizon)` = capex + opex * horizon
+
+**`GrowthDiscountParams`** (`cost_model.py:320-351`)
+- `ramp_years` (25), `initial_fraction` (0.20), `discount_rate` (0.035), `horizon_years` (40)
+- Editable via Gradio inputs in `app.py` accordion
+
+**`cost_per_utci_degree()`** (`cost_model.py:690-969`)
+- KPI metric dict with `value`, `value_lo`, `value_hi`, `unit`, `confidence`, `sources`, `note`
+- Routes through UTCI-hours (D-08), never raw Tmrt
+- Prefer-measured rule: uses `delta_utci_c` from Infrared when positive
+- Applies growth-horizon discount to both numerator and denominator
+- Returns interval, never bare point estimate (D-10 / VALID-04)
+- Returns `value=None` for zero/negative delta (honest zero-guard)
+
+### SDK Client
+
+**`UTCIResult`** (`sdk_client.py:84-116`) -- dataclass with `utci_c`, `metric`, `backend`, `geometry_hash`, `disclaimer`, `source`, `heat_stress_area_m2`, `merged_grid`
+
+**`SimBudget`** (`sdk_client.py:121-156`) -- live-call guard with `record(label)` that logs + increments; raises `RuntimeError` past cap
+
+**`_live_utci()`** (`sdk_client.py:328-501`) -- full Infrared SDK integration:
+- Lazily imports `infrared_sdk` (module importable offline)
+- Fetches site context once per polygon (buildings, ground materials, weather) with process-level caching via `_AREA_CTX_CACHE` / `_WEATHER_CACHE`
+- Converts placed trees to vegetation GeoJSON Points via `_trees_to_vegetation()`
+- Calls `InfraredClient.run_area_and_wait()` with Location, TimePeriod, weather_data
+- Post-processes merged_grid: nanmean for scalar, heat-stress-area, cooled-footprint grid diff
+
+**`_dispatch()`** (`sdk_client.py:507-557`) -- routes to mock/cached/live based on env var. Writes results to cache for future cached replay.
+
+### Rules Engine
+
+**`ecological_score()`** (`rules_engine.py:173-217`) -- combined score in [0,1]:
+- 50% spacing penalty (RULES-01): Euclidean distance between tree pairs
+- 50% species diversity (RULES-02): Shannon index normalised by ln(n_distinct)
+- Pure, deterministic, offline -- no SDK, no file I/O, no global state
+
+### Calibration
+
+**`run_calibration_study()`** (`calibration.py:207-313`) -- compares surrogate predictions against real Infrared UTCI across 10 coverage-swept configs. Computes RMSE, R-squared, 95% empirical band, rank stability (Spearman + Kendall + set-overlap). Uses separate SimBudget (n+1 calls, not the Top-3 cap). LIVE-THEN-CACHE procedure (D-01): run once live to record fixtures, replay cached offline.
+
+### Real Barcelona Data
+
+**`bcn_species.Species`** (`bcn_species.py:33-44`) -- per-species frozen dataclass with scientific name, crown diameter (Verd Urba band midpoint), height, leaf cycle, shade density, cooling proxy score
+
+**`bcn_data.py`** -- Open Data BCN CKAN client: `resolve_resource()`, `download_inventory()`, `load_trees()`, `species_frequency()`. 30-day disk cache. 145k+ street trees.
+
+**`bcn_lidar.py`** -- ICGC+CREAF LiDAR canopy height: `canopy_height_m()` samples a 166 MB local raster for existing-canopy context. Returns None on NoData/0.
+
+## Data Flow
+
+### Data movement through modules
 
 ```
-User input (Gradio) / defaults
-    → site constants in spatial_engine.py (fixed for Plaça dels Àngels)
-    → NSGA-II decision variable bounds [xl, xu] from P01_YAML or fallback
-    → COOLSTOCKProblem._evaluate()
-        → snap to Layher grid (2.5 m bays)
-        → apply heritage buffer clamp (y_m ≥ 5 m)
-        → shade_quality = 1 - porosity_pct/100  [applied ONCE — do not re-apply]
-        → delta_tmrt_surrogate(shade_quality, porosity_pct, tilt_deg, height_m)
-        → coverage_fraction = min(width_m² / SITE_AREA_M2, 0.90)
-        → delta_tmrt_site = delta_under_canopy × coverage_fraction
-        → F = [-delta_tmrt_site, scaffold_modules, -corridor_score]
-        → G = [modules - ULMA_STOCK]
-    → Pareto front (X, F arrays)
-    → select_top3(): decode, label, add provenance fields
-    → sdk_client.get_intervention_utci(cfg) per Top-3  [real UTCI validation]
-    → cost_model.cost_per_utci_degree(cfg)
-    → topsis_rank(result, weights) → topsis_score per cfg
-    → save_outputs() → top3_configurations.json
+User input
+  |  geojson_text, budget_eur, weights, backend, cost_line_values
+  v
+app.py:on_submit()                            -- parses GeoJSON, assembles edited CostTable
+  |  calls app_pipeline.run_decision(...)
+  v
+app_pipeline.run_decision()                    -- env setup, SDK log capture, GeoJSON parse
+  |  calls _run_pipeline(...)
+  v
+_run_pipeline()
+  +--  Stage 0:                               app_pipeline line 293-305
+  |   center_lonlat -> square_ring_lonlat -> set_site_origin_from_polygon -> set_active_site
+  |
+  +--  Stage 1: run_optimisation()            optimizer line 204-256
+  |   +-- ensure_site_origin()               spatial_engine line 240-251
+  |   +-- TreeBudgetProblem()                 optimizer line 147-198
+  |   |   _evaluate() calls:
+  |   |     decode(x)                         optimizer line 93-126
+  |   |     thermal_relief(cfg)               spatial_engine line 851-898
+  |   |       core_weighted_coverage_fraction()  spatial_engine line 667-736
+  |   |       delta_tmrt_surrogate()               spatial_engine line 801-848
+  |   |     ecological_score(cfg)             rules_engine line 173-217
+  |   |       spacing_penalty()               rules_engine line 81-114
+  |   |       species_diversity_score()       rules_engine line 121-167
+  |   |     total_cost(cfg)                   cost_model line 675-687
+  |   +-- pymoo.minimize() -> Result
+  |
+  +--  Stage 2: select_top3(result)           optimizer line 262-352
+  |   +-- decode(X[idx]) for 3 Pareto indices
+  |   +-- thermal_relief() + ecological_score() for each
+  |
+  +--  Stage 3: validate_top3_with_infrared   optimizer line 464-544
+  |   +-- _build_baseline_geometry()          optimizer line 424-458
+  |   +-- get_baseline_utci(geometry)         sdk_client line 563-569
+  |   |   +-- _dispatch() -> mock/cached/live
+  |   +-- For each config:
+  |   |   _config_to_geometry(cfg)            optimizer line 358-418
+  |   |     core_weighted_coverage_fraction()
+  |   |     local_m_to_latlon() x 4           (site polygon corners)
+  |   |     local_m_to_latlon() x n           (per-tree positions)
+  |   |   get_intervention_utci(geom)         sdk_client line 572-579
+  |   Attach: delta_utci_c, heat_stress_area_removed_m2, cooled_footprint_m2
+  |
+  +--  Stage 4: topsis_rank(top3, weights)    optimizer line 550-645
+  |   +-- cost_per_utci_degree(cfg)           cost_model line 690-969
+  |   |   +-- utci_hours_above(32, cov)       nature_metrics package
+  |   |   +-- discounted_lifetime_degc()
+  |   |   +-- discounted_total_cost()
+  |   |   +-- Returns KPI dict with interval [lo, hi]
+  |   +-- total_cost(cfg)                     cost_model line 675-687
+  |   +-- TOPSIS on [delta_utci_c, ecological_score]
+  |
+  +--  Stage 4b: Recompute KPI with edited cost table (if provided)
+  |
+  +--  Stage 4c: Capture WGS84 geometry      optimizer._config_to_geometry()
+  |   trees_lonlat + polygon_lonlat on each config
+  |
+  +--  Stage 5: Build result dict
+  |   _build_before_after(), _build_headline(), _build_disclaimer()
+  +--  Returns {configurations, before_after, headline, backend, disclaimer, call_log, ...}
 ```
 
----
+### Module Dependency Graph
 
-## Error Handling
+```
+coolspend/
+  __init__.py              -- no deps
+  main.py                  -- optimizer, sdk_client (SimBudget)
+  app.py                   -- app_pipeline, app_viz, cost_model, spatial_engine (DEFAULT_SITE)
+  app_pipeline.py          -- cost_model, optimizer, sdk_client (SimBudget), spatial_engine
+  app_viz.py               -- spatial_engine (load_site, SITE_WIDTH_M, SITE_DEPTH_M)
+  optimizer.py             -- spatial_engine, rules_engine, cost_model, bcn_species
+  spatial_engine.py        -- shapely, pyproj (stdlib: json, math)
+  rules_engine.py          -- spatial_engine (SITE_WIDTH_M, SITE_DEPTH_M, STREET_BUFFER_M)
+  cost_model.py            -- spatial_engine (core_weighted_coverage_fraction), nature_metrics
+  sdk_client.py            -- bcn_species (get_species), spatial_engine (TREE_CANOPY_RADIUS_M, assert_crs_roundtrip, latlon_to_local_m)
+  calibration.py           -- optimizer, sdk_client, spatial_engine, cost_model (HOURS_PER_DEGC_REF), nature_metrics
+  bcn_data.py              -- requests, csv
+  bcn_lidar.py             -- rasterio, requests
+  bcn_species.py           -- math, dataclasses
+```
 
-**Surrogate:**
-- YAML bounds load failure falls back to hardcoded `FALLBACK_XL`/`FALLBACK_XU` arrays (see `load_pattern_bounds()` in `nature_nsga2_coolstock.py`)
-- Surrogate is intentionally analytical-only; it must never call external APIs
+Layer diagram:
+```
+app.py / main.py (UI/CLI layer)
+    |
+app_pipeline.py (orchestration layer)
+    |
+    +-- optimizer.py (optimization / ranking)
+    |    +-- spatial_engine.py (geometry / surrogate / CRS)
+    |    +-- rules_engine.py (ecological scoring)
+    |    +-- cost_model.py (cost model / KPI)
+    |    +-- bcn_species.py (species attributes / cooling proxy)
+    |
+    +-- sdk_client.py (Infrared API boundary)
+    |    +-- bcn_species.py (species -> vegetation GeoJSON)
+    |
+    +-- app_viz.py (visualization)
+    |    +-- spatial_engine.py (load_site)
+    |
+    +-- calibration.py (honesty / RMSE)
+         +-- optimizer.py (_config_to_geometry)
+         +-- sdk_client.py (get_baseline_utci, get_intervention_utci)
+         +-- cost_model.py (HOURS_PER_DEGC_REF)
 
-**SDK Client:**
-- Cache miss + `INFRARED_BACKEND=cached` → raise `FileNotFoundError` (do not silently fall through to mock)
-- `INFRARED_BACKEND=live` + missing `INFRARED_API_KEY` → raise `EnvironmentError` with clear message
-- `INFRARED_BACKEND=mock` → return deterministic synthetic field, always annotate with `disclaimer: "NOT MEASURED DATA"`
-- Geometry hash collision is theoretically possible (16-char SHA256 prefix) but not a runtime concern at hackathon scale
+bcn_data.py (Open Data BCN CKAN)
+bcn_lidar.py (ICGC+CREAF LiDAR raster)
+```
 
-**Optimizer:**
-- Pareto front degeneration (all solutions identical) → `select_top3()` deduplication loop ensures 3 distinct indices or fewer if front is too small
-- `topsis_rank()` zero-norm guard: `norms[norms == 0] = 1e-9`
+## State Management
 
----
+### Per-request state (ephemeral, in-memory)
 
-## Known Issues Ported From Reference (Do Not Repeat in coolspend)
+| State | Location | Lifetime |
+|---|---|---|
+| `call_log` list | `app_pipeline.run_decision()` | Single run |
+| `SimBudget` instance | `_run_pipeline()` | Single run |
+| Captured `coolspend.sdk_client` logger handler | `_CaptureHandler` added/removed in `run_decision()` | Single run |
+| `INFRARED_BACKEND` env var override | `run_decision()` try/finally | Single run |
 
-1. **Double porosity penalty bug** (fixed in reference 2026-05-20, audit C10): `shade_quality = 1 - p/100` must be passed to `delta_tmrt_surrogate` as `shade_fraction`; the body must NOT multiply by `(1 - p/100)` again. In coolspend: compute `shade_quality` once in the caller, pass it through, never re-apply inside the surrogate.
+### Module-level mutable state
 
-2. **F3 corridor degeneracy**: The heritage buffer y-clamp pins most solutions to y_m ≈ 5 m, making `pollinator_corridor_score` return ~1.0 for all Pareto solutions. F3 carries near-zero selection pressure. In coolspend, either (a) drop F3 and run as 2-objective, or (b) encode corridor as a 2-D scoring function that doesn't degenerate under the clamp.
-
-3. **TOPSIS weights are arbitrary**: The `(0.5, 0.3, 0.2)` defaults are the founder's judgment, not a stakeholder-derived value. In coolspend, expose them as Gradio sliders and never present them as calibrated constants.
-
-4. **`MAX_TMRT_REDUCTION = 12.0 °C` is unsourced**: Value should be replaced by the maximum ΔTmrt from a calibrated study at 1.1 m or Juan's Ladybug lookup. Until replaced, always flag in output JSON as `"surrogate_note": "Analytical proxy — replace with calibrated value"`.
-
----
-
-## TARGET coolspend MODULE MAP
-
-| Concept from reference | Reference location | Proposed coolspend module | Action |
+| State | Default | Set by | Purpose |
 |---|---|---|---|
-| Site constants, grid-snap, surrogate physics | `nature_nsga2_coolstock.py` lines 73-103, 106-155, 158-193 | `spatial_engine.py` | extract-clean |
-| Heritage buffer + spatial constraint enforcement | `nature_nsga2_coolstock.py` `_evaluate()` lines 208-221 | `rules_engine.py` | extract-clean |
-| NSGA-II problem class + run + Top-3 + TOPSIS + save | `nature_nsga2_coolstock.py` lines 198-546 | `optimizer.py` | extract-clean |
-| €/°C ratio and embodied carbon | `nature_nsga2_coolstock.py` select_top3 + `nature_metrics.py` `carbon_headroom_kgco2e()` | `cost_model.py` | extract-clean (new composition) |
-| Infrared SDK call + geometry hash cache | `infrared_client_v2.py` `_dispatch()` + `_geometry_hash()` + cache I/O | `sdk_client.py` | partial (keep mock/cached/live dispatch pattern; drop legacy mock field generators) |
-| All metrics computation | `nature_metrics.py` `compute_all()` + M1/M2/M3/M4 | Not a top-level module; metrics called from `optimizer.py` post-validation | partial (port `utci_hours_above()` and `carbon_headroom_kgco2e()` inline) |
-| Gradio UI | Does not exist in reference (Flask demo_app.py) | `app.py` | new (no port) |
-| Audit record writer | `nature_nsga2_coolstock.py` `write_audit_record()` | `optimizer.py` (inline) | extract-clean |
-| YAML P01 bounds loader | `nature_nsga2_coolstock.py` `load_pattern_bounds()` | `spatial_engine.py` | extract-clean (with fallback) |
-| OWL/SPARQL pattern KB | `evaluator.py`, `sparql_engine.py` (not in reference files set) | leave-behind | The full 6-layer KB is not part of coolspend scope |
-| Flask demo_app.py routes | `demo_app.py` (not in reference files set) | leave-behind | Replace with Gradio in `app.py` |
-| GBIF/EPW/OSM ingest pipeline | `nature_metrics.py` EPW + GBIF data paths | leave-behind | Use hardcoded Barcelona constants for hackathon; do not port the full L1 ingest chain |
+| `spatial_engine.SITE_WIDTH_M` | 60.0 | `set_site_origin_from_polygon()` | Per-site E-W extent (m) |
+| `spatial_engine.SITE_DEPTH_M` | 42.0 | `set_site_origin_from_polygon()` | Per-site N-S extent (m) |
+| `spatial_engine._SITE_ORIGIN_E` | None | `set_site_origin_from_polygon()` | UTM-31N easting of SW corner |
+| `spatial_engine._SITE_ORIGIN_N` | None | `set_site_origin_from_polygon()` | UTM-31N northing of SW corner |
+| `spatial_engine._ORIGIN_INITIALIZED` | False | `_ensure_origin_initialized()` | Lazy-init flag |
+| `spatial_engine._ACTIVE_SITE` | None | `set_active_site()` | Open-square site override |
+| `spatial_engine._SITE_RECT_CACHE` | {} | `_site_rectangle()` | Cached site rectangle Polygon |
+| `spatial_engine._CORE_RECT_CACHE` | {} | `_core_rectangle()` | Cached core sub-rectangle Polygon |
+| `spatial_engine._SITE_CACHE` | {} | `load_site()` | Site fixture cache (keyed by path) |
+| `sdk_client._AREA_CTX_CACHE` | {} | `_live_utci()` | Site context (buildings, ground) per polygon |
+| `sdk_client._WEATHER_CACHE` | {} | `_live_utci()` | Weather data per lat/lon centroid |
+
+### Process-level caching (disk)
+
+| Cache directory | Content | Cleared by |
+|---|---|---|
+| `coolspend/cache/infrared/` | UTCIResult JSON by metric+hash | Manual |
+| `coolspend/cache/bcn_data/` | Resolved CKAN resources + inventory CSV (30-day TTL) | Manual / TTL expiry |
+| `coolspend/cache/bcn_lidar/` | 166 MB LiDAR raster + per-point height cache | Manual |
+
+### Gradio session state
+
+Gradio Blocks manages session state internally. The app uses:
+- **No explicit session state** -- `on_submit()` receives all inputs as arguments, returns all outputs as tuples. Each run is stateless from the UI perspective.
+- Module-level shipped defaults `_SHIPPED_COST_TABLE` / `_SHIPPED_GD` loaded once at import in `app.py` (line 72).
+- `_DEFAULT_POLYGON_TEXT` loaded once from `DEFAULT_SITE` fixture at import (line 67).
+
+### Determinism
+
+- Seed 42 pinned for NSGA-II and calibration study config generation
+- `decode()` is deterministic for a given chromosome
+- Surrogate functions (`thermal_relief`, `ecological_score`, `delta_tmrt_surrogate`) are pure functions of their inputs
+- `reset_site_origin()` called between runs to prevent mutable-state contamination
+- `conftest.py` autouse fixture calls `reset_site_origin()` before every test
+
+## Error Handling Strategy
+
+### Pipeline error handling
+
+Errors in `_run_pipeline()` are caught by a top-level `try/except Exception` (line 384), which returns an error dict:
+```python
+{"configurations": [], "before_after": {}, "headline": "", "backend": backend,
+ "disclaimer": "", "call_log": [...], "site_path": site_path,
+ "error": f"Pipeline error: {exc}"}
+```
+
+The Gradio UI callback `on_submit()` catches its own outer exception (line 168) and shows a generic error to the UI (T-03-09).
+
+### Fallback patterns
+
+| Failure | Behavior | Fallback |
+|---|---|---|
+| GeoJSON unparseable | `ValueError` caught, returns error dict | User sees error message |
+| Site fixture missing | `FileNotFoundError` from `load_site()` | Caught by `_load_site_safe()` in viz |
+| Rasterio missing | `canopy_height_m()` returns None | Site context degrades gracefully |
+| matplotlib missing | `plot_pareto()` logs warning | Pipeline continues, no PNG |
+| cost_config.json missing | `load_cost_table()` logs warning | Returns DEFAULT_COST_TABLE |
+| SimBudget exceeded | `RuntimeError` raised | Propagates to pipeline error dict |
+| CRS round-trip >1m | `CRSConsistencyError` raised | Live call aborted (fail-closed) |
+| Ground materials fetch fails | Logs warning, proceeds without | Uses empty ground_layers dict |
+| Weather stations not found | `RuntimeError` raised | Propagates to pipeline error |
+
+### Threat mitigation (T-03-x / Security)
+
+- T-03-01: GeoJSON parsed via `json.loads` only -- no eval/exec
+- T-03-02: `SimBudget(max_live_calls=3)` caps live SDK calls per run
+- T-03-03: `INFRARED_API_KEY` never read, logged, or written in `app_pipeline.py`
+- T-03-05: API key never referenced in `app.py` -- only backend name shown
+- T-03-07: SimBudget cap enforced inside `run_decision()`
+- T-03-08: Mock backend always surfaces "NOT MEASURED DATA" in disclaimer
+- T-03-09: `on_submit()` shows generic error to UI; full traceback logged server-side only
+- T-05-08: Calibration artifact JSON written with no secrets
+
+## Configuration
+
+### Environment variables
+
+| Variable | Default | Used by | Purpose |
+|---|---|---|---|
+| `INFRARED_BACKEND` | "mock" | `sdk_client._backend()` | Backend selection |
+| `INFRARED_API_KEY` | (none) | `sdk_client._live_utci()` | Infrared SDK auth |
+| `GRADIO_SERVER_NAME` | "127.0.0.1" | `app.py` launch | Gradio server host |
+| `GRADIO_SERVER_PORT` | "7860" | `app.py` launch | Gradio server port |
+| `GRADIO_SHARE` | "" | `app.py` launch | Create public link |
+
+### Configuration files
+
+| File | Format | Purpose |
+|---|---|---|
+| `coolspend/cost_config.json` | JSON | Editable per-city cost table (6 lines + growth/discount params) |
+| `coolspend/data/angels_site.geojson` | GeoJSON | Default bundled site fixture (Plaça dels Angels) |
+| `requirements.txt` | pip | Dependency pins for HF Spaces |
+
+### Hardcoded constants (DECLARED, need local verification)
+
+Key strategic constants. All tagged with source/status in the code (DECLARED, PENDING, REQUIRES_VERIFICATION):
+
+| Constant | Value | Module | Status |
+|---|---|---|---|
+| `MAX_TMRT_REDUCTION_C` | 12.0 | `spatial_engine.py` | UNSOURCED cap |
+| `TREE_SHADE_FRACTION` | 0.80 | `spatial_engine.py` | DECLARED |
+| `TREE_CANOPY_RADIUS_M` | 3.0 | `spatial_engine.py` | DECLARED |
+| `MAX_SITE_COVERAGE` | 0.90 | `spatial_engine.py` | DECLARED |
+| `CAPEX_PER_TREE_EUR` | 3000.0 | `cost_model.py` (derived) | DECLARED/PENDING |
+| `OPEX_PER_TREE_YEAR_EUR` | 180.0 | `cost_model.py` (derived) | PENDING (US anchor) |
+| `OPEX_HORIZON_YEARS` | 40 | `cost_model.py` | DECLARED |
+| `STUDY_SEED` / `SEED` | 42 | `calibration.py` / `optimizer.py` | Deterministic |
+| `UTCI_HEAT_STRESS_C` | 26.0 | `sdk_client.py` | Moderate threshold |
+| `HOURS_PER_DEGC_REF` | 200.0 | `cost_model.py` | DERIVED, REQUIRES_VERIFICATION |
 
 ---
 
-*Architecture analysis: 2026-05-21*
+*Architecture analysis: 2026-05-27*

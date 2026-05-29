@@ -642,7 +642,7 @@ def _site_rectangle() -> Polygon:
 def _core_rectangle() -> Polygon:
     """Return (and cache) the centred CORE sub-rectangle of the plaza.
 
-    The core is the central CORE_FRACTION (50%) of each site dimension, centred on
+    The core is the central CORE_FRACTION (34%) of each site dimension, centred on
     the plaza geometric centre. Canopy that falls inside this rectangle is the
     pedestrian-priority shade and is weighted CORE_WEIGHT× the perimeter (Option A).
     """

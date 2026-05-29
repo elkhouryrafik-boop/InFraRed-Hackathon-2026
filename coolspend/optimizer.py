@@ -66,8 +66,33 @@ from coolspend.cost_model import total_cost
 
 # ── OPTIMIZER CONSTANTS ───────────────────────────────────────────────────────
 
-N_TREES: int = 12
-"""Fixed-length candidate vector: 12 tree slots (each has x_m, y_m => 24 decision vars)."""
+_MIN_N_TREES: int = 12
+"""Minimum tree slots — used for the 120 m default site (14 400 m²)."""
+
+_MAX_N_TREES: int = 100
+"""Cap tree slots to keep NSGA-II tractable (300 decision vars at max)."""
+
+_AREA_PER_TREE_M2: float = 225.0
+"""Nominal area per tree slot (15 m × 15 m spacing)."""
+
+
+def n_trees_for_site() -> int:
+    """Return tree-slot count proportional to current site area.
+
+    Reads SITE_WIDTH_M / SITE_DEPTH_M from spatial_engine (set by
+    set_site_origin_from_polygon or ensure_site_origin). Clamped to
+    [_MIN_N_TREES, _MAX_N_TREES].
+    """
+    import coolspend.spatial_engine as _se  # noqa: PLC0415
+    area = _se.SITE_WIDTH_M * _se.SITE_DEPTH_M
+    raw = int(area / _AREA_PER_TREE_M2)
+    return max(_MIN_N_TREES, min(raw, _MAX_N_TREES))
+
+
+N_TREES: int = _MIN_N_TREES
+"""Current tree-slot count — updated by run_optimisation() from site area.
+Import this for chromosome sizing in tests and tools; use n_trees_for_site()
+for the computed value."""
 
 DEFAULT_BUDGET_EUR: float = 1_000_000.0
 """Default planting budget in euros ("one million euros for canopy")."""
@@ -90,16 +115,16 @@ N_GEN: int = 60
 # ── CHROMOSOME DECODER ───────────────────────────────────────────────────────
 
 
-def decode(x_flat: np.ndarray) -> dict:
+def decode(x_flat: np.ndarray, n_trees: int | None = None) -> dict:
     """Decode a flat chromosome into a tree configuration dict.
 
     Two chromosome layouts are supported:
-      - SPECIES-AWARE (length 3*N_TREES): [x0,y0,..,x_{N-1},y_{N-1}, s0,..,s_{N-1}]
+      - SPECIES-AWARE (length 3*n_trees): [x0,y0,..,x_{n-1},y_{n-1}, s0,..,s_{n-1}]
         where s_i in [0, len(SPECIES)) selects slot i's species — the optimizer
         CHOOSES the species for each location (user: "each tree is different;
         pick the right tree for the land").
-      - LEGACY (length 2*N_TREES): positions only; species assigned round-robin.
-        Retained so manually-built 2*N chromosomes (tests, tools) still decode.
+      - LEGACY (length 2*n_trees): positions only; species assigned round-robin.
+        Retained so manually-built 2*n chromosomes (tests, tools) still decode.
 
     A slot is "active" iff is_valid_location(x_m, y_m) is True. Inactive slots
     still appear with active=False so decode is invertible / deterministic.
@@ -107,14 +132,16 @@ def decode(x_flat: np.ndarray) -> dict:
     Returns:
         {"trees": [{"x_m","y_m","species","active"}, ...], "tree_count": int}
     """
-    has_species_genes = len(x_flat) >= 3 * N_TREES
+    if n_trees is None:
+        n_trees = n_trees_for_site()
+    has_species_genes = len(x_flat) >= 3 * n_trees
     n_species = len(SPECIES)
     trees = []
-    for i in range(N_TREES):
+    for i in range(n_trees):
         x_m = float(x_flat[2 * i])
         y_m = float(x_flat[2 * i + 1])
         if has_species_genes:
-            gene = float(x_flat[2 * N_TREES + i])
+            gene = float(x_flat[2 * n_trees + i])
             idx = max(0, min(int(gene), n_species - 1))
             species = SPECIES[idx]
         else:
@@ -147,7 +174,7 @@ def _mean_cooling_factor(cfg: dict) -> float:
 class TreeBudgetProblem(ElementwiseProblem):
     """NSGA-II problem: 2 objectives (thermal + ecological) + budget constraint.
 
-    Decision variables: flat vector of 2*N_TREES floats.
+    Decision variables: flat vector of 2*n_trees floats (dynamic, based on site area).
       x_i in [0, SITE_WIDTH_M]   (East-West position of tree slot i)
       y_i in [0, SITE_DEPTH_M]   (North-South position of tree slot i)
 
@@ -163,21 +190,24 @@ class TreeBudgetProblem(ElementwiseProblem):
     T-02-11). SimBudget-guarded SDK calls happen only in validate_top3_with_infrared.
     """
 
-    def __init__(self, budget_eur: float = DEFAULT_BUDGET_EUR) -> None:
-        # Decision vars: 2*N_TREES position floats + N_TREES species selectors.
+    def __init__(self, budget_eur: float = DEFAULT_BUDGET_EUR, n_trees: int | None = None) -> None:
+        if n_trees is None:
+            n_trees = n_trees_for_site()
+        self.n_trees = n_trees
+        # Decision vars: 2*n_trees position floats + n_trees species selectors.
         # Species selector s_i in [0, len(SPECIES)) -> decode() picks SPECIES[int(s_i)].
         n_species = len(SPECIES)
-        xl = np.zeros(3 * N_TREES)
+        xl = np.zeros(3 * n_trees)
         xu = np.concatenate([
-            np.tile([_se.SITE_WIDTH_M, _se.SITE_DEPTH_M], N_TREES),
-            np.full(N_TREES, n_species - 1e-6),  # species gene upper bound
+            np.tile([_se.SITE_WIDTH_M, _se.SITE_DEPTH_M], n_trees),
+            np.full(n_trees, n_species - 1e-6),  # species gene upper bound
         ])
-        super().__init__(n_var=3 * N_TREES, n_obj=2, n_ieq_constr=1, xl=xl, xu=xu)
+        super().__init__(n_var=3 * n_trees, n_obj=2, n_ieq_constr=1, xl=xl, xu=xu)
         self.budget_eur = budget_eur
 
     def _evaluate(self, x: np.ndarray, out: dict, *args, **kwargs) -> None:
         """Evaluate a single chromosome. SURROGATE-ONLY — no SDK calls here."""
-        cfg = decode(x)
+        cfg = decode(x, n_trees=self.n_trees)
 
         # Objective F1: maximize thermal relief, WEIGHTED by the chosen species'
         # cooling proxy => the optimizer prefers higher-cooling species AND good
@@ -233,7 +263,9 @@ def run_optimisation(
     # surrogate result depend on init timing (non-determinism — see conftest/CRS notes).
     _se.ensure_site_origin()
 
-    problem = TreeBudgetProblem(budget_eur=budget_eur)
+    global N_TREES
+    N_TREES = n_trees_for_site()
+    problem = TreeBudgetProblem(budget_eur=budget_eur, n_trees=N_TREES)
 
     algorithm = NSGA2(
         pop_size=pop_size,
@@ -281,7 +313,9 @@ def select_top3(result) -> list[dict]:
         List of exactly 3 decoded+labelled config dicts.
     """
     F = np.atleast_2d(result.F)   # shape (n_pareto, 2): [-thermal, -ecological]
-    X = result.X
+    # atleast_2d on X too: a degenerate run can return a 1-D X (single solution),
+    # which would make X[idx] index a scalar and corrupt decode() (audit C2).
+    X = np.atleast_2d(result.X)
 
     # Best per objective
     idx1 = int(np.argmin(F[:, 0]))   # MAX_THERMAL_RELIEF
@@ -523,6 +557,15 @@ def validate_top3_with_infrared(
         cfg["validated_backend"] = intervention.backend
         cfg["validated_disclaimer"] = intervention.disclaimer
 
+        # Peak felt-temp (p90 cell) — the sun-exposed hotspots, not the diluted mean.
+        # None on mock/scalar backends. delta_utci_peak_c is the relief at the hotspots.
+        cfg["baseline_utci_peak_c"] = baseline.utci_peak_c
+        cfg["validated_utci_peak_c"] = intervention.utci_peak_c
+        if baseline.utci_peak_c is not None and intervention.utci_peak_c is not None:
+            cfg["delta_utci_peak_c"] = round(baseline.utci_peak_c - intervention.utci_peak_c, 2)
+        else:
+            cfg["delta_utci_peak_c"] = None
+
         # Heat-stress AREA removed (live grid only; None on mock/scalar backends).
         # The headline value metric: m² of moderate-heat-stress ground the placement
         # eliminates (baseline area above UTCI threshold − intervention area).
@@ -540,6 +583,10 @@ def validate_top3_with_infrared(
         cfg["cooled_footprint_m2"] = cooled_footprint_m2(
             baseline.merged_grid, intervention.merged_grid
         )
+
+        # Carry the full UTCI grids for heatmap visualisation (512×512, NaN-safe).
+        cfg["baseline_utci_grid"] = baseline.merged_grid
+        cfg["intervention_utci_grid"] = intervention.merged_grid
 
     return top3
 

@@ -1,383 +1,330 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-05-21
-**Source files:** `nature_nsga2_coolstock.py`, `nature_metrics.py`, `infrared_client_v2.py`, `nature_infrared_client.py`
-**Style guide reference:** `nature_architecture.md` (Honesty Contract section)
-
----
+**Analysis Date:** 2026-05-27
 
 ## Naming Patterns
 
 **Files:**
-- `snake_case` throughout: `nature_nsga2_coolstock.py`, `nature_metrics.py`, `infrared_client_v2.py`
-- Prefix with domain context for ported modules: `nature_` prefix signals origin; coolspend modules should use a domain prefix (e.g. `coolspend_` or bare module names like `spatial_engine.py`, `rules_engine.py` per v2 plan)
-- Version suffixes are acceptable when a clean replacement coexists: `infrared_client_v2.py`
+- snake_case for all Python modules: `cost_model.py`, `spatial_engine.py`, `sdk_client.py`, `rules_engine.py`, `bcn_species.py`, `bcn_lidar.py`, `app_pipeline.py`, `app_viz.py`, `main.py`, `calibration.py`, `optimizer.py`
+- `__init__.py` at `coolspend/__init__.py` and `coolspend/tests/__init__.py`
+- Test files mirror source names: `coolspend/tests/test_cost_model.py` tests `coolspend/cost_model.py`
 
 **Functions:**
-- `snake_case` for all callables: `load_pattern_bounds`, `delta_tmrt_surrogate`, `run_optimisation`, `pollinator_corridor_score`
-- Private helpers prefixed with `_`: `_backend()`, `_geometry_hash()`, `_mock_tmrt_field()`, `_load_epw()`, `_load_arbrat()`, `_dispatch()`
-- Public convenience aggregators named `compute_all` / `simulate_all` — one-stop callers that batch sub-calls
-- Boolean-returning validators named `is_valid_*`: `is_valid_location()` (v2 plan `SpatialEngine`)
+- snake_case throughout: `run_optimisation()`, `total_cost()`, `is_valid_location()`, `load_site()`, `validate_top3_with_infrared()`, `set_site_origin_from_polygon()`, `cost_per_utci_degree()`, `select_top3()`, `topsis_rank()`
+- Private helpers prefixed with underscore: `_ensure_origin_initialized()`, `_build_baseline_geometry()`, `_active_trees()`, `_config_to_geometry()`, `_build_before_after()`, `_backend()`, `_geometry_hash()`
+- Test helper functions also snake_case: `_make_config()`, `_tree()`, `_building_interior()`, `_default_dict()`, `_ensure_mock_backend()`, `_make_fake_infrared_sdk()`, `_install_fake_sdk()`
 
-**Variables / constants:**
-- Module-level constants in `UPPER_SNAKE_CASE`: `SITE_WIDTH_M`, `BASELINE_TMRT`, `ULMA_STOCK`, `BAY_SIZE_M`, `HIGH`, `MED`, `LOW`
-- Local variables in `snake_case`: `shade_fraction`, `coverage_fraction`, `tilt_deg`
-- Cache dicts named `_FOO_CACHE`: `_EPW_CACHE`, `_ARBRAT_CACHE`
-- Physical quantities include unit suffix in the name: `x_m`, `height_m`, `tilt_deg`, `porosity_pct`, `gwp_kgco2e_per_kg`
+**Variables:**
+- snake_case: `site_coverage_fraction`, `active_trees`, `hours_reduced`, `per_tree_delta`, `tree_count`, `discount_rate`, `ramp_years`
+- Physical quantities carry unit suffix: `x_m`, `y_m`, `width_m`, `height_m`, `tilt_deg`, `budget_eur`, `area_m2`, `band_c`
+- Simple coordinate pairs: `e, n` (UTM easting/northing), `lon, lat` (WGS84 decimal degrees)
+- Module-level mutable state uses underscore prefix: `_SITE_ORIGIN_E`, `_ACTIVE_SITE`, `_ORIGIN_INITIALIZED`, `_SITE_CACHE`, `_SITE_RECT_CACHE`
 
 **Classes:**
-- `PascalCase`: `COOLSTOCKProblem`, `FieldStats`, `RunMetadata`, `CFDResponse`, `SpatialEngine`
-- Problem classes inherit from framework base directly: `class COOLSTOCKProblem(ElementwiseProblem)`
+- PascalCase: `TreeBudgetProblem`, `CostLine`, `CostTable`, `GrowthDiscountParams`, `SimBudget`, `UTCIResult`, `CRSConsistencyError`
+- Problem classes inherit from pymoo base: `class TreeBudgetProblem(ElementwiseProblem)`
+- Test classes use PascalCase with descriptive names: `class TestGrowthCoolingFraction`, `class TestCostLineDataclass`, `class TestDefaultCostTable`, `class TestSpacingPenalty`, `class TestSpeciesDiversityScore`, `class TestEcologicalScore`
 
-**Type aliases / Literals:**
-- Use `typing.Literal` for constrained string enums: `Backend = Literal["mock", "cached", "live"]`
-
----
+**Constants:**
+- UPPER_SNAKE_CASE for module-level constants: `MAX_TMRT_REDUCTION_C`, `N_TREES`, `SEED`, `POP_SIZE`, `N_GEN`, `DEFAULT_BUDGET_EUR`, `CAPEX_PER_TREE_EUR`, `OPEX_HORIZON_YEARS`, `OPEX_PER_TREE_YEAR_EUR`, `HOURS_PER_DEGC_REF`, `PRE_CALIBRATION_BAND_C`, `SITE_WIDTH_M`, `SITE_DEPTH_M`, `TREE_CANOPY_RADIUS_M`, `MIN_SPACING_M`, `PEAK_SUN_ALTITUDE_DEG`, `TREE_SHADE_FRACTION`, `MAX_SITE_COVERAGE`
+- Confidence constants as bare string values (not enum): `HIGH = "HIGH"`, `MED = "MED"`, `LOW = "LOW"`
+- Private constants with underscore prefix: `_EPS`, `_COST_SOURCE`, `_DEFAULT_SITE_WIDTH_M`, `_VALID_CONFIDENCE`, `_REQUIRED_LINE_KEYS`, `_VALID_KINDS`
 
 ## Type Hints
 
-**Mandate:** All function signatures carry full type hints. No bare `def foo(x):`.
+**Usage:**
+- `from __future__ import annotations` is the first import in every file (both source and test modules). This enables PEP 604 union syntax on Python 3.9+.
+- All public function parameters are annotated: `def total_cost(config: dict[str, Any]) -> float:`
+- Return types annotated: `-> None`, `-> float`, `-> list[dict]`, `-> dict[str, Any]`, `-> tuple[float, float]`
+- Complex types use forward references for self-referencing: `"GrowthDiscountParams | None"`
+- Generic collection types consistently used: `dict[str, Any]`, `list[dict]`, `tuple[float, float]`
+- Union types use `|` syntax: `str | None`, `float | None`, `Path | str`
+- `Literal` type available: `Backend = Literal["mock", "cached", "live"]` in `coolspend/sdk_client.py`
+- `TYPE_CHECKING` guard in `coolspend/optimizer.py` line 35: `from typing import TYPE_CHECKING`
+- Test functions with `monkeypatch` annotate as `pytest.MonkeyPatch` type
 
-**Patterns observed:**
+**Patterns found:**
 ```python
-# nature_metrics.py — standard return shape
-def utci_hours_above(threshold_c: float = 32.0,
-                     coverage_fraction: float = 0.0) -> dict[str, Any]:
-
-# nature_nsga2_coolstock.py — Path inputs
-def load_pattern_bounds(yaml_path: Path):        # return inferred (xl, xu tuple)
-
-# infrared_client_v2.py — Optional + union syntax
-def simulate_tmrt(geometry: dict, climate: dict | None = None) -> dict[str, Any]:
-
-# nature_metrics.py — cfg dict typed broadly (PEP 604 union)
-def plaza_shaded_fraction(cfg: dict[str, Any] | None = None,
-                          plaza_area_m2: float = 3800.0) -> dict[str, Any]:
+def per_tree_cost(horizon_years: int = OPEX_HORIZON_YEARS) -> float:
+def total_cost(config: dict[str, Any]) -> float:
+def cost_per_utci_degree(config: dict[str, Any], band_c: float | None = None) -> dict[str, Any]:
+def decoded(x_flat: np.ndarray) -> dict:
+def validate_top3_with_infrared(top3: list[dict], budget: "SimBudget | None" = None) -> list[dict]:
 ```
 
-**`from __future__ import annotations`** is present in `nature_metrics.py` and `infrared_client_v2.py` — use it in every new module to enable PEP 604 union syntax on Python 3.9.
+## Imports Organization
 
-**`from typing import Any`** imported explicitly; `dict[str, Any]` is the standard return type for metric functions and API responses.
+**Order:**
+1. `from __future__ import annotations` (always first)
+2. Standard library: `json`, `logging`, `os`, `math`, `hashlib`, `datetime`, `time`, `warnings`, `pathlib`, `tempfile`, `dataclasses`, `typing`, `uuid`
+3. Third-party: `pytest`, `numpy`, `pymoo.*`, `shapely.*`, `pyproj.*`, `alive_progress`
+4. Local: `from coolspend.xxx import YYY`
 
----
+**Grouping:**
+- Multi-line imports from same module use parentheses:
+```python
+from coolspend.spatial_engine import (
+    core_weighted_coverage_fraction,
+    is_valid_location,
+    local_m_to_latlon,
+    thermal_relief,
+    TREE_CANOPY_RADIUS_M,
+)
+```
+
+**Lazy/inside-function imports** for heavy SDK to keep module importable offline:
+```python
+# inside validate_top3_with_infrared() in optimizer.py
+from coolspend.sdk_client import (  # noqa: PLC0415
+    get_baseline_utci, get_intervention_utci, SimBudget
+)
+```
+This pattern is used in `optimizer.py` (lines 496-501), `cost_model.py` (lines 782, 794), `spatial_engine.py` (line 383), and throughout `sdk_client.py`.
+
+**Path Aliases:**
+- Module alias with underscore prefix for private usage: `from coolspend import spatial_engine as _se`
+- Constant alias: `from coolspend.bcn_species import SPECIES_TABLE as _BCN_SPECIES`
+- No relative imports used; always absolute paths
 
 ## Docstring Style
 
-**Format:** Plain narrative paragraphs, NOT NumPy / Google sections.
-
-**Structure for public functions:**
-1. One-sentence purpose statement.
-2. Source / derivation block: cite the paper or data source inline.
-3. Explicit AUDIT / HONESTY notes for any uncertain computation (see Honesty Contract below).
-4. Parameter descriptions inline in narrative, not a `Parameters:` block.
-5. `Returns:` described inline when non-obvious.
-
-**Examples:**
-```python
-# nature_nsga2_coolstock.py — surrogate function
-def delta_tmrt_surrogate(shade_fraction: float, porosity_pct: float,
-                          tilt_deg: float, height_m: float) -> float:
-    """
-    DEPRECATED 2026-05-19 — kept only because the legacy `/surrogate` POST route
-    in demo_app.py (consumed by the old NG3D drag-edit viewer) still calls this
-    function. ...
-    Note: REPLACE with Juan's Ladybug lookup table when D1-04 is complete
-    (currently in_progress per audit_record.json). Track in audit/09_ai_engineer.md.
-    """
-```
-
-```python
-# nature_metrics.py — M1 metric
-def utci_hours_above(threshold_c: float = 32.0,
-                     coverage_fraction: float = 0.0) -> dict[str, Any]:
-    """
-    Count annual hours where UTCI exceeds threshold.
-
-    coverage_fraction = NSGA-II output (0-1, fraction of plaza under canopy).
-    ...
-    Returns:
-        {value, unit, confidence, sources, note, baseline_value}
-    """
-```
-
-**Module docstring:** Required at the top of every file. Must include:
-- One-line project / module purpose
-- Site or domain context (project name, location if relevant)
-- Data-source status (surrogate? mock? real EPW?)
+**Module Docstrings (40-90 lines):**
+- Purpose statement and project context
+- Data-source status (surrogate, mock, real EPW)
 - Key function inventory
-- Any DEPRECATED status
+- Honesty notices and cross-references to requirement docs
+- Example from `coolspend/cost_model.py` (lines 1-92): document lifecycle, KPI design, growth-discount rationale, confidence band derivation
 
----
-
-## Import Organisation
-
-**Order observed (consistent across all source files):**
-
-1. `from __future__ import annotations` (when present — always first)
-2. Standard library (`json`, `math`, `os`, `hashlib`, `datetime`, `pathlib`, `typing`, `statistics`, `dataclasses`)
-3. Third-party / heavy domain (`numpy`, `pymoo.*`, `ladybug*`, `shapely`)
-4. Local project imports (none in the source files — all modules are standalone)
-
-**No `__all__` defined** in any source file; public surface is implicit (leading-underscore convention for private).
-
-**Late imports** are acceptable for optional / heavy deps that may fail:
+**Function Docstrings:**
+- Google/NumPy style with `Args:`, `Returns:`, `Raises:` sections
+- Brief description followed by detailed explanation
+- Examples from `coolspend/optimizer.py`:
 ```python
-# nature_metrics.py — shapely is imported inside the function body
-def plaza_shaded_fraction(...):
-    from shapely.geometry import Polygon, MultiPoint
+def decode(x_flat: np.ndarray) -> dict:
+    """Decode a flat chromosome into a tree configuration dict.
+
+    Two chromosome layouts are supported:
+      - SPECIES-AWARE (length 3*N_TREES): ...
+      - LEGACY (length 2*N_TREES): ...
+
+    Returns:
+        {"trees": [{"x_m","y_m","species","active"}, ...], "tree_count": int}
+    """
 ```
 
-**Framework imports after utility setup** (not at top) are acceptable when order matters:
-```python
-# nature_nsga2_coolstock.py — pymoo imports come after YAML loader is defined
-from pymoo.algorithms.moo.nsga2 import NSGA2
+**Cross-references:** Requirement codes in docstrings: `(COST-01)`, `(D-07)`, `(SPATIAL-03)`, `(OPT-02)`, `(CONCERNS 1.1)`, `(REMEDIATION)`, `(D-10 / VALID-04)`
+
+**Honesty notes:** Embedded directly in docstrings for surrogate/mock functions:
+```
+NOT MEASURED — analytical surrogate only. Use in the NSGA-II hot path.
 ```
 
----
+## Code Style
 
-## Return Shape Convention (Metric Functions)
-
-Every metric function returns a **standard dict** with these keys:
-
+**Formatting:**
+- No explicit formatter config (no `pyproject.toml`, no `.prettierrc` in project root)
+- Code broadly PEP 8 compliant: 4-space indentation, ~100-120 character lines
+- Section headers with box-drawing characters:
 ```python
-{
-    "value":              float | int | None,   # the headline number
-    "unit":               str,                  # e.g. "hours / yr with UTCI > 32°C"
-    "confidence":         "HIGH" | "MED" | "LOW",
-    "confidence_reason":  str,                  # verbose audit explanation
-    "sources":            list[str | None],     # connector_id references
-    "note":               str,                  # human-readable narrative
-    "metric_id":          str,                  # stable snake_case identifier
-    # optional:
-    "baseline_value":     float | int,
-    "delta":              float,
-    "components":         dict,
-    "error":              str,                  # present only on failure
-}
+# ── SECTION NAME ───────────────────────────────────────────────────────
 ```
 
-This shape is established in `nature_metrics.py` and must be preserved in coolspend metric modules so consumers (API routes, audit writers) can read `.get("confidence")` uniformly.
+**Linting:**
+- `# noqa: PLC0415` -- local/inside-function imports (pylint import-outside-toplevel)
+- `# noqa: C901` -- function too complex (used on `cost_per_utci_degree`)
+- `# noqa: BLE001` -- bare `except Exception` handlers
+- `# noqa: E402` -- imports after module-level code (in tests and `optimizer.py`)
+- No explicit linter config files detected; rules suppressed inline per-site
 
-**Confidence constants** are module-level strings, not an enum:
+**Dataclass Style:**
+- `@dataclass(frozen=True)` for immutable data:
 ```python
-# nature_metrics.py
-HIGH = "HIGH"
-MED  = "MED"
-LOW  = "LOW"
+@dataclass(frozen=True)
+class CostLine:
+    key: str
+    label: str
+    value: float
+    unit: str
 ```
-
----
+- `@dataclass` (mutable) for editable parameters:
+```python
+@dataclass
+class GrowthDiscountParams:
+    ramp_years: float = 25.0
+    initial_fraction: float = 0.20
+```
 
 ## Error Handling
 
-**Pattern: return-error-dict, not raise, for data-missing cases in metric functions:**
-```python
-# nature_metrics.py
-if not EPW_PATH.exists():
-    _EPW_CACHE["error"] = f"EPW not found at {EPW_PATH}"
-    return _EPW_CACHE
+**Patterns:**
+1. **Custom exceptions:** `CRSConsistencyError(RuntimeError)` in `coolspend/spatial_engine.py` -- fail-closed guard for CRS round-trip failures. Raised when WGS84->UTM->WGS84 error exceeds 1m.
 
-if "error" in epw:
-    return {"value": None, "error": epw["error"], "confidence": LOW,
-            "sources": [], "note": "EPW unavailable"}
+2. **Fail-open for config loading** in `coolspend/cost_model.py` lines 521-553:
+```python
+def load_cost_table(path: str | None = None) -> tuple[CostTable, GrowthDiscountParams]:
+    """Fail-open: on missing or invalid file, logs a warning and returns defaults."""
+    try:
+        text = config_path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        _log.warning("...")
+        return DEFAULT_COST_TABLE, DEFAULT_GROWTH_DISCOUNT
 ```
 
-**Raise `NotImplementedError` for unimplemented live paths:**
+3. **Guarded bare exceptions** with noqa comment:
 ```python
-# infrared_client_v2.py
-if backend == "live":
-    raise NotImplementedError(
-        "INFRARED_BACKEND=live not wired yet — set to 'mock' or 'cached'. ..."
-    )
+except Exception as exc:  # noqa: BLE001
+    logger.warning("Pareto plot failed (pipeline continues): %s", exc)
 ```
 
-**Raise `RuntimeError` at provenance gate** (L5 HARD_BLOCK): any `PENDING` or missing data source blocks evaluation entirely (see `nature_architecture.md` L5 section). New modules that call external data must respect this gate.
-
-**Fallback with logging for YAML / config load failures:**
+4. **SimBudget guard** raises `RuntimeError` when call cap exceeded:
 ```python
-# nature_nsga2_coolstock.py
-except Exception as e:
-    print(f"  YAML load failed ({e}) — using fallback bounds")
-    return FALLBACK_XL, FALLBACK_XU
+def record(self, label: str) -> None:
+    if len(self.log) >= self.max_live_calls:
+        raise RuntimeError("SimBudget exceeded: max_live_calls={}")
 ```
 
-**No bare `except:` or `except Exception:` without logging the error** — every catch prints context.
-
----
-
-## Environment-Variable Config Pattern
-
-**Pattern: single private function reads the env var with a default; called at dispatch time, not at import:**
+5. **Zero/negative numeric guards:**
 ```python
-# infrared_client_v2.py
-def _backend() -> Backend:
-    return os.environ.get("INFRARED_BACKEND", "mock")  # type: ignore[return-value]
+if degc_drop is None or degc_drop <= 0:
+    return {"value": None, ...}
+norms[norms == 0] = 1e-9
+denom[denom == 0] = 1e-9
 ```
 
-**Observed env vars:**
-- `INFRARED_BACKEND` — `"mock"` | `"cached"` | `"live"` (default `"mock"`)
-- `INFRARED_API_KEY` — required only when `INFRARED_BACKEND=live`
-- `FIRING_ENGINE` — `"sparql"` | `"ast"` (evaluator, default `"sparql"`)
-- `HARD_BLOCK` — controls whether provenance failures raise or warn
+6. **Validation with warnings, never raises** -- `cost_table_from_dict()` logs warnings for invalid lines then falls back to defaults
 
-**Paths are computed relative to `__file__`, never hardcoded absolute:**
+## Logging/Output
+
+**Logging Framework:**
+- Standard `logging` module throughout production code
+- `print()` only in `if __name__ == "__main__":` smoke-test blocks
+
+**Naming conventions:**
+- `logger = logging.getLogger("coolspend.optimizer")` -- explicit namespace name in `optimizer.py`, `sdk_client.py`
+- `_log = logging.getLogger(__name__)` -- dynamic name in `cost_model.py`, `app.py`
+
+**Logging Patterns:**
+- `_log.info()` for major actions (artifact written, study run complete)
+- `_log.warning()` for fallback decisions (missing config, invalid data, matplotlib not installed)
+- `_log.warning()` for validation issues: `"cost_table_from_dict: line '%s' value %.4f is non-positive -- falling back to default"`
+- No `_log.error()` or `_log.exception()` found in the codebase
+
+## Comments & Documentation
+
+**Section marker comments** (`# ── SECTION ─────`) divide modules into named blocks:
 ```python
-# nature_metrics.py
-BASE   = Path(__file__).resolve().parent
-L1_DIR = BASE / "L1_INGEST_data"
-EPW_PATH = L1_DIR / "climate" / "Barcelona_TMYx_2011-2025.epw"
+# ── TOP-3 VALIDATION (OPT-03) ─────────────────────────────────────────
+# ── GrowthDiscountParams -- editable growth-curve + discount params ────
+# ── SIMBUDGET ──────────────────────────────────────────────────────────
 ```
 
-**Mock-vs-live switch is always env-driven**, never a function argument or compile-time constant. This allows the same code path to run in test (mock), CI (cached), and production (live) without code changes.
+**Inline annotations:**
+- Physical units on constants: `# °C`, `# metres`, `# EUR/tree/yr`
+- Source citations: `# SOURCE: nature_nsga2_coolstock.py lines 81-83`
+- Bug fix notes: `# POROSITY BUG (CONCERNS 4.2 / T-02-06 -- FIXED):`
+- Honesty flags: `# HONESTY NOTICE (CONCERNS 1.1 / T-02-04):`
+- Requirement cross-references: `# D-10 / VALID-04: uncertainty interval`
+- Status tags: `# DECLARED`, `# PENDING`, `# REQUIRES_VERIFICATION`
+- Referenced remediation: `# REMEDIATION -- Option A`
 
----
+## API / Function Design
 
-## Section / Block Comments
+**Return Value Convention:**
 
-**ASCII-art section separators** are used throughout to divide a module into named blocks:
+Complex functions return a **standard metric dict** with consistent keys:
 ```python
-# ── SITE CONSTANTS (from L1 INGEST) ──────────────────────────────────────────
-# ── SURROGATE FUNCTION ───────────────────────────────────────────────────────
-# ── PROBLEM DEFINITION ───────────────────────────────────────────────────────
-# ── RUN NSGA-II ──────────────────────────────────────────────────────────────
-# ── SAVE OUTPUTS ─────────────────────────────────────────────────────────────
-# ── Response shapes ──────────────────────────────────────────────────────────
-# ── Mock field generators ────────────────────────────────────────────────────
-# ── Public API ───────────────────────────────────────────────────────────────
-```
-
-Use the same `# ── SECTION NAME ─────` pattern in coolspend modules. Keep the total line length at 80 characters.
-
-**Inline comments** annotate physical units, source references, and known bugs:
-```python
-MAX_TMRT_REDUCTION = 12.0   # °C — UNSOURCED conservative cap (see note above)
-BASELINE_TMRT = 58.0   # °C at 1.1 m, 15:00 summer design day (ICAEN 2024 estimate)
-```
-
----
-
-## The Honesty Contract (Preserve in coolspend)
-
-Defined in `nature_architecture.md` § "The honesty contract in 5 bullets" and implemented throughout the source files. **This is a first-class convention, not optional.**
-
-### Rule 1 — MOCKS.md Ledger
-
-Every mock, stub, surrogate, or synthetic value must have an entry in `MOCKS.md`. The pre-merge check is: `grep -r "mock\|MOCK\|DECLARED\|PENDING\|REQUIRES_VERIFICATION\|heuristic"` must match a `MOCKS.md` entry. New mocks must be added in the same commit that introduces them.
-
-**In-code tagging observed:**
-```python
-# infrared_client_v2.py — disclaimer in RunMetadata
-disclaimer="NOT MEASURED DATA — synthetic field for UI integration only."
-
-# nature_nsga2_coolstock.py — module header
-# Surrogate: Analytical geometry proxy (Ladybug calibration pending Juan's S0 sim)
-
-# nature_nsga2_coolstock.py — output field
-cfg["utci_class"] = "Under-canopy estimate (surrogate ±4°C — pending Ladybug D1-04)"
-cfg["surrogate_note"] = "Analytical proxy — replace with Ladybug D1-04 value"
-```
-
-**For coolspend:** any mock SDK response, stub cost model, or surrogate thermal value must carry:
-- An inline comment with `# MOCK:` or `# SURROGATE:` prefix naming what it replaces
-- An entry in `MOCKS.md` with location, reason, and replacement path
-
-### Rule 2 — DOI Verification
-
-No DOI may appear in code or data files unless it has been CrossRef-verified. Agent-generated DOIs must never be trusted. When a citation cannot be verified, use the explicit placeholder `REQUIRES_VERIFICATION` rather than inventing a DOI.
-
-```python
-# nature_nsga2_coolstock.py — module header, verified DOIs only
-# Reference: Garcia-Nevado et al. 2020 (DOI:10.1016/j.scs.2020.102458) — surface proxy
-#            Vanos et al. 2020 (DOI:10.1007/s00484-020-02056-y) — shade component lower bound
-```
-
-### Rule 3 — Data Source Status Tags
-
-Every data source referenced in code must appear in `data_manifest.yaml` with status `VERIFIED` / `PENDING` / `DECLARED`:
-- `VERIFIED` — independently confirmed, named verifier recorded
-- `DECLARED` — partner-supplied, fires but flagged `honesty_status="DECLARED_INPUTS"` in audit output
-- `PENDING` — not yet verified, **hard-blocks** the provenance gate
-
-In-code, confidence propagates from source status:
-```python
-# nature_metrics.py
-confidence = HIGH if UHI_VALIDATED else MED
-```
-
-### Rule 4 — No `eval()`
-
-Pattern firing uses `sparql_engine.site_fires_sparql()` (rdflib ASK queries) as default, with `evaluator.safe_eval_filter()` (Python AST walk, no `eval()`) as fallback. New coolspend modules must never use `eval()` or `exec()` to parse user-provided or data-file strings.
-
-### Rule 5 — Per-Run Audit Trail
-
-Every optimisation run writes `audit_record.json` (see `write_audit_record()` in `nature_nsga2_coolstock.py`). The record includes: fired conditions + sources + confidence + surrogate flags + TOPSIS weights. New coolspend run outputs must include an equivalent provenance block.
-
-```python
-# nature_nsga2_coolstock.py — surrogate_flags block in audit_record
-"surrogate_flags": {
-    "delta_tmrt": "UNVALIDATED — Garcia-Nevado 2020 surface temp proxy, not Tmrt at 1.1m",
-    "utci_class": "ESTIMATE — derived from surrogate, pending Ladybug D1-04",
-    "uncertainty_c": 4.0,
-    "ladybug_task": "D1-04",
-    "ladybug_status": "in_progress"
+{
+    "value":         float | None,    # headline number
+    "value_lo":      float | None,    # lower uncertainty bound
+    "value_hi":      float | None,    # upper uncertainty bound
+    "unit":          str,             # e.g. "EUR/degC"
+    "confidence":    str,             # "HIGH" | "MED" | "LOW"
+    "sources":       list[str],       # provenance anchors
+    "note":          str,             # human-readable narrative
+    "metric_id":     str,             # stable snake_case identifier
 }
 ```
+This pattern is used in `cost_per_utci_degree()` in `coolspend/cost_model.py` and referenced throughout.
 
-### Rule 6 — Honest Framing in Output Fields
-
-Computed values carry explicit framing strings, not bare numbers:
+**Dict-as-config pattern:** Functions consume a monolithic `config: dict` and read specific keys with defaults:
 ```python
-# nature_metrics.py — avoided_heat_mortality
-"honest_per_plaza_framing": src.get("honest_per_plaza_framing").get("_pitch_phrase")
-# Prevents "this plaza saves N lives" overclaim
+tree_count = int(config.get("tree_count", 0))
+hot_delta = config.get("delta_utci_c")
 ```
 
+**Parameter design:**
+- Typed with defaults: `def run_optimisation(budget_eur: float = DEFAULT_BUDGET_EUR, ...)`
+- Optional params with `None` fallback: `def cost_per_utci_degree(config, band_c: float | None = None, growth_discount: "GrowthDiscountParams | None" = None)`
+- `Path` params accept `str | Path` with conversion at function entry
+
+## Module Design
+
+**File Layout Convention (consistent across all modules):**
+1. Module docstring (30-90 lines with purpose, honesty, cross-refs)
+2. `from __future__ import annotations`
+3. Standard library imports
+4. Logger setup (`logger = logging.getLogger("coolspend.xxx")`)
+5. Third-party imports
+6. Local imports
+7. Constants and module-level dataclasses
+8. Private helper functions
+9. Public API functions
+10. `if __name__ == "__main__":` smoke test block
+
+**Exports:** No `__all__` defined in any module; public API surface is implicit. Private names prefixed with underscore.
+`coolspend/__init__.py` only exports `__version__ = "0.1.0"`.
+
+## Configuration Patterns
+
+**Environment Variables:**
+- `INFRARED_BACKEND` -- `"mock"` (default) | `"cached"` | `"live"`
+- `INFRARED_API_KEY` -- required for live Infrared SDK calls
+- Read at dispatch time via private function, never at import:
+```python
+def _backend() -> Backend:
+    return os.environ.get("INFRARED_BACKEND", "mock")
+```
+- In tests, stripped via `monkeypatch.delenv("INFRARED_API_KEY", raising=False)`
+
+**JSON config file:**
+- `coolspend/cost_config.json` -- editable cost table (CostLine array + GrowthDiscountParams)
+- Loaded via `load_cost_table()` with fail-open: returns defaults on missing/invalid file
+- Validated via `cost_table_from_dict()` with per-line fallback
+
+**Module constants:**
+- Configuration that does NOT require user editing is hardcoded as module-level constants
+- Each constant annotated with UNIT and SOURCE comments:
+```python
+HOURS_PER_DEGC_REF: float = 200.0
+# UNIT: annual UTCI-hours-above-32°C per °C equivalent mean-UTCI drop
+# SOURCE: derived (Barcelona EPW mean excess + "12°C Tmrt ≈ 3-5°C UTCI" anchor)
+# REQUIRES_VERIFICATION: Plan 05-03 replaces with empirical calibration RMSE.
+```
+
+**Paths computed relative to `__file__`:**
+```python
+BASE = Path(__file__).resolve().parent
+DATA_DIR = BASE / "data"
+CACHE_DIR = BASE / "cache" / "infrared"
+_DEFAULT_CONFIG_PATH = Path(__file__).parent / "cost_config.json"
+```
+
+## Git Conventions
+
+**Commit Message Format:** Conventional Commits with scopes and optional RED/GREEN markers
+
+Types observed: `feat`, `fix`, `test`, `docs`, `refactor`
+Scopes: phase codes (`06-02`), domain (`cost`, `lidar`, `species-aware`, `anywhere+metric`)
+
+```commit
+feat(anywhere+metric): scan ANY Barcelona location + cooled-footprint headline metric
+fix(cost): wire real Barcelona EPW + fix UTCI-hours key mismatch & band scaling
+test(06-02): add failing tests for KPI routing through growth+discount (RED)
+refactor(05-04): delete naive-baseline machinery and improvement_vs_naive_pct (D-12)
+```
+
+TDD RED/GREEN markers in commit messages: `(RED)` for failing tests, `(GREEN)` for implementation pass.
+
 ---
 
-## File-Level `__main__` Block
-
-All source files have an `if __name__ == "__main__":` block that serves as a **smoke test / integration sample**:
-- `nature_nsga2_coolstock.py` — runs the full optimisation, prints Top-3, saves outputs
-- `nature_metrics.py` — calls `compute_all()` with a known config, prints confidence ribbons
-- `infrared_client_v2.py` — calls `simulate_all()` with a sample geometry, prints stats
-
-New coolspend modules must include a `__main__` block that exercises the public API with a hardcoded example. This is the first-pass sanity check before any test harness is set up.
-
----
-
-## Recommended Conventions for New coolspend Modules
-
-Following the patterns above, new modules in the coolspend project (e.g. `spatial_engine.py`, `rules_engine.py`, `optimize_trees.py`, `main.py`) should:
-
-1. **Open with a module docstring** that states: module purpose, mock/real status of every external dependency, and any known limitations.
-
-2. **Use `from __future__ import annotations`** as the first import.
-
-3. **Compute all paths relative to `__file__`:**
-   ```python
-   BASE      = Path(__file__).resolve().parent
-   DATA_DIR  = BASE / "data"
-   CACHE_DIR = BASE / "cache"
-   ```
-
-4. **Expose backend/mode via env var, read in a private `_backend()` function:**
-   ```python
-   def _sdk_mode() -> Literal["mock", "live"]:
-       return os.environ.get("INFRARED_BACKEND", "mock")  # type: ignore
-   ```
-
-5. **Return the standard metric dict shape** from all compute functions (`value`, `unit`, `confidence`, `sources`, `note`, `metric_id`). Never return a bare float from a public function.
-
-6. **Tag every mock or surrogate** with an inline `# MOCK:` or `# SURROGATE:` comment AND add a `MOCKS.md` entry in the same commit.
-
-7. **Name physical-quantity variables with unit suffix:** `min_spacing_m`, `utci_threshold_c`, `budget_eur`, `area_m2`.
-
-8. **Use section separators:** `# ── SECTION ──────────────────────────────────────────────────────────────────`
-
-9. **Honour the no-`eval()` rule.** Use AST walk or rdflib for filter evaluation.
-
-10. **Write an `if __name__ == "__main__":` smoke block** in every module.
-
-11. **For `SpatialEngine` and `RulesEngine`** (v2 plan), expose `is_valid_location(x, y) -> bool` and `calculate_ecological_score(tree_coords, species_list) -> float` as the public interface, following the naming in `docs/plans/2026-05-20-tree-budget-optimizer-v2.md`.
-
-12. **Cite DOIs only after CrossRef verification.** Use `# SOURCE: REQUIRES_VERIFICATION` for unverified claims.
+*Convention analysis: 2026-05-27*

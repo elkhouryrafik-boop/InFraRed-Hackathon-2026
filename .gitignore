@@ -11,3 +11,12 @@ outputs/
 # transient UI screenshots / playwright
 coolspend_ui_*.png
 .playwright-mcp/
+
+# transient verification screenshots (keep angels_trees_closer.png + angels_zoom2.png as referenced assets)
+coolspend_web_check.png
+coolspend_cesium_check.png
+angels_check.png
+angels_final.png
+angels_v2.png
+angels_zoom_trees.png
+angels_trees_final.png

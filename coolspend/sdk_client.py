@@ -109,6 +109,10 @@ class UTCIResult:
     heat_stress_area_m2: float | None = None
     grid_cells_total: int | None = None  # non-NaN cells in the merged grid
     merged_grid: list | None = None      # 2D list of UTCI °C (None outside polygon)
+    # Peak felt-temperature: the 90th-percentile cell (sun-exposed hotspots where
+    # shade matters most), NOT the site mean which is diluted by already-shaded cells.
+    # None for mock/scalar backends. See AUDIT_REPORT.md "UTCI accuracy investigation".
+    utci_peak_c: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialise to a JSON-safe dict."""
@@ -141,13 +145,15 @@ class SimBudget:
         self.log: list[str] = []
 
     def record(self, label: str) -> None:
-        """Record one live UTCI call. Raises RuntimeError past cap.
+        """Record one UTCI validation call against the budget. Raises RuntimeError past cap.
 
         label: short description of the call (e.g. geometry ID + variant).
-        Logs at INFO level via coolspend.sdk_client logger.
+        Logs at INFO level via coolspend.sdk_client logger. Wording is backend-neutral
+        ("UTCI sim call") on purpose — this counter fires for mock/cached/live alike,
+        so it must not claim a call was "live" when the backend is mock.
         """
         self.calls += 1
-        entry = f"live UTCI call #{self.calls}: {label}"
+        entry = f"UTCI sim call #{self.calls}: {label}"
         self.log.append(entry)
         logger.info(entry)
         if self.calls > self.max_live_calls:
@@ -208,10 +214,18 @@ def _mock_intervention_utci(geometry: dict) -> UTCIResult:
 
 # ── Live Infrared backend ─────────────────────────────────────────────────────
 
-# Single-month daytime summer window for the UTCI run. UTCI/TCS require a
-# single-month TimePeriod (server sun_vectors generator does not honour multi-
-# month windows — see skill 03-time-period.md). July 09:00–17:00 = Barcelona
-# peak-heat daytime, the window where shade matters for pedestrian comfort.
+# Single-month July daytime window for the UTCI run. UTCI/TCS require a single-month
+# TimePeriod (server sun_vectors generator does not honour multi-month windows —
+# see skill 03-time-period.md). July 09:00–17:00 = Barcelona peak-heat daytime.
+#
+# WINDOW VERIFIED (2026-05-29): same-site A/B across 09-17, 13-16, and 14-15 windows
+# gave UTCI mean 28.7 / 28.0 / 28.0 °C and max 31.1 / 30.4 / 30.4 °C respectively.
+# Narrowing to the "peak hour" does NOT raise the felt temperature — it slightly
+# lowers it — so the all-day window is kept. The moderate ~28-31 °C values are REAL
+# and correct for coastal Barcelona: TMYx July air temp is only ~26.6 °C and the
+# 4.3 m/s sea breeze lowers UTCI. Solar/MRT IS applied (UTCI sits 2-4 °C above air
+# temp; sunniest cell ~31 vs shaded ~24). Not a bug — Barcelona just runs milder
+# than inland Spain. See AUDIT_REPORT.md "UTCI accuracy investigation".
 UTCI_TIME_PERIOD: dict[str, int] = {
     "start_month": 7, "start_day": 1, "start_hour": 9,
     "end_month": 7, "end_day": 31, "end_hour": 17,
@@ -478,6 +492,9 @@ def _live_utci(metric_key: str, geometry: dict) -> "UTCIResult":
     utci_c = float(np.nanmean(grid))
     valid = ~np.isnan(grid)
     grid_cells_total = int(valid.sum())
+    # Peak felt-temp = 90th-percentile cell (sun-exposed hotspots), not the diluted
+    # site mean. p90 (not max) avoids a single outlier cell driving the headline.
+    utci_peak_c = float(np.nanpercentile(grid, 90)) if grid_cells_total else None
     # (grid > thresh) is False on NaN, so this counts only real cells above it.
     heat_stress_cells = int(np.count_nonzero(grid > UTCI_HEAT_STRESS_C))
     heat_stress_area_m2 = float(heat_stress_cells)  # 1 m²/cell
@@ -495,6 +512,7 @@ def _live_utci(metric_key: str, geometry: dict) -> "UTCIResult":
         ),
         heat_stress_area_m2=round(heat_stress_area_m2, 1),
         grid_cells_total=grid_cells_total,
+        utci_peak_c=round(utci_peak_c, 2) if utci_peak_c is not None else None,
         # Rounded grid for the cooled-footprint diff (NaN preserved; our cache
         # round-trips NaN via json allow_nan). Cheap for single-tile sites.
         merged_grid=np.round(grid, 2).tolist(),
@@ -520,9 +538,20 @@ def _dispatch(metric_key: str, mock_fn, geometry: dict) -> UTCIResult:
     if backend == "cached":
         if cache_file.exists():
             raw = json.loads(cache_file.read_text(encoding="utf-8"))
-            # .get(k) so optional fields added later (heat_stress_area_m2, ...)
-            # don't KeyError when replaying cache files written before they existed.
-            result = UTCIResult(**{k: raw.get(k) for k in UTCIResult.__dataclass_fields__})
+            # Required fields must be present — a cache file missing utci_c should
+            # fail loudly here, not silently build utci_c=None that crashes far away
+            # in delta arithmetic (audit M1). Only the LATER-ADDED spatial fields are
+            # optional, so .get() them (older cache files predate those keys).
+            _OPTIONAL = {"heat_stress_area_m2", "grid_cells_total", "merged_grid", "utci_peak_c"}
+            try:
+                result = UTCIResult(**{
+                    k: (raw.get(k) if k in _OPTIONAL else raw[k])
+                    for k in UTCIResult.__dataclass_fields__
+                })
+            except KeyError as exc:
+                raise ValueError(
+                    f"Corrupt cache file {cache_file.name}: missing required field {exc}"
+                ) from exc
             # Audit fix (H-2): label the replayed result as "cached" so provenance
             # is unambiguous in call logs and UI. Preserve the original backend in
             # `source` so the origin (mock or live) is still auditable.
@@ -577,6 +606,255 @@ def get_intervention_utci(geometry: dict) -> UTCIResult:
     Dispatches via INFRARED_BACKEND (mock default, cached, or live).
     """
     return _dispatch("utci_intervention", _mock_intervention_utci, geometry)
+
+
+# ── TCS: Thermal Comfort Statistics ───────────────────────────────────────────
+
+# TCS per-cell unit: hours in the July 09–17 daytime window that exceed the
+# moderate heat-stress UTCI threshold (>26 °C). This is a more expressive
+# metric than aggregate mean UTCI — a cell going from 80 h to 20 h of heat
+# stress is a tangible 60-hour comfort gain, while mean UTCI might only drop
+# 0.3 °C. The per-cell grid enables "comfort-hours × m²" as a headline metric.
+
+TCS_HEAT_STRESS_THRESHOLD_C: float = 26.0  # moderate, same as UTCI_HEAT_STRESS_C
+
+
+def cooled_heatstress_hours_m2(
+    baseline_tcs_grid: list | None,
+    intervention_tcs_grid: list | None,
+) -> float | None:
+    """Sum of (baseline_hours − intervention_hours) over all cells where it improved.
+
+    Returns total comfort-hour·m² gained (dimensionally hours × area).
+    None if either grid is missing or shapes differ.
+    """
+    if baseline_tcs_grid is None or intervention_tcs_grid is None:
+        return None
+    try:
+        import numpy as np  # noqa: PLC0415
+    except ImportError:
+        return None
+    b = np.asarray(baseline_tcs_grid, dtype=float)
+    i = np.asarray(intervention_tcs_grid, dtype=float)
+    if b.shape != i.shape:
+        return None
+    gain = b - i  # positive = fewer heat-stress hours with trees
+    gain = np.where(gain > 0, gain, 0.0)  # only count improvement
+    total = float(np.nansum(gain))
+    return total if total > 0 else None
+
+
+def _mock_tcs_baseline(geometry: dict) -> UTCIResult:
+    """Mock TCS baseline: 80 h of heat stress per cell (representative July window)."""
+    ghash = _geometry_hash(geometry)
+    return UTCIResult(
+        utci_c=80.0,
+        metric="tcs_heat_stress_hours",
+        backend="mock",
+        geometry_hash=ghash,
+        disclaimer=MOCK_DISCLAIMER,
+        source="coolspend mock TCS (80 h baseline — representative Barcelona July daytime)",
+    )
+
+
+def _mock_tcs_intervention(geometry: dict) -> UTCIResult:
+    """Mock TCS intervention: 60 h under partial canopy (25% reduction)."""
+    ghash = _geometry_hash(geometry)
+    n_trees = len(geometry.get("trees_lonlat", []))
+    reduction = min(n_trees * 2.0, 40.0)  # ~2h reduction per tree, cap at 40h
+    hours = max(80.0 - reduction, 30.0)
+    return UTCIResult(
+        utci_c=hours,
+        metric="tcs_heat_stress_hours",
+        backend="mock",
+        geometry_hash=ghash,
+        disclaimer=MOCK_DISCLAIMER,
+        source=f"coolspend mock TCS ({hours:.0f} h — {n_trees} trees, {reduction:.0f} h reduction)",
+    )
+
+
+def _live_tcs(metric_key: str, geometry: dict) -> "UTCIResult":
+    """Call Infrared TCS (thermal-comfort-statistics, heat-stress subtype).
+
+    Returns per-cell hour counts above moderate heat-stress threshold (>26 °C)
+    across the July 09–17 daytime window. Same coordinate policy and caching
+    as _live_utci.
+    """
+    api_key = os.environ.get("INFRARED_API_KEY")
+    if api_key is None:
+        raise EnvironmentError(
+            "INFRARED_BACKEND=live requires INFRARED_API_KEY."
+        )
+
+    if "polygon_lonlat" not in geometry:
+        raise ValueError("geometry must contain 'polygon_lonlat'")
+
+    ring = [list(pair) for pair in geometry["polygon_lonlat"]]
+    if ring[0] != ring[-1]:
+        ring.append(ring[0])
+    polygon = {"type": "Polygon", "coordinates": [ring]}
+
+    from coolspend.spatial_engine import assert_crs_roundtrip  # noqa: PLC0415
+    assert_crs_roundtrip(ring)
+
+    try:
+        from infrared_sdk import InfraredClient  # noqa: PLC0415
+        from infrared_sdk.analyses.types import (  # noqa: PLC0415
+            TcsModelRequest,
+            TcsModelBaseRequest,
+            AnalysesName,
+            TcsSubtype,
+        )
+        from infrared_sdk.models import TimePeriod, Location  # noqa: PLC0415
+    except ImportError as exc:
+        raise RuntimeError("infrared_sdk not installed.") from exc
+
+    try:
+        import numpy as np  # noqa: PLC0415
+    except ImportError:
+        raise RuntimeError("numpy not installed.")
+
+    lons = [p[0] for p in ring[:-1]]
+    lats = [p[1] for p in ring[:-1]]
+    centroid_lon = sum(lons) / len(lons)
+    centroid_lat = sum(lats) / len(lats)
+
+    poly_hash = _geometry_hash({"ring": ring})
+    weather_key = f"{round(centroid_lat, 5)},{round(centroid_lon, 5)}"
+    tp = TimePeriod(**UTCI_TIME_PERIOD)
+
+    with InfraredClient() as client:
+        if poly_hash not in _AREA_CTX_CACHE:
+            area = client.buildings.get_area(polygon)
+            try:
+                gm = client.ground_materials.get_area(polygon)
+                ground_layers = {
+                    k: v for k, v in gm.layers.items() if k in _VALID_GROUND_MATERIALS
+                }
+            except Exception as exc:
+                logger.warning("ground_materials.get_area failed (%s)", type(exc).__name__)
+                ground_layers = {}
+            _AREA_CTX_CACHE[poly_hash] = (area.buildings, ground_layers)
+        buildings, ground_layers = _AREA_CTX_CACHE[poly_hash]
+
+        if weather_key not in _WEATHER_CACHE:
+            stations = client.weather.get_weather_file_from_location(
+                lat=centroid_lat, lon=centroid_lon, radius=50,
+            )
+            if not stations:
+                raise RuntimeError(f"No weather station within 50 km of ({weather_key}).")
+            weather_data = client.weather.filter_weather_data(
+                identifier=stations[0]["uuid"], time_period=tp,
+            )
+            _WEATHER_CACHE[weather_key] = weather_data
+        weather_data = _WEATHER_CACHE[weather_key]
+
+        vegetation = _trees_to_vegetation(geometry.get("trees_lonlat", []))
+
+        payload = TcsModelRequest.from_weatherfile_payload(
+            payload=TcsModelBaseRequest(
+                analysis_type=AnalysesName.thermal_comfort_statistics,
+                subtype=TcsSubtype.heat_stress,
+            ),
+            location=Location(latitude=centroid_lat, longitude=centroid_lon),
+            time_period=tp,
+            weather_data=weather_data,
+        )
+        result = client.run_area_and_wait(
+            payload,
+            polygon,
+            buildings=buildings,
+            vegetation=vegetation,
+            ground_materials=ground_layers,
+        )
+
+    grid = np.asarray(result.merged_grid, dtype=float)
+    mean_hours = float(np.nanmean(grid))
+    n_trees = len(geometry.get("trees_lonlat", []))
+
+    return UTCIResult(
+        utci_c=round(mean_hours, 2),  # reusing field: now means hours, not °C
+        metric="tcs_heat_stress_hours",
+        backend="live",
+        geometry_hash=_geometry_hash(geometry),
+        disclaimer="LIVE Infrared TCS result (thermal-comfort-statistics heat-stress, July 09-17).",
+        source=(
+            f"infrared.city run_area_and_wait TCS heat-stress; {n_trees} trees; "
+            "per-cell hours >26 °C UTCI."
+        ),
+        merged_grid=np.round(grid, 2).tolist(),
+    )
+
+
+def get_tcs_baseline(geometry: dict) -> UTCIResult:
+    """Return baseline TCS heat-stress hours for an unmodified site."""
+    return _dispatch("tcs_baseline", _mock_tcs_baseline, geometry)
+
+
+def get_tcs_intervention(geometry: dict) -> UTCIResult:
+    """Return post-intervention TCS heat-stress hours with canopy coverage."""
+    return _dispatch("tcs_intervention", _mock_tcs_intervention, geometry)
+
+
+def _normalize_buildings(buildings) -> list[dict]:
+    """Coerce Infrared buildings into a list of plain dicts with coordinates/indices.
+
+    ``client.buildings.get_area().buildings`` is a ``Dict[str, DotBimMesh]`` of frozen
+    Pydantic models — NOT a ``list[dict]``. The 3D exporter iterates and calls ``.get()``
+    on each item, so the dict-of-models form was silently dropping every building
+    (audit: 3D scene had zero context). Normalise to ``[{"coordinates", "indices"}, ...]``.
+    """
+    if not buildings:
+        return []
+    items = buildings.values() if isinstance(buildings, dict) else buildings
+    out: list[dict] = []
+    for m in items:
+        if isinstance(m, dict):
+            out.append(m)
+        elif hasattr(m, "model_dump"):
+            out.append(m.model_dump())
+        else:  # last-resort attribute read
+            out.append({
+                "coordinates": getattr(m, "coordinates", []),
+                "indices": getattr(m, "indices", None),
+            })
+    return out
+
+
+def get_buildings_for_polygon(polygon_lonlat: list) -> list[dict]:
+    """Return building meshes (list of dicts with coordinates/indices) for a polygon.
+
+    Cache-first. Network fetch ONLY when INFRARED_BACKEND=live — fetching buildings
+    requires a real InfraredClient call, so doing it under mock/cached would violate
+    the "mock is fully offline" contract and silently spend API quota (audit C1).
+    Returns [] when no data is available rather than raising.
+    """
+    ring = [list(pair) for pair in polygon_lonlat]
+    if len(ring) > 0 and ring[0] != ring[-1]:
+        ring.append(ring[0])
+    polygon = {"type": "Polygon", "coordinates": [ring]}
+    poly_hash = _geometry_hash({"ring": ring})
+
+    # Serve from the in-process context cache regardless of backend (a prior live
+    # run may have populated it); the cache stores the SDK-native form for the live
+    # sim, so normalise on the way out.
+    if poly_hash in _AREA_CTX_CACHE:
+        return _normalize_buildings(_AREA_CTX_CACHE[poly_hash][0])
+
+    if _backend() != "live":
+        return []
+    api_key = os.environ.get("INFRARED_API_KEY")
+    if api_key is None:
+        return []
+    try:
+        from infrared_sdk import InfraredClient  # noqa: PLC0415
+        with InfraredClient() as client:
+            area = client.buildings.get_area(polygon)
+            _AREA_CTX_CACHE[poly_hash] = (area.buildings, {})
+            return _normalize_buildings(area.buildings)
+    except Exception:
+        logger.debug("get_buildings_for_polygon fetch failed", exc_info=True)
+        return []
 
 
 # ── Smoke test ────────────────────────────────────────────────────────────────

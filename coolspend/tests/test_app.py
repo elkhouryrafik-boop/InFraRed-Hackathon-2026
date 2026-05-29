@@ -46,7 +46,7 @@ def test_build_demo_constructs() -> None:
 
 
 def test_on_submit_mock_returns_outputs() -> None:
-    """on_submit with default args (mock backend) returns a correct 4-tuple."""
+    """on_submit with default args (mock backend) returns a correct 6-tuple."""
     import coolspend.app as app
 
     result = app.on_submit(
@@ -55,12 +55,16 @@ def test_on_submit_mock_returns_outputs() -> None:
         w_thermal=0.6,
         w_ecological=0.4,
         backend="mock",
+        center_lat=None,
+        center_lon=None,
+        site_size_m=120.0,
     )
 
     assert isinstance(result, tuple), "on_submit must return a tuple"
-    assert len(result) == 4, f"Expected 4-tuple, got {len(result)}-tuple"
+    # 6-tuple: banner, before/after PNG, table rows, call log, .glb scene, cooling-diff .glb
+    assert len(result) == 6, f"Expected 6-tuple, got {len(result)}-tuple"
 
-    banner_md, img_path, table_rows, call_log_text = result
+    banner_md, img_path, table_rows, call_log_text, glb_path, diff_glb_path = result
 
     # Banner must contain headline and the honesty disclaimer
     assert isinstance(banner_md, str), "banner_md must be a str"
@@ -101,13 +105,16 @@ def test_on_submit_bad_geojson_no_crash() -> None:
         w_thermal=0.6,
         w_ecological=0.4,
         backend="mock",
+        center_lat=None,
+        center_lon=None,
+        site_size_m=120.0,
     )
 
-    assert isinstance(result, tuple) and len(result) == 4, (
-        "on_submit must return a 4-tuple even on bad GeoJSON"
+    assert isinstance(result, tuple) and len(result) == 6, (
+        "on_submit must return a 6-tuple even on bad GeoJSON"
     )
 
-    banner_md, img_path, table_rows, call_log_text = result
+    banner_md, img_path, table_rows, call_log_text, glb_path, diff_glb_path = result
 
     # Banner or log must communicate an error
     combined = (banner_md or "") + (call_log_text or "")
@@ -151,10 +158,13 @@ def test_on_submit_unexpected_exception_no_traceback_in_ui(monkeypatch) -> None:
         w_thermal=0.6,
         w_ecological=0.4,
         backend="mock",
+        center_lat=None,
+        center_lon=None,
+        site_size_m=120.0,
     )
 
-    assert isinstance(result, tuple) and len(result) == 4
-    banner_md, img_path, table_rows, call_log_text = result
+    assert isinstance(result, tuple) and len(result) == 6
+    banner_md, img_path, table_rows, call_log_text, glb_path, diff_glb_path = result
 
     # Must return an error banner (not a successful result)
     assert "ERROR" in banner_md or "error" in banner_md.lower(), (

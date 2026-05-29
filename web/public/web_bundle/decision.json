@@ -1,0 +1,97 @@
+{
+  "headline": "Spend EUR 142,600 -> 31 trees cool 3,940 m2 of ground by >=0.5C (EUR 36/m2), validated by real Infrared UTCI. At sun-exposed spots the felt temperature drops 31.0C -> 30.6C.",
+  "backend": "live",
+  "disclaimer": "LIVE Infrared SDK result (thermal-comfort-index, July 09-17 window).",
+  "site_center_lonlat": [
+    2.1666047387876732,
+    41.382668705451046
+  ],
+  "site_width_m": 143.9136445505428,
+  "site_depth_m": 90.31776529178023,
+  "utci_scale_c": [
+    20.0,
+    40.0
+  ],
+  "configurations": [
+    {
+      "rank": 1,
+      "label": "MAX_THERMAL_RELIEF",
+      "tree_count": 31,
+      "cost_eur": 142600.0,
+      "cooled_footprint_m2": 3940.0,
+      "eur_per_m2": 36.2,
+      "delta_utci_c": 0.97,
+      "utci_baseline_mean": 28.56,
+      "utci_intervention_mean": 27.59,
+      "utci_baseline_peak": 30.98,
+      "utci_intervention_peak": 30.64,
+      "cost_per_utci_degree": 177384.72,
+      "species": [
+        "Black locust",
+        "Chinaberry",
+        "European hackberry",
+        "Glossy privet",
+        "Japanese pagoda tree",
+        "Judas tree",
+        "Kurrajong",
+        "London plane",
+        "Siberian elm",
+        "Tipa"
+      ]
+    },
+    {
+      "rank": 2,
+      "label": "MAX_ECOLOGICAL",
+      "tree_count": 34,
+      "cost_eur": 156400.0,
+      "cooled_footprint_m2": 4148.0,
+      "eur_per_m2": 37.7,
+      "delta_utci_c": 0.99,
+      "utci_baseline_mean": 28.56,
+      "utci_intervention_mean": 27.57,
+      "utci_baseline_peak": 30.98,
+      "utci_intervention_peak": 30.14,
+      "cost_per_utci_degree": 190620.66,
+      "species": [
+        "Black locust",
+        "Chinaberry",
+        "European hackberry",
+        "Glossy privet",
+        "Jacaranda",
+        "Japanese pagoda tree",
+        "Judas tree",
+        "Kurrajong",
+        "London plane",
+        "Siberian elm",
+        "Southern magnolia",
+        "Tipa"
+      ]
+    },
+    {
+      "rank": 3,
+      "label": "BALANCED",
+      "tree_count": 32,
+      "cost_eur": 147200.0,
+      "cooled_footprint_m2": 3992.0,
+      "eur_per_m2": 36.9,
+      "delta_utci_c": 0.89,
+      "utci_baseline_mean": 28.56,
+      "utci_intervention_mean": 27.67,
+      "utci_baseline_peak": 30.98,
+      "utci_intervention_peak": 30.41,
+      "cost_per_utci_degree": 199565.84,
+      "species": [
+        "Black locust",
+        "Chinaberry",
+        "European hackberry",
+        "Glossy privet",
+        "Japanese pagoda tree",
+        "Judas tree",
+        "Kurrajong",
+        "London plane",
+        "Siberian elm",
+        "Tipa"
+      ]
+    }
+  ]
+}

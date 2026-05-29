@@ -299,21 +299,21 @@ class TestDefaultCostTable:
         }
         assert keys == required_keys
 
-    def test_capex_total_equals_3000(self) -> None:
-        """CapEx lines sum to exactly 3000.0 EUR/tree."""
-        assert DEFAULT_COST_TABLE.capex_total() == pytest.approx(3000.0)
+    def test_capex_total_equals_2200(self) -> None:
+        """CapEx lines sum to exactly 2200.0 EUR/tree."""
+        assert DEFAULT_COST_TABLE.capex_total() == pytest.approx(2200.0)
 
-    def test_opex_per_year_equals_180(self) -> None:
-        """OpEx lines sum to exactly 180.0 EUR/tree/yr."""
-        assert DEFAULT_COST_TABLE.opex_per_year() == pytest.approx(180.0)
+    def test_opex_per_year_equals_60(self) -> None:
+        """OpEx lines sum to exactly 60.0 EUR/tree/yr."""
+        assert DEFAULT_COST_TABLE.opex_per_year() == pytest.approx(60.0)
 
     def test_per_tree_cost_horizon_zero(self) -> None:
-        """per_tree_cost(0) == 3000.0 (CapEx only, no OpEx)."""
-        assert DEFAULT_COST_TABLE.per_tree_cost(0) == pytest.approx(3000.0)
+        """per_tree_cost(0) == 2200.0 (CapEx only, no OpEx)."""
+        assert DEFAULT_COST_TABLE.per_tree_cost(0) == pytest.approx(2200.0)
 
     def test_per_tree_cost_horizon_40(self) -> None:
-        """per_tree_cost(40) == 3000 + 180*40 == 10200.0."""
-        assert DEFAULT_COST_TABLE.per_tree_cost(40) == pytest.approx(10200.0)
+        """per_tree_cost(40) == 2200 + 60*40 == 4600.0."""
+        assert DEFAULT_COST_TABLE.per_tree_cost(40) == pytest.approx(4600.0)
 
     def test_every_line_has_non_empty_source(self) -> None:
         """Every CostLine in DEFAULT_COST_TABLE has a non-empty source string."""
@@ -330,9 +330,9 @@ class TestDefaultCostTable:
                 f"CostLine '{line.key}' has invalid confidence '{line.confidence}'"
             )
 
-    def test_label_says_verify_locally(self) -> None:
-        """DEFAULT_COST_TABLE.label must include 'verify locally'."""
-        assert "verify locally" in DEFAULT_COST_TABLE.label
+    def test_label_says_barcelona_anchored(self) -> None:
+        """DEFAULT_COST_TABLE.label must include 'Barcelona-anchored'."""
+        assert "Barcelona-anchored" in DEFAULT_COST_TABLE.label
 
     def test_five_capex_lines_one_opex_line(self) -> None:
         """Must have exactly 5 capex lines and 1 opex line."""

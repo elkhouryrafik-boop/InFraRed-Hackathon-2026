@@ -1,294 +1,394 @@
 # External Integrations
 
-**Analysis Date:** 2026-05-21
-**Source context:** NatureGooddest reference code. All paths below are in the reference workspace
-`C:\Users\Rafik\OneDrive\Python Resources\Hackathon\`.
+**Analysis Date:** 2026-05-27
+
+> This document covers ALL external data sources, APIs, and inter-module contracts
+> in the current CoolSpend codebase. Every env var, endpoint, cache path, and
+> function signature is sourced from the actual code, not reference archives.
 
 ---
 
-## Infrared SDK (PRIMARY — the new integration)
+## External APIs
 
-**What it is:** Urban CFD simulation API — wind, UTCI, Tmrt, solar radiation, daylight, sky-view factor.
-**Hackathon role:** The fitness oracle for the NSGA-II thermal objective (Tree Budget challenge).
+### Infrared SDK (MICROCLIMATE SIMULATION)
 
-### Backend boundary — three modes
+**Service:** infrared.city SDK — urban microclimate simulation (UTCI felt-temperature at 1.1m).
 
-The reference mock clients (`infrared_client_v2.py` and `nature_infrared_client.py`) implement a
-three-way dispatch controlled by the `INFRARED_BACKEND` environment variable:
+**Entry point:** `coolspend/sdk_client.py`
 
-| Mode | Env value | Behaviour | Offline? |
+**Authentication:**
+- Env var: `INFRARED_API_KEY` (validated at `sdk_client.py:362`)
+- Key read internally by `infrared_sdk.InfraredClient` — never logged or stored by CoolSpend
+- Raises `EnvironmentError` if `INFRARED_BACKEND=live` and key is missing
+
+**Backend modes** (controlled by `INFRARED_BACKEND` env var, evaluated at dispatch time, not import):
+
+| Mode | Env value | Behaviour | Network |
 |---|---|---|---|
-| **mock** | `INFRARED_BACKEND=mock` (default) | Returns deterministic hand-crafted 24×24 synthetic fields. No network call. Fields are physically plausible (not random) but explicitly labelled `NOT MEASURED DATA`. | YES |
-| **cached** | `INFRARED_BACKEND=cached` | Reads from `cache/infrared/{metric}_{hash16}.json` on disk. Falls through to mock if file absent. No network call. | YES |
-| **live** | `INFRARED_BACKEND=live` | Was `NotImplementedError` in the mock clients (these clients never wired live). The real SDK path is `from infrared_sdk import InfraredClient` — used directly in `scripts/sim/run_infrared_utci_angels*.py` in NatureGooddest (NOT copied here). | NO — requires key |
+| **mock** | `INFRARED_BACKEND=mock` (default) | Returns deterministic scalar UTCI: baseline=41.0°C, intervention=30.5°C (canopy at full coverage). Scalar only — no grid. | None |
+| **cached** | `INFRARED_BACKEND=cached` | Reads from `coolspend/cache/infrared/{metric_key}_{hash16}.json`. Raises `FileNotFoundError` on cache miss — does NOT fall through to mock. | None |
+| **live** | `INFRARED_BACKEND=live` | Calls real Infrared API via `InfraredClient.run_area_and_wait`. Writes result to cache on success. | Yes |
 
-**Critical timing constraint:** The Infrared hackathon API key issues **May 27, 2026** (kickoff).
-coolspend must be architecturally offline-capable until then. Use `INFRARED_BACKEND=mock` or
-pre-populate `cache/infrared/` with reference runs.
+**API endpoints used** (via `infrared_sdk`):
 
-### Two client files — confirmed identical
+| Endpoint | Called At | Purpose |
+|---|---|---|
+| `client.buildings.get_area(polygon)` | `sdk_client.py:422` | Fetch building footprints for site polygon (from OSM via Infrared) |
+| `client.ground_materials.get_area(polygon)` | `sdk_client.py:424` | Fetch ground material layers (OPTIONAL — degrades gracefully) |
+| `client.weather.get_weather_file_from_location(lat, lon, radius=50)` | `sdk_client.py:440` | Find nearest weather station within 50 km |
+| `client.weather.filter_weather_data(identifier, time_period)` | `sdk_client.py:447` | Filter weather to single-month daytime window |
+| `client.run_area_and_wait(payload, polygon, buildings, vegetation, ground_materials)` | `sdk_client.py:465` | Run UTCI simulation and wait for result. Returns `merged_grid` (numpy array). |
 
-`infrared_client_v2.py` and `nature_infrared_client.py` are **byte-for-byte identical** (confirmed
-by reading both). Both carry the same `DEPRECATED 2026-05-19` banner. The duplication is a copy
-artifact — only one file needs to be ported.
-
-### Mock client public methods (from `infrared_client_v2.py`)
-
+**Simulation window** (hardcoded in `sdk_client.py:216`):
 ```python
-simulate_tmrt(geometry: dict, climate: dict | None = None) -> dict
-    # Tmrt at 1.1m pedestrian height. 24×24 grid.
-    # mock base: open=58.2°C, under-canopy=39.5°C
+UTCI_TIME_PERIOD = {
+    "start_month": 7, "start_day": 1, "start_hour": 9,
+    "end_month": 7, "end_day": 31, "end_hour": 17,
+}
+```
+Single-month July 09:00-17:00 (Barcelona peak-heat daytime). IMPORTANT: the server requires a single-month `TimePeriod` — multi-month windows are not supported.
 
-simulate_utci(geometry: dict, climate: dict | None = None) -> dict
-    # UTCI felt-temperature. 24×24 grid.
-    # mock base: open=41.0°C, under-canopy=30.5°C
+**Vegetation injection** (`sdk_client.py:_trees_to_vegetation()` line 289):
+Converts placed trees to GeoJSON Point Features with `natural: "tree"`, `species`, `height`, `diameter_crown` properties. Empty input (`trees_lonlat=[]`) means bare site (baseline). Per-species crown+height sourced from `coolspend/bcn_species.py` (Verd Urba bands).
 
-simulate_wind(geometry: dict, climate: dict | None = None) -> dict
-    # Wind speed magnitude at 1.5m. 24×24 grid.
-    # mock base: open=4.2 m/s, under-canopy=2.3 m/s
+**Ground materials filter** (`sdk_client.py:222`):
+Only these Infrared material names reach the simulation:
+`{"asphalt", "concrete", "soil", "vegetation", "water"}`
+Extra keys from the API (e.g. `"building"`) are stripped.
 
-simulate_all(geometry: dict, climate: dict | None = None) -> dict
-    # Convenience: {"tmrt": ..., "utci": ..., "wind": ...}
+**Rate limits / Guarding:**
+- `SimBudget` class (`sdk_client.py:121`) caps live UTCI calls per run (default `max_live_calls=3`)
+- Raises `RuntimeError` if exceeded — designed to prevent NSGA-II hot path from making API calls
+- Used in `optimizer.validate_top3_with_infrared()` and `calibration.run_calibration_study()` (separate budgets)
+- No per-IP or per-session rate limiting at the application level (noted in README.md as pre-production limitation)
+
+**Public API functions** (`sdk_client.py`):
+- `get_baseline_utci(geometry: dict) -> UTCIResult` — baseline (bare polygon)
+- `get_intervention_utci(geometry: dict) -> UTCIResult` — post-intervention (with trees)
+
+**UTCIResult dataclass** (`sdk_client.py:85`):
+Fields: `utci_c`, `metric` ("utci_at_1.1m"), `backend` ("mock"|"cached"|"live"|"cached:mock"|"cached:live"), `geometry_hash`, `disclaimer`, `source`, `heat_stress_area_m2` (optional), `grid_cells_total` (optional), `merged_grid` (optional).
+
+**Key computed values:**
+- `cooled_footprint_m2()` (`sdk_client.py:245`): cells where `baseline_grid - intervention_grid >= 0.5` degC (perceptible comfort change threshold). 1 m pitch = 1 m^2/cell.
+- `UTCI_HEAT_STRESS_C = 26.0` — moderate heat stress threshold (uses window-mean aggregate, not instantaneous peaks)
+- `COOLED_MIN_DROP_C = 0.5` — minimum perceptible cooling per cell
+
+---
+
+### Barcelona Open Data (CKAN) — Tree Inventory
+
+**Service:** Open Data BCN CKAN — municipal street tree inventory.
+
+**Entry point:** `coolspend/bcn_data.py`
+
+**Authentication:** None (public CC-BY 4.0 data, no-auth JSON/CSV CKAN).
+
+**CKAN base URL:** `https://opendata-ajuntament.barcelona.cat/data/api/3/action`
+
+**API endpoints used:**
+
+| Endpoint | Called At | Purpose |
+|---|---|---|
+| `package_show?id={slug}` | `bcn_data.py:69` | Resolve stable dataset slug to current CSV resource UUID (UUIDs rotate; slugs are stable) |
+| Raw CSV download via `resource.url` | `bcn_data.py:98` | Download actual inventory CSV (~MBs) |
+
+**Dataset slugs:**
+```python
+INVENTORY_SLUGS = ("arbrat-viari", "arbrat-zona", "arbrat-parcs")
+DEFAULT_SLUG = "arbrat-viari"  # street trees — relevant for street planting
 ```
 
-**geometry dict contract:**
+**Public API:**
+- `resolve_resource(slug) -> dict` — get current CSV resource info (cached 30 days)
+- `download_inventory(slug) -> Path` — download CSV to cache (cached 30 days)
+- `load_trees(slug, bbox) -> list[dict]` — real existing trees with `{lon, lat, species, species_id, district}`
+- `species_frequency(slug) -> dict[str, int]` — `{scientific_name: count}` over whole inventory
+
+**Data schema** (from CKAN CSV columns: `latitud`/`longitud` WGS84, `cat_nom_cientific` scientific name, `cat_especie_id`, `nom_districte`):
+- Coordinates are WGS84 (EPSG:4326) — NOT projected
+- No per-tree height or crown diameter (removed from inventory in 2021)
+- License: CC-BY 4.0 (Ajuntament de Barcelona)
+- User-Agent: `CoolSpend-Buildathon/2.0 (mailto:elkhouryrafik@gmail.com)`
+
+**Cache:** `coolspend/cache/bcn_data/` — 30-day TTL (`CACHE_TTL_SEC = 30 * 24 * 3600`)
+
+---
+
+### ICGC + CREAF LiDAR Canopy Height
+
+**Service:** ICGC (Institut Cartografic i Geologic de Catalunya) + CREAF — "Variables biofisiques de l'arbrat de Catalunya" mean tree height raster.
+
+**Entry point:** `coolspend/bcn_lidar.py`
+
+**Authentication:** None (CC-BY 4.0, no API key).
+
+**Raster source:**
+```
+URL: https://datacloud.icgc.cat/datacloud/variables-biofisiques-arbrat/tif_unzip/
+     variables-biofisiques-arbrat-v1r1-hmitjana-2016-2017.tif
+Size: ~166 MB
+CRS:  EPSG:25831 (ETRS89 / UTM zone 31N)
+Resolution: 20 m pixel
+Vintage: 2016-2017
+Product: LiDAR + forest-inventory calibrated mean tree height (m)
+License: CC-BY 4.0 (credit ICGC and CREAF)
+```
+
+**Access method (critical):**
+- WMS GetFeatureInfo returns only rendered RGB (all 0) — unusable
+- GDAL /vsicurl remote sampling returns 0 (striped TIFF, not COG) — unusable
+- The ONLY reliable path is local raster + rasterio sampling
+- Module downloads the full raster ONCE into cache (~166 MB)
+
+**Public API:**
+- `ensure_raster(auto_download=True) -> bool` — download raster if absent
+- `canopy_height_m(lon, lat, auto_download=True) -> float | None` — measured canopy height at WGS84 point
+  - Returns None for NoData=0 (dense urban = no measured canopy = high planting opportunity)
+  - Point-level cache: `coolspend/cache/bcn_lidar/pt_{lat}_{lon}.json`
+- `site_canopy_context(lon, lat) -> dict` — `{measured_canopy_height_m, interpretation, source}`
+
+**Honesty:** Dense urban Barcelona (Glories, Eixample, Ciutadella) is largely NoData=0 — the product was built for forest stands, not isolated street trees. For CoolSpend this is useful as site context: 0 = "bare, high planting opportunity".
+
+---
+
+## Data Sources (File-Based)
+
+### Barcelona Species Table
+
+**Entry point:** `coolspend/bcn_species.py`
+
+**Source:** In-code `SPECIES_TABLE` tuple of 12 `Species` dataclasses (hardcoded, not fetched).
+
+**Provenance:**
+- Scientific names from top species in `arbrat-viari` (145k trees)
+- Dimensions (crown_diameter_m, height_m) from Verd Urba band midpoints (Diputacio de Barcelona)
+- Shade density and leaf cycle from Verd Urba + standard arboricultural references
+- `cooling_score` in [0,1] is a literature-backed PROXY (Rahman et al. 2020 Int J Biometeorol) — ranking only, not measured cooling
+
+**Species dataclass** (`bcn_species.py:34`):
 ```python
-{
-    "site_id": str,          # e.g. "BCN-ANGELS-001"
-    "polygon": list[list],   # [[x,y], ...] in local metres
-    "fired_patterns": list,  # e.g. ["P01", "P14"] — drives canopy mask logic
-    "config_id": str,        # "C1"|"C2"|"C3" — drives mock canopy size
+@dataclass(frozen=True)
+class Species:
+    scientific: str          # join key (matches arbrat-viari cat_nom_cientific)
+    common: str              # English common name
+    height_m: float          # Verd Urba band midpoint
+    crown_diameter_m: float  # Verd Urba band midpoint
+    leaf_cycle: str          # "deciduous" | "evergreen"
+    shade_density: str       # "dense" | "medium" | "light"
+    height_band: str         # auditable band label
+    crown_band: str          # auditable band label
+```
+
+**Public API:**
+- `get_species(scientific) -> Species | None` — lookup by scientific name
+- `cooling_score(sp) -> float` — normalized [0,1] cooling proxy
+- `cooling_score_by_name(scientific) -> float` — species lookup with fallback (0.5 for unknown)
+- `palette(top_n=None) -> tuple[Species]` — full or top-N sorted palette
+
+### Default Site GeoJSON
+
+**File:** `coolspend/data/angels_site.geojson`
+
+**Status:** MOCK — hand-authored fixture (Placa dels Angels, Barcelona). NOT surveyed OSM data. See MOCKS.md.
+
+**Loaded by:** `coolspend/spatial_engine.py:load_site()`
+
+### Cost Model Constants
+
+**Entry point:** `coolspend/cost_model.py`
+
+**Status:** DECLARED assumptions (REQUIRES_VERIFICATION). Full itemized `DEFAULT_COST_TABLE` replaces old hardcoded CAPEX_PER_TREE_EUR=350.
+- CapEx: ~3,000 EUR/tree (fully loaded — vs old 350 which was ~10x too low)
+- OpEx: ~180 EUR/tree/yr
+- Horizon: 40 yr (urban sealed-site context)
+- See MOCKS.md cost-line ledger for per-line source tags
+
+---
+
+## File System: Cache Directory
+
+### Structure
+
+```
+coolspend/cache/
+  infrared/                   # UTCI simulation cache
+    utci_baseline_{hash16}.json     # Baseline UTCI results
+    utci_intervention_{hash16}.json # Intervention UTCI results
+    (metric_key = "utci_baseline" | "utci_intervention")
+    (hash16 = first 16 chars of SHA-256 of geometry dict JSON, sorted keys)
+  bcn_data/                   # Barcelona Open Data tree inventory cache
+    resolve_{slug}.json             # CKAN resource metadata (30-day TTL)
+    {slug}.csv                      # Raw inventory CSV (30-day TTL)
+  bcn_lidar/                  # ICGC+CREAF canopy height cache
+    hmitjana_2016_2017.tif         # Full raster (~166 MB, gitignored)
+    pt_{lat}_{lon}.json             # Per-point sampled heights
+```
+
+**Cache naming:** JSON cache files use SHA-256(geometry_dict, sort_keys=True) hex digest, first 16 characters.
+
+**Cache behaviour by backend:**
+- `mock`: writes to cache on every call (so a subsequent `cached` run replays it)
+- `live`: writes live result to cache on every call
+- `cached`: reads only -- raises FileNotFoundError on miss (never falls through to mock)
+
+**Git:** Entire `coolspend/cache/` directory is gitignored (see `.gitignore` line 6).
+
+### Outputs Directory
+
+```
+outputs/
+  top3_configurations.json    # Decision artifact (DEC-01 + DEC-02)
+  audit_record.json           # Provenance record with surrogate flags
+  pareto_front.png            # Pareto front visualization
+```
+
+**Written by:** `coolspend/optimizer.py:save_outputs()` (line ~185 from full file)
+
+---
+
+## Inter-Module Contracts
+
+### Module Dependency Graph
+
+```
+app_pipeline.py
+  ├── optimizer.py
+  │     ├── spatial_engine.py  (thermal_relief, is_valid_location, local_m_to_latlon, ...)
+  │     ├── rules_engine.py    (ecological_score)
+  │     ├── cost_model.py      (total_cost)
+  │     ├── bcn_species.py     (SPECIES palette for optimizer's species gene)
+  │     └── sdk_client.py      (LAZILY inside validate_top3_with_infrared only)
+  ├── cost_model.py            (cost_per_utci_degree, CostTable, GrowthDiscountParams)
+  └── sdk_client.py            (SimBudget, UTCIResult)
+
+main.py → optimizer.py (all pipeline stages)
+
+app.py → app_pipeline.py (Gradio UI calls run_decision)
+
+spatial_engine.py
+  ← also used by bcn_lidar.py (assert_crs_roundtrip from sdk_client)
+
+bcn_species.py
+  ← used by sdk_client.py (_trees_to_vegetation calls get_species)
+  ← used by optimizer.py (SPECIES palette for species gene pool)
+
+calibration.py (standalone study)
+  ├── optimizer.py (calibration doesn't need full optimizer, but references sdk_client)
+  └── sdk_client.py (SimBudget, get_intervention_utci)
+```
+
+### Key Data Contracts
+
+**config dict** (optimizer decision variable):
+```python
+config = {
+    "trees": [
+        {"x_m": float, "y_m": float, "species": str, "active": bool},
+        # ... up to 12 trees (N_TREES)
+    ],
+}
+```
+- Coordinates are site-local metres (SW corner origin, via `spatial_engine.py:local_m_to_latlon()`)
+- `active: False` means the tree slot is unused (allows <12 tree configurations)
+- Shared across: `optimizer.py`, `spatial_engine.py`, `rules_engine.py`, `cost_model.py`, `sdk_client.py`
+
+**geometry dict** (SDK client input):
+```python
+geometry = {
+    "polygon_lonlat": [[lon, lat], ...],  # WGS84 ring (required for live backend)
+    "trees_lonlat": [                      # placed trees (empty = baseline)
+        {"lon": float, "lat": float, "species": str},
+    ],
+    # mock only:
+    "width_m": float,       # site width (for mock coverage fraction)
+    "coverage_fraction": float,  # canopy coverage proportion (mock only)
 }
 ```
 
-**Response dict shape:**
+**UTCIResult dataclass** (SDK output):
+```python
+@dataclass
+class UTCIResult:
+    utci_c: float
+    metric: str = "utci_at_1.1m"
+    backend: str           # "mock" | "cached" | "live" | "cached:mock" | "cached:live"
+    geometry_hash: str     # 16-char SHA-256 prefix
+    disclaimer: str        # "NOT MEASURED DATA..." for mock/cached
+    source: str            # human-readable provenance
+    heat_stress_area_m2: float | None = None  # grid metric (live only)
+    grid_cells_total: int | None = None
+    merged_grid: list | None = None           # 2D UTCI grid (live only)
+```
+
+**Top-3 config dict** (ranked output, passed from optimizer to cost model to UI):
 ```python
 {
-    "metric": str,           # "tmrt_at_1.1m" | "utci_at_1.1m" | "wind_speed_at_1.5m"
-    "grid_rows": int,        # 24
-    "grid_cols": int,        # 24
-    "field": list[list[float]],
-    "stats": {
-        "mean": float, "p10": float, "p90": float,
-        "min": float, "max": float, "unit": str
+    "rank": int,              # 1-3
+    "label": str,             # "MAX_THERMAL_RELIEF" | "BALANCED" | "MAX_ECOLOGICAL"
+    "trees": [...],           # same config dict shape
+    "tree_count": int,
+    "delta_tmrt_c": float,    # surrogate (analytical proxy)
+    "delta_tmrt_uncertainty_c": float (4.0),
+    "ecological_score": float,
+    "topsis_score": float,
+    "baseline_utci_c": float,
+    "validated_utci_c": float, # mock | cached | live
+    "delta_utci_c": float,
+    "validated_backend": str,
+    "cost_eur": float,
+    "cost_per_utci_degree": {
+        "value": float, "unit": "EUR/degC",
+        "confidence": str, "sources": [str]
     },
-    "metadata": {
-        "backend": str,      # "mock"|"cached"|"live"
-        "model_version": str,
-        "latency_ms": int,
-        "geometry_hash": str,  # first 16 chars of SHA-256 of geometry JSON
-        "cached_at": str,
-        "citation": str,
-        "disclaimer": str    # "NOT MEASURED DATA — synthetic field for UI integration only."
-    }
+    "disclaimer": str,
 }
 ```
 
-### Real SDK path (for live mode after May 27)
+### CRS Contract (SPATIAL-03)
 
-From `infrared_hackathon.md` (the hackathon landing page scraped into the workspace):
+**Single authoritative CRS conversion** in `coolspend/spatial_engine.py`:
 ```python
-from infrared_sdk import InfraredClient
-from infrared_sdk.analyses.types import WindModelRequest, AnalysesName
-
-polygon = {"type": "Polygon", "coordinates": [...]}  # WGS84 GeoJSON
-with InfraredClient() as client:
-    area = client.buildings.get_area(polygon)
-    result = client.run_area_and_wait(
-        WindModelRequest(analysis_type=AnalysesName.wind_speed, wind_speed=15, wind_direction=180),
-        polygon, buildings=area.buildings,
-    )
-print(result.merged_grid)  # numpy array
+_TO_UTM = Transformer.from_crs("EPSG:4326", "EPSG:32631", always_xy=True)  # lon,lat -> easting,northing
+_TO_WGS = Transformer.from_crs("EPSG:32631", "EPSG:4326", always_xy=True)  # easting,northing -> lon,lat
 ```
-- Install: `pip install infrared-sdk`
-- Auth: `INFRARED_API_KEY` env var (read by SDK internally)
-- Returns `result.merged_grid` as a numpy array
-- 8 analysis types: wind, UTCI, Tmrt, solar radiation, daylight, sky-view, direct sun hours (per hackathon docs)
-- Average simulation time: `< 1 min` per polygon (per hackathon landing page)
-
-### Offline strategy for coolspend
-
-The optimizer must NOT call the live SDK per chromosome — that would require ~10,000 API calls
-per run (100 gen × 100 pop). NatureGooddest solved this identically:
-
-**`nature_nsga2_coolstock.py` uses the surrogate — NOT the SDK — inside the NSGA-II loop.**
-Specifically, `COOLSTOCKProblem._evaluate()` (line 204) calls `delta_tmrt_surrogate()` (line 107)
-which is pure math — no network call. The Infrared SDK is called separately, offline, to compute
-pre-cached baselines and a small set of interventions. The optimizer then reads from those cached
-values.
-
-For coolspend tree optimizer, the same pattern applies:
-1. Call Infrared SDK once per baseline polygon → cache to disk
-2. Call Infrared SDK for a small number of representative interventions (e.g. 10–50 pre-placed tree configurations) → cache to disk
-3. NSGA-II fitness evaluates against those cached values or uses a fast surrogate (SOLWEIG-style Tmrt proxy from `nature_metrics.py`)
-
-**Cache location pattern:** `cache/infrared/{metric}_{geometry_hash16}.json`
+- No other module may convert CRS (`spatial_engine.py` docstring, line 27)
+- `assert_crs_roundtrip(ring)` enforces <1m round-trip tolerance, raising `CRSConsistencyError` on failure (D-07)
+- Functions: `latlon_to_local_m(lon, lat)` and `local_m_to_latlon(x, y)` for site-local frame
+- Site origin is mutable module state (`SITE_ORIGIN_LON/LAT`, `SITE_WIDTH_M`, `SITE_DEPTH_M`), reset by `reset_site_origin()` per test
 
 ---
 
-## OSM / GeoJSON Data
+## Output Formats
 
-**What:** Building footprints, street centrelines, open-space polygons for collision detection
-and site boundary.
-
-**Source in NatureGooddest:**
-- `L1_INGEST_data/geometry/angels_buildings.geojson` — 746 buildings, OSM ODbL 1.0
-- `L1_INGEST_data/geometry/angels_open_spaces.geojson` — 42 polygons
-- `L1_INGEST_data/geometry/angels_streets.geojson` — 1,429 line segments
-- Retrieved 2026-05-12 via Overpass API
-
-**License:** OpenStreetMap ODbL 1.0 (open, attribution required)
-
-**For coolspend:** These files are NOT copied into the hackathon workspace. New GeoJSON
-must be fetched for the demo site (could reuse Plaça dels Àngels per `HANDOFF.md` open question,
-or pick a new site). The V2 plan (`docs/plans/2026-05-20-tree-budget-optimizer-v2.md`) calls
-for creating `data/site_context.geojson`.
-
-**Overpass API query pattern** used in NatureGooddest (inferred from `nature_architecture.md`):
-```
-[out:json][timeout:25];
-(way["building"](around:300, 41.3826, 2.1670););
-out body; >; out skel qt;
-```
-
-**Honesty status:** VERIFIED (OSM ODbL 1.0, retrieved date documented in `audit_record.json`).
-
----
-
-## EPW Climate Data
-
-**What:** EnergyPlus Weather file — 8,760-hour TMY (Typical Meteorological Year) with hourly
-dry_bulb, relative_humidity, wind_speed, global_horizontal_radiation.
-
-**Source in NatureGooddest:**
-- File: `L1_INGEST_data/climate/Barcelona_TMYx_2011-2025.epw`
-- Provider: climate.onebuilding.org (open data)
-- WMO station: 081810 (Barcelona airport, ~10 km from Plaça dels Àngels)
-- UHI note from `nature_metrics.py` (line 141-193): X4 El Raval urban canyon station (153 m
-  from plaza) cross-validation shows +0.44°C delta vs airport EPW for daytime summer — within
-  EPW interannual variability; no correction applied for UTCI > 32°C metric.
-
-**Consumed by:** `nature_metrics.py` via `ladybug.epw.EPW` (loaded once, cached in `_EPW_CACHE`)
-
-**For coolspend:** NOT copied to hackathon workspace. If EPW-based baseline UTCI is needed,
-fetch from climate.onebuilding.org for the demo site. Alternatively, let Infrared SDK provide
-the climate baseline entirely (SDK uses its own climate data source).
-
-**Honesty flag:** Confidence = HIGH after X4 cross-validation (documented in
-`L1_INGEST_data/climate/x4_raval_uhi_validation.json` in NatureGooddest).
-
----
-
-## GBIF Biodiversity Data
-
-**What:** Species occurrence records for pollinators in El Raval (Barcelona).
-
-**Source in NatureGooddest:**
-- File: `L1_INGEST_data/biodiversity/angels_gbif_pollinators.json`
-- GBIF taxonKeys: 4334, 6920 — 38 species, 266 records
-- License: CC0 (public domain)
-- Retrieved: 2026-05-13
-
-**Consumed by:** `nature_nsga2_coolstock.py` — `pollinator_corridor_score()` function (line 158)
-references "GBIF El Raval data" but the function itself is pure geometry (distance from green
-anchor nodes); it does not read the JSON at runtime. The JSON is referenced for scoring provenance
-only.
-
-**For coolspend:** LEAVE BEHIND unless pollinator corridor is a desired objective. The V2 plan
-focuses on thermal + ecological spacing objectives only.
-
-**Honesty flag:** Data is real GBIF records but the scoring function that cites it contains a
-known audit finding (C10 / 09 C-1) — the y_m clamp causes F3 to be effectively constant across
-the Pareto front. The corridor score is **not a meaningful optimization signal** in the current form.
-
----
-
-## Barcelona Open Data (BCN CKAN)
-
-**What:** Real-time municipal open data — used by `bcn_opendata.py` in NatureGooddest.
-
-**Source:** `bcn_opendata.py` (NOT copied to hackathon workspace)
-- Runtime-fetched from CKAN endpoint on each demo load
-- License: CC-BY 4.0
-
-**For coolspend:** NOT ported. Not relevant to the tree budget optimizer.
-
----
-
-## ESA WorldCover / Sentinel Canopy Data
-
-**What:** 10m resolution land-cover layer for canopy cover percentage.
-
-**Source in NatureGooddest:**
-- File: `L1_INGEST_data/sentinel/angels_canopy_cover.json`
-- DOI: ESA WorldCover 2021 v200 (CC-BY 4.0)
-- Value used: canopy_cover_pct = 0% for Plaça dels Àngels (paved plaza, no trees)
-
-**For coolspend:** LEAVE BEHIND unless initial canopy coverage is a constraint input.
-
----
-
-## ÖKOBAUDAT (Embodied Carbon)
-
-**What:** German lifecycle assessment database for construction materials.
-
-**Source in NatureGooddest:**
-- File: `L1_INGEST_data/carbon/oekobaudat_coolstock_materials.json`
-- Entry used: `steel_scaffold` — GWP 2.491 kgCO2e/kg, A1-A3, EN 15804+A2, unit verified as "kg"
-- Used in `carbon_headroom_kgco2e()` in `nature_metrics.py` (line 441)
-
-**For coolspend tree optimizer:** LEAVE BEHIND (trees have different embodied carbon math;
-CapEx/OpEx model from CONCEPT_REPORT.md is cost-based not carbon-based).
-
----
-
-## Iungman 2023 Lancet (Heat Mortality)
-
-**What:** City-level heat mortality avoidance coefficients for Barcelona.
-
-**Source in NatureGooddest:**
-- File: `L1_INGEST_data/health/isglobal_heat_mortality_bcn.json`
-- DOI: 10.1016/S0140-6736(22)02585-5
-- Used in `avoided_heat_mortality()` in `nature_metrics.py` (line 317)
-
-**For coolspend:** OPTIONAL — could power a headline "lives saved at city scale" metric but
-requires the JSON file to be present and the citywide-policy framing to be honest.
-See the `honest_per_plaza_framing` caveat in `nature_metrics.py:368`.
-
----
-
-## Webhooks & Callbacks
-
-**Incoming:** None in reference code.
-**Outgoing:** None in reference code. Infrared SDK uses polling (`run_area_and_wait`) not webhooks.
+| Format | Produced By | Contents |
+|---|---|---|
+| JSON | `optimizer.py:save_outputs()` | `outputs/top3_configurations.json` — ranked decision artifact with full tree placements, metrics, KPI |
+| JSON | `optimizer.py:write_audit_record()` | `outputs/audit_record.json` — provenance flags, surrogate status, TOPSIS weights |
+| PNG | `optimizer.py:plot_pareto()` | `outputs/pareto_front.png` — 2D Pareto front (thermal vs ecological) |
+| PNG | `app_viz.py:render_before_after()` | Temporary file — side-by-side baseline vs intervention UTCI heatmap with site geometry + tree placements |
+| JSON | `sdk_client.py:_dispatch()` | `coolspend/cache/infrared/{metric}_{hash16}.json` — cached UTCI simulation results |
+| CSV | `bcn_data.py:download_inventory()` | `coolspend/cache/bcn_data/{slug}.csv` — downloaded Barcelona tree inventory |
 
 ---
 
 ## Environment Variables Summary
 
-| Variable | Required for | Default | Where read |
+| Variable | Required For | Default | Read In |
 |---|---|---|---|
-| `INFRARED_BACKEND` | Mock client dispatch | `"mock"` | `infrared_client_v2.py:59` |
-| `INFRARED_API_KEY` | Live Infrared SDK | None (crashes if unset) | `infrared_sdk.InfraredClient` internals |
+| `INFRARED_BACKEND` | SDK dispatch | `"mock"` | `sdk_client.py:68` |
+| `INFRARED_API_KEY` | Live Infrared SDK | None (raises Error if live) | `sdk_client.py:362` |
 
-**Secrets location:** `.env` file at project root (referenced in `HANDOFF.md:36`). File not
-present in the hackathon workspace — must be created before live runs.
+**Secrets location:** `.env` file at project root (existence noted; contents NEVER read or logged). File is gitignored.
 
 ---
 
-## Mock / Unverified Data Flags
+## Webhooks & Callbacks
 
-Per NatureGooddest's honesty contract, the following are explicitly mocked or unverified
-and must NOT be cited as measured data in coolspend:
+**Incoming:** None. All data is fetched via pull (HTTP GET) or loaded from local files.
 
-| Data / Function | Status | Location | Notes |
-|---|---|---|---|
-| `simulate_tmrt/utci/wind()` mock fields | MOCK | `infrared_client_v2.py` | Synthetic fields, "NOT MEASURED DATA" label in `metadata.disclaimer` |
-| `delta_tmrt_surrogate()` | UNVALIDATED surrogate | `nature_nsga2_coolstock.py:107` | Analytical proxy — porosity-penalty bug fixed 2026-05-20, but underlying model is Garcia-Nevado 2020 surface temp (not 1.1m Tmrt). Marked DEPRECATED. |
-| `pollinator_corridor_score()` F3 objective | DEGENERATE | `nature_nsga2_coolstock.py:158` | y_m clamp causes score ≈ 1.0 for all Pareto solutions. Not a valid optimization signal. |
-| ULMA scaffold inventory | MOCK | `nature_nsga2_coolstock.py:79` | `ulma_inventory_mock.json` — declared mock in NatureGooddest MOCKS.md |
-| Girbau LAB upcycled textile data | DECLARED | `nature_nsga2_coolstock.py:347` | Partner-declared, not independently verified |
+**Outgoing:** None. Infrared SDK uses synchronous polling (`run_area_and_wait`) — no webhook registration.
 
 ---
 
-*Integration audit: 2026-05-21*
+*Integration audit: 2026-05-27*

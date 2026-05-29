@@ -367,6 +367,7 @@ def _run_pipeline(
             except Exception:  # noqa: BLE001 — optional context, never break the run
                 measured_site_canopy = None
 
+        from coolspend.spatial_engine import SITE_WIDTH_M, SITE_DEPTH_M  # noqa: PLC0415
         return {
             "configurations": top3,
             "before_after": before_after,
@@ -376,6 +377,8 @@ def _run_pipeline(
             "call_log": list(call_log),  # snapshot of captured log entries
             "site_path": site_path,
             "site_polygon_lonlat": site_polygon_lonlat,
+            "site_width_m": SITE_WIDTH_M,
+            "site_depth_m": SITE_DEPTH_M,
             "center_lonlat": center_lonlat,
             "measured_site_canopy": measured_site_canopy,
             "error": None,
@@ -391,6 +394,13 @@ def _run_pipeline(
             "disclaimer": "",
             "call_log": list(call_log),
             "site_path": site_path,
+            # Keep the same keys as the success dict so consumers don't KeyError on
+            # the error path (they currently use .get(), but shape parity is safer).
+            "site_polygon_lonlat": None,
+            "site_width_m": None,
+            "site_depth_m": None,
+            "center_lonlat": center_lonlat,
+            "measured_site_canopy": None,
             "error": f"Pipeline error: {exc}",
         }
 
@@ -413,12 +423,19 @@ def _build_before_after(rank1: dict) -> dict:
         "chosen_label": rank1.get("label"),
         "chosen_validated_utci_c": rank1.get("validated_utci_c"),
         "headline_delta_utci_c": rank1.get("delta_utci_c"),
+        # Peak felt-temp (p90 sun-exposed cells) — for the honest "feels-like" headline
+        "baseline_utci_peak_c": rank1.get("baseline_utci_peak_c"),
+        "chosen_validated_utci_peak_c": rank1.get("validated_utci_peak_c"),
+        "headline_delta_utci_peak_c": rank1.get("delta_utci_peak_c"),
         "cooled_footprint_m2": cooled,
         "eur_per_m2_cooled": eur_per_m2_cooled,
         "heat_stress_area_removed_m2": rank1.get("heat_stress_area_removed_m2"),
         "source": rank1.get("validated_disclaimer", rank1.get("validated_backend", "")),
         "note": "before = baseline UTCI; after = rank-1 intervention validated UTCI; "
                 "cooled_footprint_m2 = ground cooled >=0.5C (cell-wise grid diff)",
+        # Full UTCI grids for heatmap visualisation (512×512, NaN-safe, None for mock)
+        "baseline_utci_grid": rank1.get("baseline_utci_grid"),
+        "intervention_utci_grid": rank1.get("intervention_utci_grid"),
     }
 
 
@@ -444,6 +461,15 @@ def _build_headline(rank1: dict, before_after: dict) -> str:
             f"Spend EUR {cost_eur:,.0f} -> {n} trees cool {cooled:,.0f} m2 of ground "
             f"by >=0.5C (EUR {eur_m2:,.0f}/m2), validated by real Infrared UTCI."
         )
+        # Add the felt-temperature clause at sun-exposed hotspots when available
+        # (p90 cell, the honest "feels-like" peak — not the shade-diluted mean).
+        peak_base = before_after.get("baseline_utci_peak_c")
+        peak_int = before_after.get("chosen_validated_utci_peak_c")
+        if peak_base is not None and peak_int is not None:
+            base += (
+                f" At sun-exposed spots the felt temperature drops "
+                f"{peak_base:.1f}C -> {peak_int:.1f}C."
+            )
         return base
     base = f"Spend EUR {cost_eur:,.0f} -> cools the plaza {delta:.2f} degC -- plant these {n} locations."
     if kpi is None:

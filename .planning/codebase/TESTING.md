@@ -1,357 +1,315 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-05-21
-**Source files:** `nature_nsga2_coolstock.py`, `nature_metrics.py`, `infrared_client_v2.py`, `nature_infrared_client.py`
-**Architecture reference:** `nature_architecture.md` (L5 DEFEND section; `tests/test_sparql_engine.py` mentioned)
-
----
+**Analysis Date:** 2026-05-27
 
 ## Test Framework
 
 **Runner:**
-- Not declared in any package manifest in the analysed files; `tests/test_sparql_engine.py` exists per `nature_architecture.md` (27 patterns, behaviour-identical check). Assumed `pytest` (standard for the Python ecosystem used).
-- Config file: not detected in the analysed files.
+- pytest (no explicit config -- discovered via test file naming)
+- No `pytest.ini`, `setup.cfg`, `pyproject.toml` pytest configuration found in project root
+- No coverage configuration (no `.coveragerc` detected)
+- No test markers defined in configuration (markers used but without registration)
 
 **Assertion Library:**
-- Standard `assert` / `pytest` assertions (inferred from `test_sparql_engine.py` reference).
+- Standard `pytest` assertions with `pytest.approx()` for floating-point comparison
+- Standard Python `assert` for boolean checks and `in`/`not in` for substring checks
+- `math.isfinite()` for numeric validity checks
 
-**Run Commands (to establish for coolspend):**
+**Run Commands:**
 ```bash
-pytest tests/                     # Run all tests
-pytest tests/ -v                  # Verbose
-pytest tests/ -k "surrogate"      # Run a specific group
-pytest tests/ --tb=short          # Short tracebacks (fast hackathon feedback)
+pytest                                      # Run all tests
+pytest -v                                   # Verbose mode
+pytest coolspend/tests/                     # Also works with explicit path
+pytest coolspend/tests/test_cost_model.py   # Single test file
+pytest -k "cost"                            # Run tests matching keyword
+python -m pytest                            # Via module invocation
 ```
 
----
+## Test File Organization
 
-## Existing Test Coverage in NatureGooddest
+**Location:**
+- All tests live in `coolspend/tests/`, mirroring source structure
+- Source module `coolspend/cost_model.py` -> test file `coolspend/tests/test_cost_model.py`
+- `conftest.py` at `coolspend/tests/conftest.py` (single shared fixtures file)
 
-**Confirmed tests:**
-- `tests/test_sparql_engine.py` — 27 pattern behaviour-identity tests (SPARQL path vs. legacy AST path, 18 fire). Locks the L5 firing engine. Referenced in `nature_architecture.md` L5 section.
+**Naming:**
+- Test files: `test_<module_name>.py` (e.g., `test_spatial_engine.py`, `test_rules_engine.py`)
+- Test functions: `test_<what>_<expected_outcome>()` (e.g., `test_inside_building_rejected`, `test_kpi_not_raw_delta_tmrt`)
+- Test classes: PascalCase grouping by component: `class TestGrowthCoolingFraction`, `class TestDefaultCostTable`, `class TestSpacingPenalty`
+- Helper/private functions prefixed with underscore: `_tree()`, `_config()`, `_default_dict()`
 
-**Smoke tests via `__main__` blocks (executable but not in test suite):**
-- `nature_nsga2_coolstock.py` — runs full NSGA-II (seed=42, n_gen=100, pop=100), prints Top-3, saves outputs.
-- `nature_metrics.py` — calls `compute_all(coverage_fraction=0.237, modules=144, plaza_area_m2=3800.0)`, prints confidence ribbons, reports latency.
-- `infrared_client_v2.py` — calls `simulate_all()` with sample geometry, prints per-metric stats and hash.
+**Structure:**
+```
+coolspend/tests/
+├── __init__.py                        # Package marker ("Test package marker for coolspend")
+├── conftest.py                        # Shared fixtures (autouse site origin reset)
+├── test_app.py                        # Gradio UI tests (headless, 233 lines)
+├── test_app_pipeline.py               # run_decision pipeline (191 lines)
+├── test_app_viz.py                    # Visualization rendering (150 lines)
+├── test_calibration.py                # Calibration study (516 lines)
+├── test_coordinate_frame.py           # UTM CRS boundary tests (300 lines)
+├── test_cost_config.py                # Cost config JSON load/edit (330 lines)
+├── test_cost_model.py                 # KPI math + CostTable (565 lines)
+├── test_decision_artifact.py          # Output artifact JSON (313 lines)
+├── test_optimizer.py                  # NSGA-II integration (410 lines)
+├── test_requirements.py               # HF Spaces deploy contract (170 lines)
+├── test_rules_engine.py               # Ecological/spacing score (321 lines)
+├── test_sdk_client.py                 # SDK dispatch offline (211 lines)
+├── test_sdk_client_live.py            # Live SDK path with fake (279 lines)
+├── test_spatial_engine.py             # Collision validity (111 lines)
+└── test_surrogate.py                  # Thermal surrogate (337 lines)
+```
 
-No unit tests were found in the analysed modules themselves. The project's test discipline lives primarily in: (a) the `tests/test_sparql_engine.py` integration lock, and (b) `__main__` smoke blocks used as manual regression checks.
+Total: 17 test files, 4,465 lines.
 
----
+## Test Categories
 
-## How the Surrogate Enables Deterministic Seed-Pinned Testing
+**Unit Tests (pure arithmetic, no I/O):**
+- `test_cost_model.py` -- KPI math, growth/discount functions, CostTable totals
+- `test_rules_engine.py` -- spacing_penalty, species_diversity_score, ecological_score
+- `test_surrogate.py` -- delta_tmrt_surrogate, shade_efficiency, thermal_relief, core_weighted_coverage_fraction
+- `test_cost_config.py` -- load_cost_table, cost_table_from_dict, dictionary round-trip
+- `test_calibration.py` -- compute_fit (RMSE, R2), rank_stability
 
-The NSGA-II optimiser in `nature_nsga2_coolstock.py` is run with `seed=42` in every call:
+**Integration Tests (mock backend):**
+- `test_optimizer.py` -- run_optimisation, select_top3, validate_top3_with_infrared (mock), topsis_rank
+- `test_decision_artifact.py` -- save_outputs, before-after record, full pipeline through mock
+- `test_app_pipeline.py` -- run_decision with mock backend, determinism across runs
+- `test_spatial_engine.py` -- load_site, is_valid_location against bundled fixture
+- `test_coordinate_frame.py` -- CRS round-trip via pyproj (citywide accuracy, fail-closed guard)
+
+**Live/SDK Path Tests (fake SDK injection, no real key):**
+- `test_sdk_client_live.py` -- monkeypatches `infrared_sdk` into `sys.modules` with `MagicMock` to exercise live code path offline
+- `test_sdk_client.py` -- cached backend reads/writes, cache provenance labelling, SimBudget
+
+**UI Tests (headless Gradio):**
+- `test_app.py` -- build_demo returns Blocks, on_submit mock returns valid 4-tuple, bad geojson no crash, no traceback in UI
+- `test_app_viz.py` -- render_before_after returns valid PNG, handles empty trees, tempfile fallback
+
+**Deployment Contract:**
+- `test_requirements.py` -- requirements.txt pins, README YAML header, gradio version drift guard, mock/live documentation
+
+**Distinction mechanism:**
+- No pytest markers (`@pytest.mark.slow`, `@pytest.mark.live`) -- all tests run together
+- Live-path tests use fake SDK injection (`test_sdk_client_live.py`), so all tests are truly offline
+- Calibration tests use `_ensure_mock_backend(monkeypatch)` helper to strip live env vars
+
+## Fixtures
+
+**File: `coolspend/tests/conftest.py`** (lines 1-27)
 
 ```python
-# nature_nsga2_coolstock.py — run_optimisation()
-result = minimize(
-    problem,
-    algorithm,
-    termination,
-    seed=seed,       # default seed=42
-    verbose=True,
-    save_history=False,
-)
+@pytest.fixture(autouse=True)
+def _reset_site_origin():
+    """Reset spatial_engine's per-site UTM origin state before (and after) each test."""
+    spatial_engine.reset_site_origin()
+    yield
+    spatial_engine.reset_site_origin()
 ```
 
-The surrogate objective functions (`delta_tmrt_surrogate`, `shade_efficiency`, `pollinator_corridor_score`) are **pure mathematical functions** — no random state, no I/O, no side effects:
+- Single autouse fixture that wraps every test with a clean spatial_engine origin state
+- Resets mutable module globals (`SITE_WIDTH_M`, `SITE_DEPTH_M`, `_SITE_ORIGIN_E`, `_SITE_ORIGIN_N`)
+- Double yield pattern: reset before AND after each test
+
+**Module-scoped fixtures (in individual test files):**
+
+| File | Fixture | Scope | Purpose |
+|------|---------|-------|---------|
+| `test_optimizer.py` | `small_result` | module | `run_optimisation(n_gen=20, pop_size=40, seed=42)` -- shared Pareto result |
+| `test_optimizer.py` | `top3_configs` | module | `select_top3(small_result)` -- pre-extracted Top-3 |
+| `test_optimizer.py` | `real_result` | module | `run_optimisation(n_gen=40, pop_size=40, seed=42)` -- larger front for non-degeneracy tests |
+| `test_spatial_engine.py` | `site` | module | `load_site()` -- cached site geometry |
+| `test_app_viz.py` | `minimal_config` | function | Minimal tree config with 1 active tree |
+| `test_app_viz.py` | `minimal_before_after` | function | Before-after dict matching run_decision contract |
+| `test_app_viz.py` | `empty_trees_config` | function | Config with 0 active trees |
+| `test_sdk_client_live.py` | `_clean_sdk_modules` | autouse | Remove fake infrared_sdk from sys.modules before/after |
+| `test_app_pipeline.py` | `_force_mock_backend` | autouse | Strip live env vars before each test |
+| `test_requirements.py` | `req_text` | module | `requirements.txt` content |
+| `test_requirements.py` | `readme_text` | module | `README.md` content |
+| `test_requirements.py` | `spaces_header` | module | YAML front-matter extracted from README |
+
+**Helper functions (used as fixture-like data builders):**
+
+| File | Helper | Purpose |
+|------|--------|---------|
+| `test_rules_engine.py` | `_config(*trees)` | Build config dict from tree dicts |
+| `test_rules_engine.py` | `_tree(x, y, species, active)` | Build single tree dict |
+| `test_cost_config.py` | `_default_dict()` | Build dict mirroring shipped cost_config.json defaults |
+| `test_calibration.py` | `_ensure_mock_backend(monkeypatch)` | Strip API env vars safely |
+| `test_sdk_client_live.py` | `_make_fake_infrared_sdk()` | Build fake infrared_sdk module tree |
+| `test_sdk_client_live.py` | `_install_fake_sdk(fake_sdk)` | Register fake SDK in sys.modules |
+| `test_decision_artifact.py` | `_make_config(tree_count, delta_utci_c, eco, label)` | Build hand-made config for TOPSIS isolation |
+| `test_calibration.py` | `_make_configs(n, offset)` | Build synthetic configs with known surrogate/real deltas |
+
+## Mocking Strategy
+
+**Monkeypatch is the primary mocking tool** (from `pytest.MonkeyPatch`):
+
+**Environment variable manipulation (most common):**
+```python
+monkeypatch.delenv("INFRARED_API_KEY", raising=False)    # Strip key
+monkeypatch.delenv("INFRARED_BACKEND", raising=False)     # Strip backend
+monkeypatch.setenv("INFRARED_BACKEND", "cached")           # Set backend
+monkeypatch.setenv("INFRARED_API_KEY", DUMMY_KEY)          # Set dummy key (live path tests)
+```
+
+**Function replacement:**
+```python
+# test_optimizer.py -- prove hot path is SDK-free
+monkeypatch.setattr(sdk_client_module, "get_intervention_utci", _raise)
+
+# test_coordinate_frame.py -- simulate CRS drift
+monkeypatch.setattr(se, "local_m_to_latlon", _bad_inverse)
+
+# test_app.py -- simulate unexpected exception in run_decision
+monkeypatch.setattr(app, "run_decision", _explode)
+
+# test_optimizer.py -- capture baseline geometry for inspection
+monkeypatch.setattr(sdk_module, "get_baseline_utci", _capture_baseline)
+```
+
+**Full SDK module injection (`test_sdk_client_live.py` only):**
+```python
+# Build a fake infrared_sdk tree with MagicMock for every required method
+fake_sdk, fake_client = _make_fake_infrared_sdk()
+_install_fake_sdk(fake_sdk)  # registers in sys.modules
+```
+This is the ONLY test file that fakes a full third-party SDK. It creates a `types.ModuleType` tree with `MagicMock` stubs for `InfraredClient`, `UtciModelRequest`, `AnalysesName`, etc.
+
+**What is mocked:**
+- `get_intervention_utci` -- to prove it is never called in hot path
+- `local_m_to_latlon` -- to simulate CRS drift (fail-closed guard tests)
+- `save_outputs` -- to redirect artifact output to tmp_path
+- `run_decision` -- to simulate unexpected exceptions in UI error handling
+- Entire `infrared_sdk` package -- to test live code path offline
+
+**What is NOT mocked:**
+- `spatial_engine` geometry functions (tested with real bundled `angels_site.geojson`)
+- `cost_model` arithmetic (tested with real constants)
+- `rules_engine` scoring functions (tested with pure arithmetic)
+- `pyproj` CRS converters (real PROJ data, offline capable)
+- `shapely` geometry operations (real library, offline capable)
+
+## Test Data
+
+**GeoJSON fixtures:**
+- `coolspend/data/angels_site.geojson` -- bundled offline fixture (Plaça dels Àngels, Barcelona)
+  - Contains `site_boundary` polygon, two `building` polygons, one `street` linestring
+  - Loaded by `spatial_engine.load_site()` and used in `test_spatial_engine.py`, `test_optimizer.py`, `test_coordinate_frame.py`
+
+**Generated test data:**
+- Inline dicts in test files for cost config, tree configs, geometry payloads
+- `_default_dict()` helper builds a complete cost config dict from `DEFAULT_COST_TABLE`
+- `test_sdk_client_live.py` plants and reads cache files in `tmp_path`
+- `test_calibration.py` builds synthetic configs via `_make_configs(n, offset)` with known surrogate_pred/real_delta values
+
+**No external data files used in tests** beyond the bundled GeoJSON fixture.
+
+## Test Structure
+
+**Suite Organization (typical pattern):**
 
 ```python
-# nature_nsga2_coolstock.py — pure function, deterministic
-def shade_efficiency(tilt_deg: float, height_m: float) -> float:
-    tilt_factor = 1.0 + 0.15 * (tilt_deg / 30.0)
-    height_factor = 1.0 + 0.05 * ((height_m - 2.5) / 2.5)
-    return tilt_factor * height_factor
+class TestFeatureName:
+    """Brief description of what this class covers."""
+
+    def test_case_description(self) -> None:
+        """One-line docstring explaining expected behavior."""
+        # Arrange (often inline)
+        config = _config(_tree(0.0, 0.0), _tree(1.0, 0.0))
+        # Act
+        result = spacing_penalty(config)
+        # Assert
+        assert result > 0.0
 ```
 
-**Consequence for testing:** with `seed=42` and the analytical surrogate, the full NSGA-II run is **byte-reproducible** across machines. `result.F` (Pareto front) and `select_top3(result)` return identical values on every run. This means:
+**Patterns:**
+- **Triple-A (Arrange-Act-Assert)** -- clean separation in each test
+- **Inline docstrings** on every test function (one-liner describing behavior)
+- **Module-level docstring** describing the test file's scope and requirements covered
+- **Floating-point comparison** uses `pytest.approx(expected)`, never `==`
+- **Substring matching** for error messages: `with pytest.raises(RuntimeError, match="SimBudget exceeded")`
+- **Determinism tests** -- comparing identical and different seeds: `test_seed_determinism_same_seed_identical`, `test_seed_determinism_different_seed_differs`
+- **Parametrized tests** sparingly used -- `@pytest.mark.parametrize("n", [0, 1, 25])` in `test_cost_model.py`
+- **File I/O tests** use `tmp_path` and `monkeypatch` (never real filesystem)
 
-- The Top-3 output (`top3_configurations.json`) is a stable regression fixture.
-- Any change to the surrogate math immediately shows up as a changed Pareto front — detectable by comparing `result.F` or the extracted `delta_tmrt_c` values.
-- Cost-model math (scaffold modules, assembly time, embodied carbon) can be tested by asserting on known seed=42 decoded outputs.
+**Test class pattern:** Tests are organized into classes when multiple related tests share setup. Classes are NOT used when tests are simple standalone functions.
 
-The infrared mock client (`infrared_client_v2.py`) is similarly deterministic: field values are computed via `math.sin`/`math.cos` with fixed row/col indices — no random state. The geometry hash (`_geometry_hash`) is a deterministic SHA-256 of the sorted JSON, so cache keys are stable.
+## Coverage
+
+**No coverage tool configured** -- no `.coveragerc` or `--cov` flags found. Coverage is manual/approximate.
+
+**Modules with tests:**
+- `cost_model.py` -- `test_cost_model.py` (565 lines) + `test_cost_config.py` (330 lines) -- thorough coverage
+- `optimizer.py` -- `test_optimizer.py` (410 lines) + `test_decision_artifact.py` (313 lines) -- thorough coverage
+- `spatial_engine.py` -- `test_spatial_engine.py` (111 lines) + `test_surrogate.py` (337 lines) + `test_coordinate_frame.py` (300 lines) -- thorough coverage
+- `rules_engine.py` -- `test_rules_engine.py` (321 lines) -- thorough coverage
+- `sdk_client.py` -- `test_sdk_client.py` (211 lines) + `test_sdk_client_live.py` (279 lines) -- thorough coverage
+- `calibration.py` -- `test_calibration.py` (516 lines) -- thorough coverage
+- `app.py` -- `test_app.py` (233 lines) -- moderate coverage
+- `app_pipeline.py` -- `test_app_pipeline.py` (191 lines) -- good coverage
+- `app_viz.py` -- `test_app_viz.py` (150 lines) -- good coverage
+
+**Modules with minimal/indirect test coverage:**
+- `bcn_data.py` -- no dedicated test file (exercised indirectly by optimizer pipeline)
+- `bcn_species.py` -- no dedicated test file (exercised indirectly via species-optimizer tests)
+- `bcn_lidar.py` -- no dedicated test file
+- `main.py` -- tested only in `test_decision_artifact.py` via `test_main_writes_artifact`
+
+**Estimated overall coverage:** ~65-70% of source lines (all core logic has tests; data modules and main entry point are thinner)
+
+## CI/CD
+
+**No CI pipeline detected:**
+- No `.github/workflows/` directory
+- No tox.ini
+- No pre-commit configuration
+- No coverage upload configuration
+
+## Notes on Specific Test Files
+
+**`test_cost_model.py`** (565 lines, largest test file):
+- Tests per_tree_cost, total_cost, cost_per_utci_degree KPI
+- CostTable/CostLine dataclass tests in `TestCostLineDataclass`, `TestDefaultCostTable`
+- Growth/discount function tests in `TestGrowthCoolingFraction`, `TestDiscountedLifetimeDegc`, `TestDiscountedTotalCost`, `TestGrowthDiscountParams`
+- KPI routing tests in `TestCostPerUtciDegreeGrowthDiscount`
+- All tests are pure arithmetic, no I/O
+
+**`test_calibration.py`** (516 lines):
+- Tests generate_study_configs, SimBudget, run_calibration_study, compute_fit, rank_stability
+- Test classes for each function: `TestGenerateStudyConfigs`, `TestStudySimBudget`, `TestComputeFit`, `TestRankStability`
+- Artifact JSON validation in `TestCalibrationArtifact`
+- Dimensional contract tests ensure `HOURS_PER_DEGC_REF` is imported, not redefined
+- Helper `_ensure_mock_backend(monkeypatch)` strips env vars
+
+**`test_optimizer.py`** (410 lines):
+- Module-scoped `small_result` fixture runs `run_optimisation(n_gen=20, pop_size=40)` once
+- Tests: Pareto min size, no SDK in hot path (monkeypatch), invalid placements excluded, select_top3 distinct, exactly 3 validation calls, budget constraint active
+- REMEDIATION tests: non-degenerate front, distinct deltas/costs, seed determinism, no naive baseline
+- WAVE-2 REMEDIATION: baseline geometry polygon_lonlat
+
+**`test_sdk_client_live.py`** (279 lines):
+- Unique approach: injects fake `infrared_sdk` into `sys.modules` to exercise live code path offline
+- `_make_fake_infrared_sdk()` builds a complete fake module tree with `MagicMock`
+- Tests: import without SDK, live without key (raises), live calls SDK and caches, cached replays live result, key never logged
+- `_clean_sdk_modules` autouse fixture removes fake modules before/after each test
+
+**`test_app.py`** (233 lines):
+- Tests Gradio UI headless: build_demo, on_submit mock outputs, bad GeoJSON no crash, no traceback in UI (security L1)
+- Headless launch smoke test with infrastructure skip on OSError/httpx errors
+
+## TDD Pattern
+
+The git log shows evidence of RED/GREEN TDD workflow:
+```
+test(06-02): add failing tests for KPI routing through growth+discount (RED)
+feat(06-02): route cost_per_utci_degree through growth+discount (GREEN)
+test(06-02): add failing tests for growth curve + discount functions (RED)
+feat(06-02): implement GrowthDiscountParams + growth/discount functions (GREEN)
+```
+
+Tests are written first (RED commit), then implementation (GREEN commit). This pattern is visible in the git history with explicit `(RED)` and `(GREEN)` markers in commit messages.
 
 ---
 
-## Recommended Minimal Test Strategy for a 3-Day Hackathon
-
-Four test areas, ordered by risk and return on time invested. Target: ~15-20 focused tests total.
-
----
-
-### Area 1 — Spatial Collision Validity (`spatial_engine.py`)
-
-**Why:** The NSGA-II optimiser generates tree coordinates that must not land inside buildings or outside the site boundary. A silent failure here means the optimiser produces invalid solutions with no error.
-
-**What to test:**
-- A point known to be inside a building returns `False` from `is_valid_location(x, y)`.
-- A point known to be inside the site boundary but outside all buildings returns `True`.
-- A point outside the site boundary returns `False`.
-- Edge case: a point exactly on a building boundary (test `contains` vs `intersects` semantics).
-
-**Test pattern:**
-```python
-# tests/test_spatial_engine.py
-import pytest
-from spatial_engine import SpatialEngine
-
-GEOJSON_PATH = "data/site_context.geojson"
-
-@pytest.fixture
-def engine():
-    return SpatialEngine(GEOJSON_PATH)
-
-def test_point_inside_building_is_invalid(engine):
-    # Use a coordinate known to be inside a mock building polygon
-    assert engine.is_valid_location(10.0, 10.0) is False
-
-def test_point_in_open_space_is_valid(engine):
-    assert engine.is_valid_location(30.0, 20.0) is True
-
-def test_point_outside_site_boundary_is_invalid(engine):
-    assert engine.is_valid_location(999.0, 999.0) is False
-```
-
-**Mock data strategy:** `data/site_context.geojson` should contain at minimum one `building` polygon and one `site` boundary polygon with known coordinates. Do not use real OSM data in unit tests — use a minimal 2-polygon fixture.
-
----
-
-### Area 2 — Surrogate Determinism (seed=42 regression)
-
-**Why:** Any edit to `delta_tmrt_surrogate`, `shade_efficiency`, or `pollinator_corridor_score` changes the Pareto front. This is the bug that caused the double-porosity-penalty issue (audit C10, `nature_nsga2_coolstock.py` lines 115-155). A regression test catches it immediately.
-
-**What to test:**
-- `shade_efficiency` returns the known value for a fixed (tilt, height) input.
-- `delta_tmrt_surrogate` returns the known value for a fixed (shade_fraction, porosity_pct, tilt, height) input.
-- `pollinator_corridor_score` returns the expected value for a known (x, y, width) combination.
-- Full NSGA-II run with `seed=42` produces `len(result.F) > 0` and `select_top3(result)[0]["delta_tmrt_c"]` within a known tolerance.
-
-**Test pattern:**
-```python
-# tests/test_surrogate.py
-from nature_nsga2_coolstock import shade_efficiency, delta_tmrt_surrogate, pollinator_corridor_score
-
-def test_shade_efficiency_known_values():
-    # At tilt=30, height=5.0: tilt_factor = 1.15, height_factor = 1.05
-    result = shade_efficiency(tilt_deg=30.0, height_m=5.0)
-    assert abs(result - 1.15 * 1.05) < 1e-9
-
-def test_delta_tmrt_surrogate_porosity_applied_once():
-    # Regression for audit C10: porosity must be applied exactly once.
-    # shade_fraction = 1 - 0.12 = 0.88 (porosity 12%)
-    val_12pct = delta_tmrt_surrogate(0.88, 12.0, 0.0, 2.5)
-    val_15pct = delta_tmrt_surrogate(0.85, 15.0, 0.0, 2.5)
-    # 15% porosity should give less cooling than 12%
-    assert val_15pct < val_12pct
-
-def test_surrogate_bounded_by_max():
-    # Even at perfect shade, delta cannot exceed MAX_TMRT_REDUCTION (12.0)
-    result = delta_tmrt_surrogate(1.0, 0.0, 30.0, 5.0)
-    assert result <= 12.0
-
-def test_pollinator_score_at_heritage_buffer():
-    # y_m = HERITAGE_BUFFER_M (5.0) -> distance_from_north = 0 -> north_score = 1.0
-    score = pollinator_corridor_score(x_m=27.5, y_m=5.0, width_m=10.0)
-    assert score >= 0.85  # max north component (0.85) + small east bonus
-```
-
-**Seed-pinned integration test (optional — ~30s, mark slow):**
-```python
-# tests/test_nsga2_seed.py
-import pytest
-from nature_nsga2_coolstock import run_optimisation, select_top3
-
-@pytest.mark.slow
-def test_nsga2_seed42_pareto_nonempty():
-    result = run_optimisation(n_gen=10, pop_size=20, seed=42)  # fast subset
-    assert len(result.F) > 0
-
-@pytest.mark.slow
-def test_nsga2_seed42_top3_structure():
-    result = run_optimisation(n_gen=10, pop_size=20, seed=42)
-    configs = select_top3(result)
-    assert len(configs) == 3
-    for cfg in configs:
-        assert "delta_tmrt_c" in cfg
-        assert cfg["delta_tmrt_c"] >= 0
-        assert cfg["scaffold_modules"] <= 500  # ULMA_STOCK constraint
-```
-
----
-
-### Area 3 — Cost-Model Math (`rules_engine.py` / metric functions)
-
-**Why:** Carbon, cost, and assembly-time calculations are presented to the jury as credible numbers. Off-by-one or unit errors in these are hard to spot visually but easy to pin in tests.
-
-**What to test from `nature_metrics.py`:**
-- `carbon_headroom_kgco2e(modules=100)` returns a value proportional to `100 * 18.0 * steel_gwp` and carries `confidence == "HIGH"` when ÖKOBAUDAT file is present.
-- `carbon_headroom_kgco2e(modules=0)` returns `value == 0.0`.
-- Any metric function with a missing data file returns `{"value": None, "confidence": "LOW", "error": ...}` — not an exception.
-
-**Test pattern:**
-```python
-# tests/test_metrics.py
-from nature_metrics import carbon_headroom_kgco2e, utci_hours_above
-
-def test_carbon_zero_modules():
-    result = carbon_headroom_kgco2e(modules=0)
-    # Either 0.0 (if ÖKOBAUDAT present) or None (if missing) — never raises
-    assert result["value"] is None or result["value"] == pytest.approx(0.0)
-
-def test_carbon_proportional_to_modules():
-    r50  = carbon_headroom_kgco2e(modules=50)
-    r100 = carbon_headroom_kgco2e(modules=100)
-    if r50["value"] is not None and r100["value"] is not None:
-        assert r100["value"] == pytest.approx(r50["value"] * 2, rel=1e-6)
-
-def test_metric_returns_standard_shape():
-    result = utci_hours_above(threshold_c=32.0, coverage_fraction=0.0)
-    for key in ("value", "unit", "confidence", "sources", "note", "metric_id"):
-        assert key in result, f"Missing key: {key}"
-
-def test_missing_data_returns_low_confidence_not_raises(tmp_path, monkeypatch):
-    import nature_metrics as nm
-    monkeypatch.setattr(nm, "EPW_PATH", tmp_path / "nonexistent.epw")
-    nm._EPW_CACHE.clear()
-    result = nm.utci_hours_above()
-    assert result["confidence"] == "LOW"
-    assert result["value"] is None
-```
-
-**For coolspend `rules_engine.py` cost model (to be implemented):**
-```python
-# tests/test_rules_engine.py — template
-def test_ecological_score_range():
-    # Score must always be in [0.0, 1.0]
-    from rules_engine import calculate_ecological_score
-    coords = [(10.0, 10.0), (20.0, 20.0)]
-    species = ["Quercus ilex", "Pinus pinea"]
-    score = calculate_ecological_score(coords, species)
-    assert 0.0 <= score <= 1.0
-
-def test_min_spacing_violation_penalises_score():
-    # Two trees at the same location should score lower than two trees 10m apart
-    close  = calculate_ecological_score([(10.0, 10.0), (10.5, 10.0)], ["A", "B"])
-    spaced = calculate_ecological_score([(10.0, 10.0), (20.0, 10.0)], ["A", "B"])
-    assert spaced > close
-```
-
----
-
-### Area 4 — SDK Client Mock Path (`infrared_client_v2.py`)
-
-**Why:** The mock backend must be the default and must return structurally valid responses. If `INFRARED_BACKEND` is not set, the client must not attempt a live HTTP call. This is the boundary between "demo works offline" and "demo crashes at jury presentation."
-
-**What to test:**
-- Default `INFRARED_BACKEND` (env var not set) resolves to `"mock"`.
-- `simulate_tmrt(geometry)` returns a dict with `field`, `stats`, `metadata` keys.
-- `metadata["disclaimer"]` contains `"NOT MEASURED DATA"` — the honesty tag is present.
-- `stats["mean"]` is a float within the physically plausible range for Tmrt (30–70 °C).
-- `_geometry_hash` is deterministic: same input → same hash on repeated calls.
-- Setting `INFRARED_BACKEND=live` raises `NotImplementedError` (not a silent HTTP timeout).
-
-**Test pattern:**
-```python
-# tests/test_infrared_client.py
-import os
-import pytest
-from infrared_client_v2 import simulate_tmrt, simulate_utci, _geometry_hash
-
-SAMPLE_GEOM = {
-    "site_id": "TEST-001",
-    "polygon": [[0, 0], [60, 0], [60, 60], [0, 60]],
-    "fired_patterns": ["P01"],
-}
-
-def test_default_backend_is_mock(monkeypatch):
-    monkeypatch.delenv("INFRARED_BACKEND", raising=False)
-    result = simulate_tmrt(SAMPLE_GEOM)
-    assert result["metadata"]["backend"] == "mock"
-
-def test_response_structure():
-    result = simulate_tmrt(SAMPLE_GEOM)
-    assert "field" in result
-    assert "stats" in result
-    assert "metadata" in result
-    assert result["grid_rows"] == 24
-    assert result["grid_cols"] == 24
-
-def test_disclaimer_present():
-    result = simulate_tmrt(SAMPLE_GEOM)
-    assert "NOT MEASURED DATA" in result["metadata"]["disclaimer"]
-
-def test_tmrt_stats_physically_plausible():
-    result = simulate_tmrt(SAMPLE_GEOM)
-    stats = result["stats"]
-    assert 20.0 <= stats["mean"] <= 80.0
-    assert stats["p10"] <= stats["mean"] <= stats["p90"]
-
-def test_geometry_hash_deterministic():
-    h1 = _geometry_hash(SAMPLE_GEOM)
-    h2 = _geometry_hash(SAMPLE_GEOM)
-    assert h1 == h2
-    assert len(h1) == 16  # SHA-256 truncated to 16 chars
-
-def test_live_backend_raises_not_implemented(monkeypatch):
-    monkeypatch.setenv("INFRARED_BACKEND", "live")
-    with pytest.raises(NotImplementedError):
-        simulate_tmrt(SAMPLE_GEOM)
-```
-
----
-
-## Test File Organisation
-
-**Recommended layout for coolspend:**
-```
-coolspend/
-├── spatial_engine.py
-├── rules_engine.py
-├── optimize_trees.py
-├── main.py
-├── data/
-│   └── site_context.geojson      # minimal 2-polygon fixture for tests
-└── tests/
-    ├── __init__.py
-    ├── test_spatial_engine.py     # Area 1: collision validity
-    ├── test_surrogate.py          # Area 2: surrogate determinism (fast)
-    ├── test_nsga2_seed.py         # Area 2: seed-pinned integration (marked slow)
-    ├── test_metrics.py            # Area 3: cost-model math
-    └── test_infrared_client.py    # Area 4: SDK mock path
-```
-
-**Naming convention:**
-- Test files: `test_<module_name>.py`
-- Test functions: `test_<what>_<expected_outcome>()` — e.g. `test_point_inside_building_is_invalid`
-- Mark slow integration tests: `@pytest.mark.slow` and run with `pytest -m "not slow"` in fast mode
-
----
-
-## Mock Data Strategy for Tests
-
-Following the `infrared_client_v2.py` pattern, test fixtures should use **structurally correct but minimal data**, not real external files:
-
-- `data/site_context.geojson` — two features: one `building` polygon at known coordinates, one `site` boundary polygon. Checked in, not generated.
-- Mock the EPW path in `nature_metrics.py` tests using `monkeypatch` (see Area 3 example above) — do not depend on the real 100 MB EPW file in unit tests.
-- For NSGA-II integration tests, use `n_gen=10, pop_size=20` to keep runtime under 5 seconds while still exercising the full code path.
-
-**The Honesty Contract applies to test mocks too:** any test fixture that simulates an external data source (SDK response, EPW file, ÖKOBAUDAT JSON) must be documented in a `tests/FIXTURES.md` note explaining what it is and what real data it approximates. Do not let synthetic fixtures escape into production assertions about physical quantities.
-
----
-
-## Coverage Priority
-
-Given the 3-day hackathon timeline, focus coverage on correctness-critical paths in this order:
-
-| Priority | Module | What to cover |
-|----------|--------|---------------|
-| P1 | `spatial_engine.py` | `is_valid_location` — all three cases (inside building, valid open space, outside boundary) |
-| P1 | surrogate functions | `delta_tmrt_surrogate` — porosity-once regression (audit C10 bug class) |
-| P1 | `infrared_client_v2.py` | Default mock mode, disclaimer present, live raises NotImplementedError |
-| P2 | `rules_engine.py` | Score range [0,1], spacing penalty direction |
-| P2 | `nature_metrics.py` | Standard return shape, missing-file graceful degradation |
-| P3 | NSGA-II seed=42 | `n_gen=10` fast subset — Pareto non-empty, scaffold ≤ 500 |
-
-**Skip for hackathon:** visual output tests (Pareto PNG), full EPW UTCI loop (too slow without fixtures), live SDK integration (no key in CI).
+*Testing analysis: 2026-05-27*

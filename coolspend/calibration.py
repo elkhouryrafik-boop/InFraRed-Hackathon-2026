@@ -471,11 +471,11 @@ if __name__ == "__main__":
     fit = result["fit"]
     rank = result["rank_stability"]
 
-    print(f"RMSE: {fit['rmse']} °C")
-    print(f"R²:   {fit['r2']}")
-    print(f"Band: ±{fit['error_band_c']} °C (95% empirical, 1.96 * RMSE)")
+    print(f"RMSE: {fit['rmse']} degC")
+    print(f"R2:   {fit['r2']}")
+    print(f"Band: +/-{fit['error_band_c']} degC (95% empirical, 1.96 * RMSE)")
     print(f"Rank: {rank['headline']}")
-    print(f"  Spearman ρ: {rank['spearman_rho']}")
-    print(f"  Kendall τ:  {rank['kendall_tau']}")
+    print(f"  Spearman rho: {rank['spearman_rho']}")
+    print(f"  Kendall tau:  {rank['kendall_tau']}")
     print()
     print("Artifact written to: outputs/calibration_study.json")
