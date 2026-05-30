@@ -79,6 +79,40 @@ export interface RasterBounds {
 
 export type UtciScenario = 'baseline' | 'intervention'
 
+/** Impervious-pavement (depave) analysis from the backend ground-material complement. */
+export interface ImperviousAnalysis {
+  impervious_m2: number
+  permeable_m2: number
+  site_area_m2: number
+  impervious_fraction: number
+  geojson: {
+    type: 'FeatureCollection'
+    features: {
+      type: 'Feature'
+      properties: { material: string }
+      geometry: { type: 'Polygon' | 'MultiPolygon'; coordinates: unknown }
+    }[]
+  }
+  available: boolean
+  permeable_fraction: number
+  permeable_target_min: number
+  permeable_target_max: number
+  /** Set on /api/evaluate: impervious m² the proposed canopy shades. */
+  depaved_cooled_m2?: number
+  /** Set on /api/evaluate: permeable fraction if pavement under canopy is depaved. */
+  permeable_fraction_if_depaved?: number
+}
+
+/** Canopy-cover analysis vs the 30-40% climate-responsive target. */
+export interface CanopyCover {
+  cover_fraction: number
+  canopy_m2: number
+  site_area_m2: number
+  target_min: number
+  target_max: number
+  in_band: boolean
+}
+
 export interface WebBundle {
   decision: Decision
   boundary: BoundaryGeoJSON
@@ -87,4 +121,10 @@ export interface WebBundle {
   // Resolved object URLs / paths for the two heatmap PNGs.
   baselineImageUrl: string
   interventionImageUrl: string
+  /** Depaveable impervious pavement, when available (live runs). */
+  impervious?: ImperviousAnalysis | null
+  /** Canopy cover vs the 30-40% target (set on /api/evaluate). */
+  canopy?: CanopyCover | null
+  /** Establishment-ramp params from cost_model, for the age slider. */
+  growth?: { ramp_years: number; initial_fraction: number; horizon_years: number } | null
 }

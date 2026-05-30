@@ -312,6 +312,19 @@ def select_top3(result) -> list[dict]:
     Returns:
         List of exactly 3 decoded+labelled config dicts.
     """
+    # Infeasibility guard: pymoo sets result.F (and result.X) to None when NO
+    # solution satisfies the budget constraint. This happens when the area-derived
+    # tree count (n_trees_for_site, fixed by site area) costs more than the budget —
+    # in a fully-plantable site the optimizer cannot drop trees to get cheaper, so
+    # the whole front is infeasible. Fail with an ACTIONABLE message rather than an
+    # IndexError on F[:, 1].
+    if result.F is None or result.X is None:
+        raise ValueError(
+            "No tree layout fits this budget for the selected area: the area needs "
+            f"~{n_trees_for_site()} trees and none of the evaluated layouts came in "
+            "under budget. Increase the budget or draw a smaller area."
+        )
+
     F = np.atleast_2d(result.F)   # shape (n_pareto, 2): [-thermal, -ecological]
     # atleast_2d on X too: a degenerate run can return a 1-D X (single solution),
     # which would make X[idx] index a scalar and corrupt decode() (audit C2).

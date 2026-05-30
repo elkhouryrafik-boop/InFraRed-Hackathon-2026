@@ -13,7 +13,7 @@ import { MaskExtension } from '@deck.gl/extensions'
 import { Tiles3DLoader } from '@loaders.gl/3d-tiles'
 import type { Layer } from '@deck.gl/core'
 
-import type { TreesGeoJSON, TreeFeature } from './types'
+import type { TreesGeoJSON, TreeFeature, ImperviousAnalysis } from './types'
 import { EXISTING_TREE_COLOR } from './colorscale'
 
 const MASK_ID = 'cutout-mask'
@@ -35,10 +35,20 @@ export interface BuildLayersArgs {
   raster: { image: string; bounds: [number, number, number, number] } | null
   rasterOpacity: number
   trees: TreesGeoJSON | null
+  /** Visual canopy scale (0..1) for the age slider; 1 = mature. */
+  treeScale?: number
+  /** Depaveable impervious pavement overlay (optional). */
+  impervious?: ImperviousAnalysis | null
+  showImpervious?: boolean
   /** Shared elevation lift (modelMatrix) for every overlay. */
   modelMatrix: number[] | null
   /** Credit-capture callback for legal attribution. */
   onTilesetLoad?: (tileset: unknown) => void
+}
+
+type Ring = [number, number][]
+interface ImperviousFeature {
+  geometry: { coordinates: Ring[] }
 }
 
 /** Apply the shared elevation lift to a layer's props, if any. */
@@ -56,6 +66,9 @@ export function buildLayers(args: BuildLayersArgs): Layer[] {
     raster,
     rasterOpacity,
     trees,
+    treeScale = 1,
+    impervious,
+    showImpervious,
     modelMatrix,
     onTilesetLoad,
   } = args
@@ -118,6 +131,31 @@ export function buildLayers(args: BuildLayersArgs): Layer[] {
     )
   }
 
+  // ── Depaveable impervious pavement (the "rip up asphalt" overlay).
+  // Drawn above the floor/raster, below trees, so the canopy reads as sitting
+  // on top of the pavement it replaces. Warm amber = "paved, depave candidate".
+  if (showImpervious && impervious?.available && impervious.geojson.features.length > 0) {
+    out.push(
+      new PolygonLayer(
+        withLift(
+          {
+            id: 'impervious-depave',
+            data: impervious.geojson.features as ImperviousFeature[],
+            getPolygon: (f: ImperviousFeature) => f.geometry.coordinates,
+            filled: true,
+            stroked: true,
+            getFillColor: [232, 138, 64, 80] as [number, number, number, number],
+            getLineColor: [232, 138, 64, 200] as [number, number, number, number],
+            getLineWidth: 1,
+            lineWidthUnits: 'pixels',
+            lineWidthMinPixels: 1,
+          },
+          modelMatrix,
+        ),
+      ),
+    )
+  }
+
   // ── Boundary outline (ring stroke).
   if (hasMask) {
     out.push(
@@ -165,8 +203,12 @@ export function buildLayers(args: BuildLayersArgs): Layer[] {
               const crown = f.properties.crown_diameter_m ?? 6
               // existing trees a touch smaller so proposed plantings stand out
               const k = f.properties.kind === 'existing' ? 1.55 : 1.8
-              return Math.max(4, crown * k)
+              // Proposed trees grow with the age slider; existing trees are mature.
+              const grow = f.properties.kind === 'existing' ? 1 : treeScale
+              return Math.max(4, crown * k * grow)
             },
+            // Re-evaluate getSize when the age slider moves.
+            updateTriggers: { getSize: treeScale },
             sizeMinPixels: 14, // stay legible when zoomed out
             sizeMaxPixels: 220,
             getPosition: (f: TreeFeature) => f.geometry.coordinates,

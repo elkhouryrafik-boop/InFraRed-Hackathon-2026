@@ -297,7 +297,59 @@ _DEFAULT_SPECIES_HEIGHT_M: float = 12.0
 # These hold network-fetched INPUTS only; the metered UTCI sim output is cached
 # to disk separately via _dispatch.
 _AREA_CTX_CACHE: dict[str, tuple] = {}   # polygon-hash -> (buildings, ground_layers)
-_WEATHER_CACHE: dict[str, list] = {}     # "lat,lon" -> weather_data list
+_WEATHER_CACHE: dict[str, tuple] = {}    # "lat,lon" -> (weather_data list, source_tag)
+
+
+def _resolve_weather_data(client, lat: float, lon: float, tp, weather_key: str):
+    """Return (weather_data, source_tag) for the UTCI/TCS run, with EPW fallback.
+
+    Infrared's weather endpoint (get_weather_file_from_location + filter_weather_data)
+    has been returning HTTP 500 server-side (2026-05-29 onward). It is the only hard
+    blocker on a live run, so when it fails we fall back to a real measured EPW
+    (coolspend.epw_weather) — same WeatherDataPoint payload the SDK would have built.
+
+    Mode via INFRARED_WEATHER_SOURCE env var:
+        "auto"     (default) try Infrared, fall back to EPW on any failure
+        "epw"      skip Infrared entirely, use EPW (deterministic, offline weather)
+        "infrared" require Infrared, never fall back (re-raise on failure)
+
+    Both sources feed from_weatherfile_payload identically; only the provenance
+    string differs. Result caching is per (lat,lon) so a site fetches weather once.
+    """
+    if weather_key in _WEATHER_CACHE:
+        return _WEATHER_CACHE[weather_key]
+
+    mode = os.environ.get("INFRARED_WEATHER_SOURCE", "auto").lower()
+    weather_data = None
+    source_tag = "Infrared weather file"
+
+    if mode != "epw":
+        try:
+            stations = client.weather.get_weather_file_from_location(
+                lat=lat, lon=lon, radius=50,
+            )
+            if not stations:
+                raise RuntimeError(f"No Infrared weather station within 50 km of ({weather_key}).")
+            weather_data = client.weather.filter_weather_data(
+                identifier=stations[0]["uuid"], time_period=tp,
+            )
+        except Exception as exc:
+            if mode == "infrared":
+                raise
+            logger.warning(
+                "Infrared weather endpoint failed (%s); falling back to EPW. "
+                "Set INFRARED_WEATHER_SOURCE=infrared to disable fallback.",
+                type(exc).__name__,
+            )
+            weather_data = None
+
+    if weather_data is None:
+        from coolspend.epw_weather import load_weather_data, provenance_note  # noqa: PLC0415
+        weather_data = load_weather_data(tp)
+        source_tag = provenance_note()
+
+    _WEATHER_CACHE[weather_key] = (weather_data, source_tag)
+    return weather_data, source_tag
 
 
 def _trees_to_vegetation(trees_lonlat: list[dict]) -> dict[str, dict]:
@@ -449,20 +501,10 @@ def _live_utci(metric_key: str, geometry: dict) -> "UTCIResult":
             _AREA_CTX_CACHE[poly_hash] = (area.buildings, ground_layers)
         buildings, ground_layers = _AREA_CTX_CACHE[poly_hash]
 
-        # ── Weather: nearest station, single-month window, fetch once ─────────
-        if weather_key not in _WEATHER_CACHE:
-            stations = client.weather.get_weather_file_from_location(
-                lat=centroid_lat, lon=centroid_lon, radius=50,
-            )
-            if not stations:
-                raise RuntimeError(
-                    f"No Infrared weather station within 50 km of ({weather_key})."
-                )
-            weather_data = client.weather.filter_weather_data(
-                identifier=stations[0]["uuid"], time_period=tp,
-            )
-            _WEATHER_CACHE[weather_key] = weather_data
-        weather_data = _WEATHER_CACHE[weather_key]
+        # ── Weather: Infrared endpoint with EPW fallback (server 500), once ───
+        weather_data, weather_src = _resolve_weather_data(
+            client, centroid_lat, centroid_lon, tp, weather_key,
+        )
 
         # ── Vegetation: placed trees (intervention) or none (baseline) ────────
         vegetation = _trees_to_vegetation(geometry.get("trees_lonlat", []))
@@ -508,7 +550,7 @@ def _live_utci(metric_key: str, geometry: dict) -> "UTCIResult":
         disclaimer="LIVE Infrared SDK result (thermal-comfort-index, July 09-17 window).",
         source=(
             f"infrared.city run_area_and_wait UTCI; {n_trees} trees as vegetation; "
-            "buildings+ground fetched from Infrared/OSM for site polygon."
+            f"buildings+ground fetched from Infrared/OSM for site polygon; {weather_src}."
         ),
         heat_stress_area_m2=round(heat_stress_area_m2, 1),
         grid_cells_total=grid_cells_total,
@@ -737,17 +779,9 @@ def _live_tcs(metric_key: str, geometry: dict) -> "UTCIResult":
             _AREA_CTX_CACHE[poly_hash] = (area.buildings, ground_layers)
         buildings, ground_layers = _AREA_CTX_CACHE[poly_hash]
 
-        if weather_key not in _WEATHER_CACHE:
-            stations = client.weather.get_weather_file_from_location(
-                lat=centroid_lat, lon=centroid_lon, radius=50,
-            )
-            if not stations:
-                raise RuntimeError(f"No weather station within 50 km of ({weather_key}).")
-            weather_data = client.weather.filter_weather_data(
-                identifier=stations[0]["uuid"], time_period=tp,
-            )
-            _WEATHER_CACHE[weather_key] = weather_data
-        weather_data = _WEATHER_CACHE[weather_key]
+        weather_data, weather_src = _resolve_weather_data(
+            client, centroid_lat, centroid_lon, tp, weather_key,
+        )
 
         vegetation = _trees_to_vegetation(geometry.get("trees_lonlat", []))
 
@@ -780,7 +814,7 @@ def _live_tcs(metric_key: str, geometry: dict) -> "UTCIResult":
         disclaimer="LIVE Infrared TCS result (thermal-comfort-statistics heat-stress, July 09-17).",
         source=(
             f"infrared.city run_area_and_wait TCS heat-stress; {n_trees} trees; "
-            "per-cell hours >26 °C UTCI."
+            f"per-cell hours >26 °C UTCI; {weather_src}."
         ),
         merged_grid=np.round(grid, 2).tolist(),
     )

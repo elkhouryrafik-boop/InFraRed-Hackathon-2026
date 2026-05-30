@@ -1,0 +1,324 @@
+"""
+coolspend/api_server.py — thin HTTP backend for the interactive deck.gl frontend.
+
+The frontend (web/) was a static web-bundle viewer. This server makes it
+interactive: the user draws a polygon anywhere in Barcelona, we report the
+buildings detected inside it, then on "Evaluate" we run the REAL pipeline
+(run_decision -> export_web_bundle) and hand back a fresh bundle to render.
+
+Endpoints
+---------
+GET  /api/health                     -> {status, backend}
+POST /api/buildings  {polygon}       -> {building_count, polygon_area_m2,
+                                          built_footprint_m2_approx, ...}  (fast)
+POST /api/evaluate   {polygon,...}   -> web-bundle JSON (decision+boundary+
+                                          trees+bounds+image urls)         (slow)
+
+The bundle files are written under web/public/web_bundle/ so the existing
+frontend loader (and vite dev server) serve them unchanged at /web_bundle/*.
+
+Security
+--------
+- INFRARED_API_KEY is read by the SDK from the environment only; never logged,
+  never accepted over HTTP, never returned.
+- Polygons are size-capped server-side (MAX_AREA_M2) — a defensive mirror of the
+  frontend cap — so a giant polygon cannot trigger a runaway live-tile fan-out.
+- Backend mode comes from INFRARED_BACKEND env (mock|cached|live), NOT the request.
+"""
+from __future__ import annotations
+
+import json
+import logging
+import os
+from pathlib import Path
+from typing import Any
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
+
+logger = logging.getLogger("coolspend.api_server")
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_WEB_PUBLIC = _REPO_ROOT / "web" / "public"
+_WEB_DIST = _REPO_ROOT / "web" / "dist"
+_BUNDLE_DIR = _WEB_PUBLIC / "web_bundle"   # frontend loads from /web_bundle/*
+
+# Defensive server-side selection cap. 250 m x 250 m = 62 500 m^2 is already a
+# large urban block; beyond this a live run fans out to many tiles and stalls a
+# demo. The frontend enforces the same number for instant feedback.
+MAX_AREA_M2 = 62_500.0
+MIN_AREA_M2 = 400.0   # 20 m x 20 m — below this there is nothing to evaluate.
+
+DEFAULT_BUDGET_EUR = 500_000.0
+
+
+# ── Request models ──────────────────────────────────────────────────────────
+
+class PolygonRequest(BaseModel):
+    """A drawn selection: a lon/lat ring (open or closed)."""
+    polygon: list[list[float]] = Field(..., min_length=3,
+                                        description="[[lon,lat], ...] ring")
+
+
+class EvaluateRequest(PolygonRequest):
+    budget_eur: float = Field(DEFAULT_BUDGET_EUR, gt=0)
+    w_thermal: float = Field(0.6, ge=0, le=1)
+    w_ecological: float = Field(0.4, ge=0, le=1)
+
+
+# ── Geometry helpers (UTM-31N via the single CRS boundary in spatial_engine) ──
+
+def _ring_closed(polygon: list[list[float]]) -> list[list[float]]:
+    ring = [[float(p[0]), float(p[1])] for p in polygon]
+    if ring[0] != ring[-1]:
+        ring.append(ring[0])
+    return ring
+
+
+def _polygon_area_m2(ring_lonlat: list[list[float]]) -> float:
+    """Geodesic-ish polygon area via UTM-31N projection + shoelace (m^2)."""
+    from coolspend.spatial_engine import _TO_UTM  # noqa: PLC0415
+    pts = [_TO_UTM.transform(lon, lat) for lon, lat in ring_lonlat]
+    area2 = 0.0
+    for (x1, y1), (x2, y2) in zip(pts, pts[1:]):
+        area2 += x1 * y2 - x2 * y1
+    return abs(area2) / 2.0
+
+
+def _validate_area(ring: list[list[float]]) -> float:
+    area = _polygon_area_m2(ring)
+    if area > MAX_AREA_M2:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Selection too large: {area:,.0f} m² > {MAX_AREA_M2:,.0f} m² cap. "
+                   "Draw a smaller area.",
+        )
+    if area < MIN_AREA_M2:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Selection too small: {area:,.0f} m² < {MIN_AREA_M2:,.0f} m² minimum.",
+        )
+    return area
+
+
+# ── App ───────────────────────────────────────────────────────────────────
+
+def _backend_mode() -> str:
+    return os.environ.get("INFRARED_BACKEND", "mock")
+
+
+def create_app() -> FastAPI:
+    app = FastAPI(title="CoolSpend API", version="1.0")
+
+    # Vite dev server runs on a different origin; allow local dev origins.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:5173", "http://127.0.0.1:5173",
+            "http://localhost:4173", "http://127.0.0.1:4173",
+        ],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    @app.get("/api/health")
+    def health() -> dict[str, Any]:
+        return {"status": "ok", "backend": _backend_mode()}
+
+    @app.post("/api/buildings")
+    def buildings(req: PolygonRequest) -> dict[str, Any]:
+        """Fast preview: validated polygon area + surrounding-tile building context.
+
+        HONESTY NOTE: Infrared returns buildings per map TILE, and the dotBIM mesh
+        coordinates are in Infrared's own local frame (not our georeferenced one),
+        so we cannot reliably clip the count to the exact drawn polygon. We therefore
+        report ``context_building_count`` (buildings in the fetched tile around the
+        selection) — clearly labelled — rather than an over-stated per-polygon count.
+        The buildings render exactly, in the right place, in the 3D scene after Evaluate.
+        """
+        ring = _ring_closed(req.polygon)
+        area_m2 = _validate_area(ring)
+
+        from coolspend.spatial_engine import set_site_origin_from_polygon  # noqa: PLC0415
+        from coolspend.sdk_client import get_buildings_for_polygon  # noqa: PLC0415
+
+        # Set the per-site frame so a subsequent evaluate reuses the same origin.
+        set_site_origin_from_polygon([(p[0], p[1]) for p in ring])
+        try:
+            bldgs = get_buildings_for_polygon(ring)
+            context_count = len(bldgs)
+            buildings_available = context_count > 0
+        except Exception as exc:  # noqa: BLE001 — preview must never hard-fail
+            logger.warning("buildings preview fetch failed (%s)", type(exc).__name__)
+            context_count = 0
+            buildings_available = False
+
+        # Impervious-pavement (depave) targeting: real ground-material complement.
+        from coolspend.ground_analysis import analyze_impervious  # noqa: PLC0415
+        impervious = analyze_impervious(ring, backend=_backend_mode())
+
+        return {
+            "polygon_area_m2": round(area_m2, 1),
+            "context_building_count": context_count,
+            "buildings_available": buildings_available,
+            "impervious": impervious,
+            "backend": _backend_mode(),
+            "note": (
+                "Context building count is for the fetched map tile around your "
+                "selection. Buildings render exactly inside the area in the 3D scene "
+                "after Evaluate; their shadows are already in the cooling simulation."
+            ),
+        }
+
+    @app.post("/api/evaluate")
+    def evaluate(req: EvaluateRequest) -> dict[str, Any]:
+        """Run the real pipeline on the drawn polygon and return a web bundle."""
+        ring = _ring_closed(req.polygon)
+        _validate_area(ring)
+
+        from coolspend.app_pipeline import run_decision, smart_evaluate  # noqa: PLC0415
+        from coolspend.export_web import export_web_bundle  # noqa: PLC0415
+
+        poly_geojson = json.dumps({"type": "Polygon", "coordinates": [ring]})
+        backend = _backend_mode()
+        logger.info("Evaluate: backend=%s area=%.0f m² budget=%.0f",
+                    backend, _polygon_area_m2(ring), req.budget_eur)
+
+        # Mode 1 (live): greedy submodular measured-demand placement → UTCI validation.
+        # Mode 2 (mock/cached): legacy NSGA-II surrogate-scatter path (test compat).
+        if backend == "live":
+            result = smart_evaluate(
+                geojson_text=poly_geojson,
+                budget_eur=req.budget_eur,
+                backend=backend,
+            )
+        else:
+            result = run_decision(
+                budget_eur=req.budget_eur,
+                weights=(req.w_thermal, req.w_ecological),
+                geojson_text=poly_geojson,
+                backend=backend,
+            )
+        if result.get("error") or not result.get("configurations"):
+            raise HTTPException(
+                status_code=500,
+                detail=f"Pipeline failed: {result.get('error') or 'no configurations'}",
+            )
+
+        _BUNDLE_DIR.mkdir(parents=True, exist_ok=True)
+        export_web_bundle(result, out_dir=_BUNDLE_DIR, boundary_override_lonlat=ring)
+
+        payload = _read_bundle_payload()
+
+        # Depave targeting: real impervious pavement + how much of it the proposed
+        # rank-1 canopy would shade ("depaved & cooled").
+        from coolspend.ground_analysis import (  # noqa: PLC0415
+            analyze_impervious, depaved_by_canopy, canopy_cover_fraction,
+        )
+        impervious = analyze_impervious(ring, backend=backend)
+        rank1_trees = (result["configurations"][0] or {}).get("trees_lonlat", [])
+        depaved = depaved_by_canopy(impervious["geojson"], rank1_trees)
+        impervious["depaved_cooled_m2"] = depaved
+        # #2: permeable fraction if the pavement under the new canopy is depaved.
+        site_m2 = impervious.get("site_area_m2") or 0.0
+        if site_m2:
+            permeable_after = impervious.get("permeable_m2", 0.0) + depaved
+            impervious["permeable_fraction_if_depaved"] = round(permeable_after / site_m2, 3)
+        payload["impervious"] = impervious
+
+        # #1: real canopy-cover fraction vs the 30-40% climate-responsive target.
+        payload["canopy"] = canopy_cover_fraction(ring, rank1_trees)
+
+        # Growth/establishment ramp params (cost_model single source of truth) so
+        # the frontend age slider uses the SAME sourced curve, not a new invention.
+        from coolspend.cost_model import DEFAULT_GROWTH_DISCOUNT as _G  # noqa: PLC0415
+        payload["growth"] = {
+            "ramp_years": _G.ramp_years,
+            "initial_fraction": _G.initial_fraction,
+            "horizon_years": _G.horizon_years,
+        }
+
+        # Return the bundle contents inline so the frontend can render without a
+        # second round-trip; image URLs point at the served static files.
+        return payload
+
+    # ── Mode 2: citywide allocation ─────────────────────────────────────────
+
+    @app.get("/api/citywide/scan")
+    def citywide_scan(top_n: int = 20, budget_eur: float = DEFAULT_BUDGET_EUR) -> dict[str, Any]:
+        """Fast citywide scan: rank all 494 cells by hot×sealed, estimate tree cost.
+
+        No live API calls — cell properties only. Returns ranked list with estimated
+        tree counts, costs, and cooling proxy. Use for a citywide heatmap.
+        Runtime: < 1 second.
+        """
+        from coolspend.citywide import load_scored_grid, scan_cells  # noqa: PLC0415
+        cells = load_scored_grid()
+        return scan_cells(cells, top_n=min(top_n, 100), budget_eur=budget_eur)
+
+    @app.post("/api/citywide/allocate")
+    def citywide_allocate(top_n: int = 5, budget_eur: float = DEFAULT_BUDGET_EUR) -> dict[str, Any]:
+        """Full citywide allocation: run smart_evaluate on top-N hot×sealed cells.
+
+        Each cell is evaluated with the full Mode-1 chain (baseline UTCI → greedy
+        placement → live intervention UTCI). Cells are then sorted by €/m²-cooled
+        and the budget is allocated greedily.
+
+        Runtime: ~70 s per cell with live backend (top_n=5 → ~6 min). Use scan
+        first for a fast overview, then allocate on a shortlist.
+        """
+        backend = _backend_mode()
+        if backend != "live":
+            raise HTTPException(
+                status_code=400,
+                detail="Citywide allocation requires live backend (INFRARED_BACKEND=live). "
+                       "Use /api/citywide/scan for mock-mode overview.",
+            )
+        from coolspend.citywide import load_scored_grid, allocate_citywide  # noqa: PLC0415
+        cells = load_scored_grid()
+        return allocate_citywide(cells, budget_eur=budget_eur, top_n=min(top_n, 20), backend=backend)
+
+    # Serve the built frontend (production) if present. In dev, vite serves it.
+    if _WEB_DIST.is_dir():
+        app.mount("/", StaticFiles(directory=str(_WEB_DIST), html=True), name="web")
+
+    return app
+
+
+def _read_bundle_payload() -> dict[str, Any]:
+    """Read the just-written bundle dir into a single JSON payload for the client."""
+    def _load(name: str) -> Any:
+        p = _BUNDLE_DIR / name
+        return json.loads(p.read_text(encoding="utf-8")) if p.is_file() else None
+
+    bundle: dict[str, Any] = {
+        "decision": _load("decision.json"),
+        "boundary": _load("boundary.geojson"),
+        "trees": _load("trees.geojson"),
+        "bounds": _load("bounds.json"),
+    }
+    # PNGs are served statically by vite/StaticFiles from the public dir.
+    base = "/web_bundle"
+    for key, fname in (("baselineImageUrl", "utci_baseline.png"),
+                       ("interventionImageUrl", "utci_intervention.png")):
+        bundle[key] = f"{base}/{fname}" if (_BUNDLE_DIR / fname).is_file() else None
+    return bundle
+
+
+app = create_app()
+
+
+if __name__ == "__main__":
+    import uvicorn
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    try:
+        from dotenv import load_dotenv  # noqa: PLC0415
+        load_dotenv(_REPO_ROOT / ".env")
+    except Exception:  # noqa: BLE001
+        pass
+    os.environ.setdefault("INFRARED_BACKEND", "live")
+    port = int(os.environ.get("COOLSPEND_API_PORT", "8000"))
+    logger.info("CoolSpend API on http://127.0.0.1:%d (backend=%s)", port, _backend_mode())
+    uvicorn.run(app, host="127.0.0.1", port=port)

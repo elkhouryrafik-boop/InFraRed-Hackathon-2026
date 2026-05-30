@@ -1,0 +1,126 @@
+uid=1_0 RootWebArea "CoolSpend — Tree Budget Optimizer" url="http://localhost:7860/"
+  uid=1_1 heading "CoolSpend — Tree Budget Optimizer" level="1"
+  uid=1_2 StaticText "Given a site polygon and a planting budget, find the tree placements that deliver the most UTCI cooling relief per euro."
+  uid=1_3 StaticText "Powered by Infrared City SDK + NSGA-II multi-objective optimization."
+  uid=1_4 heading "Inputs" level="3"
+  uid=1_5 StaticText "Scan anywhere in Barcelona"
+  uid=1_6 StaticText " — pick a lat/lon."
+  uid=1_7 StaticText "Latitude"
+  uid=1_8 spinbutton "Latitude" invalid="true" value="41.40359878540039" valuemax="0" valuemin="0" valuetext="41.4036"
+  uid=1_9 StaticText "Longitude"
+  uid=1_10 spinbutton "Longitude" invalid="true" value="2.189500093460083" valuemax="0" valuemin="0" valuetext="2.1895"
+  uid=1_11 StaticText "Site size (m, square side)"
+  uid=1_12 spinbutton "number input for Site size (m, square side)" value="120" valuemax="500" valuemin="50" valuetext="120"
+  uid=1_13 slider "range slider for Site size (m, square side)" orientation="horizontal" value="120" valuemax="500" valuemin="50" valuetext=""
+  uid=1_14 StaticText "— or paste GeoJSON below (overrides lat/lon) —"
+  uid=1_15 StaticText "Site polygon (GeoJSON FeatureCollection or bare Polygon)"
+  uid=1_16 textbox "Site polygon (GeoJSON FeatureCollection or bare Polygon)" multiline
+  uid=1_17 StaticText "Budget (EUR)"
+  uid=1_18 spinbutton "number input for Budget (EUR)" value="1000000" valuemax="2000000" valuemin="50000" valuetext="1000000"
+  uid=1_19 slider "range slider for Budget (EUR)" orientation="horizontal" value="1000000" valuemax="2000000" valuemin="50000" valuetext=""
+  uid=1_20 StaticText "TOPSIS weights"
+  uid=1_21 StaticText " — user judgment, NOT calibrated constants (CONCERNS 1.6 / APP-01). Adjust to reflect priorities."
+  uid=1_22 StaticText "Weight: Thermal relief (UTCI delta)"
+  uid=1_23 spinbutton "number input for Weight: Thermal relief (UTCI delta)" value="0.6000000238418579" valuemax="1" valuemin="0" valuetext="0.6"
+  uid=1_24 slider "range slider for Weight: Thermal relief (UTCI delta)" orientation="horizontal" value="0.6000000238418579" valuemax="1" valuemin="0" valuetext=""
+  uid=1_25 StaticText "Weight: Ecological score"
+  uid=1_26 spinbutton "number input for Weight: Ecological score" value="0.4000000059604645" valuemax="1" valuemin="0" valuetext="0.4"
+  uid=1_27 slider "range slider for Weight: Ecological score" orientation="horizontal" value="0.4000000059604645" valuemax="1" valuemin="0" valuetext=""
+  uid=1_28 StaticText "Infrared backend (live = real API, requires key in .env)"
+  uid=1_29 radio "live" checked
+  uid=1_30 StaticText "live"
+  uid=1_31 radio "cached"
+  uid=1_32 StaticText "cached"
+  uid=1_33 radio "mock"
+  uid=1_34 StaticText "mock"
+  uid=1_35 button "Cost table (per-city — edit to localize) ▼"
+  uid=1_36 button "Run decision"
+  uid=1_37 heading "Results" level="3"
+  uid=1_38 StaticText "Click 'Run decision' to see the headline result."
+  uid=1_39 StaticText "Before / After UTCI map"
+  uid=1_40 StaticText "3D Scene (.glb) — import into Rhino/Blender"
+  uid=1_41 StaticText "Cooling Diff 3D (.glb) — cell-wise cooling map"
+  uid=1_42 StaticText "Ranked allocation table (Top-3 configurations)"
+  uid=1_43 grid
+    uid=1_44 StaticText "Ranked allocation table (Top-3 configurations)"
+    uid=1_45 button "Rank"
+    uid=1_46 button "Label"
+    uid=1_47 button "Trees"
+    uid=1_48 button "Species"
+    uid=1_49 button "Cost EUR"
+    uid=1_50 button "Cooled m²"
+    uid=1_51 button "EUR/degC [lo–hi]"
+    uid=1_52 button "EUR/UTCI-hr"
+    uid=1_53 button "Band source"
+    uid=1_54 button "delta UTCI degC"
+    uid=1_55 button "TOPSIS"
+    uid=1_56 button "Provenance"
+    uid=1_57 cell
+      uid=1_58 button
+    uid=1_59 cell
+      uid=1_60 button
+    uid=1_61 cell
+      uid=1_62 button
+    uid=1_63 cell
+      uid=1_64 button
+    uid=1_65 cell
+      uid=1_66 button
+    uid=1_67 cell
+      uid=1_68 button
+    uid=1_69 cell
+      uid=1_70 button
+    uid=1_71 cell
+      uid=1_72 button
+    uid=1_73 cell
+      uid=1_74 button
+    uid=1_75 cell
+      uid=1_76 button
+    uid=1_77 cell
+      uid=1_78 button
+    uid=1_79 cell
+      uid=1_80 button
+    uid=1_81 button
+      uid=1_82 button "Rank"
+      uid=1_83 button "Label"
+      uid=1_84 button "Trees"
+      uid=1_85 button "Species"
+      uid=1_86 button "Cost EUR"
+      uid=1_87 button "Cooled m²"
+      uid=1_88 button "EUR/degC [lo–hi]"
+      uid=1_89 button "EUR/UTCI-hr"
+      uid=1_90 button "Band source"
+      uid=1_91 button "delta UTCI degC"
+      uid=1_92 button "TOPSIS"
+      uid=1_93 button "Provenance"
+      uid=1_94 cell
+        uid=1_95 button
+      uid=1_96 cell
+        uid=1_97 button
+      uid=1_98 cell
+        uid=1_99 button
+      uid=1_100 cell
+        uid=1_101 button
+      uid=1_102 cell
+        uid=1_103 button
+      uid=1_104 cell
+        uid=1_105 button
+      uid=1_106 cell
+        uid=1_107 button
+      uid=1_108 cell
+        uid=1_109 button
+      uid=1_110 cell
+        uid=1_111 button
+      uid=1_112 cell
+        uid=1_113 button
+      uid=1_114 cell
+        uid=1_115 button
+      uid=1_116 cell
+        uid=1_117 button
+  uid=1_118 button "Infrared SDK call log ▼"
+  uid=1_119 contentinfo
+    uid=1_120 button "Use via API logo"
+    uid=1_121 StaticText "·"
+    uid=1_122 link "Built with Gradio logo" url="https://gradio.app/"
+      uid=1_123 StaticText "Built with Gradio"
+      uid=1_124 StaticText " "
+      uid=1_125 image "logo" url="data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='576'%20height='576'%20viewBox='0%200%20576%20576'%20fill='none'%3e%3cpath%20d='M287.5%20229L86%20344.5L287.5%20460L489%20344.5L287.5%20229Z'%20stroke='url(%23paint0_linear_102_7)'%20stroke-width='59'%20stroke-linejoin='round'/%3e%3cpath%20d='M287.5%20116L86%20231.5L287.5%20347L489%20231.5L287.5%20116Z'%20stroke='url(%23paint1_linear_102_7)'%20stroke-width='59'%20stroke-linejoin='round'/%3e%3cpath%20d='M86%20344L288%20229'%20stroke='url(%23paint2_linear_102_7)'%20stroke-width='59'%20stroke-linejoin='bevel'/%3e%3cdefs%3e%3clinearGradient%20id='paint0_linear_102_7'%20x1='60'%20y1='341'%20x2='429.5'%20y2='344'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23F9D100'/%3e%3cstop%20offset='1'%20stop-color='%23F97700'/%3e%3c/linearGradient%3e%3clinearGradient%20id='paint1_linear_102_7'%20x1='513.5'%20y1='231'%20x2='143.5'%20y2='231'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23F9D100'/%3e%3cstop%20offset='1'%20stop-color='%23F97700'/%3e%3c/linearGradient%3e%3clinearGradient%20id='paint2_linear_102_7'%20x1='60'%20y1='344'%20x2='428.987'%20y2='341.811'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23F9D100'/%3e%3cstop%20offset='1'%20stop-color='%23F97700'/%3e%3c/linearGradient%3e%3c/defs%3e%3c/svg%3e"

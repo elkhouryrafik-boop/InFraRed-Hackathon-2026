@@ -9,6 +9,9 @@ const hasMapboxToken = !!MAPBOX_TOKEN && MAPBOX_TOKEN.trim().length > 0
 
 export default function App() {
   const [bundle, setBundle] = useState<WebBundle | null>(null)
+  // A bundle produced live by /api/evaluate (drawing flow) overrides the initial
+  // static bundle once the user evaluates a hand-drawn area.
+  const [liveBundle, setLiveBundle] = useState<WebBundle | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -47,6 +50,14 @@ export default function App() {
     )
   }
 
-  // Route on Mapbox token: full Mapbox+Cesium scene, or flat deck.gl fallback.
-  return hasMapboxToken ? <Scene bundle={bundle} /> : <FallbackScene bundle={bundle} />
+  // The live (evaluated) bundle takes precedence over the initial static one.
+  const active = liveBundle ?? bundle
+
+  // Route on Mapbox token: full Mapbox+Cesium scene (with the drawing flow), or
+  // flat deck.gl fallback (view-only; drawing needs the Mapbox map).
+  return hasMapboxToken ? (
+    <Scene bundle={active} onBundle={setLiveBundle} />
+  ) : (
+    <FallbackScene bundle={active} />
+  )
 }

@@ -262,9 +262,10 @@ def run_decision(
             os.environ.pop("INFRARED_BACKEND", None)
         else:
             os.environ["INFRARED_BACKEND"] = prior_backend
-        # Reset per-site origin + active-site override so an "anywhere" run does not
-        # leak its frame into a later default-site run in the same process.
-        if center_lonlat is not None:
+        # Reset per-site origin + active-site override so an "anywhere" run (either a
+        # center+size scan or a drawn-polygon run) does not leak its frame into a
+        # later default-site run in the same process.
+        if center_lonlat is not None or site_path is not None:
             from coolspend.spatial_engine import reset_site_origin  # noqa: PLC0415
             reset_site_origin()
 
@@ -303,6 +304,33 @@ def _run_pipeline(
             # Use an open-ground site so is_valid_location does NOT reload the
             # bundled default fixture (which would clobber this origin).
             set_active_site(open_square_site(w, d))
+        elif site_path is not None:
+            # Drawn-polygon path (geojson_text): size the optimizer frame to the
+            # user's ACTUAL polygon. FIX: site_path was previously parsed but never
+            # loaded, so SITE_WIDTH/DEPTH stayed at the default → n_trees_for_site
+            # floored at _MIN_N_TREES (12) regardless of drawn area, the budget
+            # never bound, and the surrogate fell back to the default site frame.
+            from shapely.geometry import Polygon  # noqa: PLC0415
+            from coolspend.spatial_engine import (  # noqa: PLC0415
+                set_site_origin_from_polygon,
+                set_active_site,
+                latlon_to_local_m,
+            )
+            with open(site_path, encoding="utf-8") as _fh:
+                _fc = json.loads(_fh.read())
+            _feats = _fc.get("features", [])
+            _poly = next(
+                (f for f in _feats if f.get("geometry", {}).get("type") == "Polygon"),
+                _feats[0] if _feats else None,
+            )
+            ring_ll = _poly["geometry"]["coordinates"][0]
+            set_site_origin_from_polygon([(p[0], p[1]) for p in ring_ll])
+            # Use the REAL drawn shape as the active boundary (not just its bbox) so
+            # is_valid_location rejects slots outside the polygon. Buildings/streets
+            # are empty here; the LIVE Infrared UTCI run still uses the real fetched
+            # buildings, so measured cooling reflects true geometry.
+            local_ring = [latlon_to_local_m(p[0], p[1]) for p in ring_ll]
+            set_active_site({"boundary": Polygon(local_ring), "buildings": [], "streets": []})
 
         # Stage 1: NSGA-II on surrogate (seed 42, zero live SDK calls)
         result = run_optimisation(budget_eur=budget_eur)
@@ -490,3 +518,166 @@ def _build_disclaimer(rank1: dict, backend: str) -> str:
             "Use INFRARED_BACKEND=live with a real API key for measured UTCI."
         )
     return rank1.get("validated_disclaimer", f"Backend: {backend}")
+
+
+# ── SMART EVALUATE (Mode 1 — greedy submodular placement + live validation) ─
+
+def smart_evaluate(
+    geojson_text: str,
+    budget_eur: float = 1_000_000.0,
+    backend: str = "live",
+) -> dict:
+    """Single-site smart-placement + live-validate pipeline (Mode 1).
+
+    Replaces NSGA-II surrogate scatter for the drawn-polygon path:
+      baseline UTCI grid → demand (hot × impervious × unshaded) →
+      greedy weighted-max-coverage within €budget →
+      live Infrared intervention UTCI → real ΔUTCI + €/m²-cooled headline.
+
+    Returns the same dict shape as run_decision() so the web bundle / frontend
+    consume it unchanged. The key difference: configurations[0] is the single
+    greedily-optimal layout, not one of three NSGA-II picks.
+
+    Args:
+        geojson_text: bare Polygon or FeatureCollection (same as run_decision).
+        budget_eur:   total tree + depave spend cap.
+        backend:      "live" only (mock doesn't support real measured demand;
+                      the demand field comes from live UTCI, and ground materials).
+
+    Returns:
+        Dict matching run_decision contract: {configurations, before_after, headline,
+        backend, disclaimer, site_polygon_lonlat, site_width_m, site_depth_m, error}.
+    """
+    import json as _json  # noqa: PLC0415
+    from coolspend.spatial_engine import (  # noqa: PLC0415
+        reset_site_origin, SITE_WIDTH_M, SITE_DEPTH_M,
+    )
+    from coolspend.placement_inputs import run_smart_placement  # noqa: PLC0415
+    from coolspend.sdk_client import get_baseline_utci, get_intervention_utci, UTCI_HEAT_STRESS_C  # noqa: PLC0415
+    from coolspend.optimizer import _build_baseline_geometry  # noqa: PLC0415
+
+    # Clean the frame so /api/buildings' priming can't leak in.
+    reset_site_origin()
+
+    # Parse the drawn polygon.
+    data = _json.loads(geojson_text)
+    if data.get("type") == "FeatureCollection":
+        poly = next(
+            f for f in data["features"]
+            if f.get("geometry", {}).get("type") == "Polygon"
+        )
+        ring = poly["geometry"]["coordinates"][0]
+    else:
+        ring = data["coordinates"][0]
+    ring = [[float(p[0]), float(p[1])] for p in ring]
+    if ring[0] != ring[-1]:
+        ring.append(ring[0])
+
+    geometry = {"polygon_lonlat": ring}
+
+    # Stage 1 — smart placement (live baseline UTCI → demand → greedy trees).
+    placement = run_smart_placement(geometry, budget_eur=budget_eur, backend=backend)
+    trees_lonlat = placement["trees_lonlat"]
+    tree_count = placement["tree_count"]
+    cost_eur = placement["cost_eur"]
+    coverage_fraction = placement["coverage_fraction"]
+    demand_total = placement["demand_total"]
+    covered_weight = placement["covered_weight"]
+
+    if not trees_lonlat:
+        return {
+            "configurations": [],
+            "before_after": {},
+            "headline": "No plantable spots found for this budget in this area.",
+            "backend": backend,
+            "disclaimer": "Smart placement: zero trees placed (budget or site constraints).",
+            "site_polygon_lonlat": ring,
+            "site_width_m": SITE_WIDTH_M, "site_depth_m": SITE_DEPTH_M,
+            "center_lonlat": None,
+            "error": "no plantable slots",
+        }
+
+    # Stage 2 — live-validate the placed layout with Infrared UTCI.
+    baseline_geom = {"polygon_lonlat": ring}  # no trees
+    intervention_geom = {"polygon_lonlat": ring, "trees_lonlat": trees_lonlat}
+    baseline = get_baseline_utci(baseline_geom)
+    intervention = get_intervention_utci(intervention_geom)
+
+    delta_utci = round(baseline.utci_c - intervention.utci_c, 2)
+
+    # Build configuration dict (single, not top-3 — this IS the optimal layout).
+    cfg = {
+        "rank": 1,
+        "label": "SMART_PLACEMENT",
+        "tree_count": tree_count,
+        "trees_lonlat": trees_lonlat,
+        "cost_eur": cost_eur,
+        "coverage_fraction": coverage_fraction,
+        "delta_utci_c": delta_utci,
+        "baseline_utci_c": baseline.utci_c,
+        "baseline_utci_peak_c": baseline.utci_peak_c,
+        "validated_utci_c": intervention.utci_c,
+        "validated_utci_peak_c": intervention.utci_peak_c,
+        "heat_stress_area_m2": intervention.heat_stress_area_m2,
+        "cooled_footprint_m2": None,  # computed below
+        "cost_per_utci_degree": None,  # computed below after cooled_footprint
+        "validated_disclaimer": (
+            f"LIVE Infrared UTCI — {tree_count} greedily-placed trees; "
+            f"budgeted weighted-max-coverage (submodular, 1-1/e bounded). "
+            f"Every in-ground tree requires a pre-dig utility survey (underground mains not in open data)."
+        ),
+        "species": sorted(set(t["species"] for t in trees_lonlat)),
+        "trees": [{"species": t["species"], "active": True, "mode": t.get("mode", "in_ground")} for t in trees_lonlat],
+    }
+    # Cooled footprint: m² of ground that dropped below the heat-stress threshold.
+    if baseline.merged_grid and intervention.merged_grid:
+        try:
+            import numpy as np  # noqa: PLC0415
+            b = np.asarray(baseline.merged_grid, dtype=float)
+            i = np.asarray(intervention.merged_grid, dtype=float)
+            was_hot = b > UTCI_HEAT_STRESS_C
+            now_cool = i <= UTCI_HEAT_STRESS_C
+            cfg["cooled_footprint_m2"] = int(np.count_nonzero(was_hot & now_cool))
+        except Exception:  # noqa: BLE001
+            cfg["cooled_footprint_m2"] = None
+
+    # KPI: € per m² of ground actually cooled below heat-stress (the headline metric).
+    cooled = cfg.get("cooled_footprint_m2")
+    eur_per_m2_validated = round(cost_eur / cooled, 1) if cooled else None
+    cfg["cost_per_utci_degree"] = {
+        "value": eur_per_m2_validated,
+        "unit": "EUR / m²-cooled",
+        "note": (
+            f"€{cost_eur:,.0f} / {cooled} m² of ground cooled below "
+            f">{UTCI_HEAT_STRESS_C}°C UTCI (was hot → now comfortable)"
+        ),
+    }
+
+    headline = (
+        f"Smart placement: {tree_count} trees, €{cost_eur:,.0f}, "
+        f"{delta_utci:.2f} °C mean UTCI drop, "
+        f"covers {coverage_fraction*100:.0f}% of hot-paved demand. "
+        f"Every in-ground tree requires a utility survey."
+    )
+
+    return {
+        "configurations": [cfg],
+        "before_after": {
+            "baseline_utci_c": baseline.utci_c,
+            "baseline_utci_peak_c": baseline.utci_peak_c,
+            "intervention_utci_c": intervention.utci_c,
+            "intervention_utci_peak_c": intervention.utci_peak_c,
+            "delta_utci_c": delta_utci,
+            "baseline_utci_grid": baseline.merged_grid,
+            "intervention_utci_grid": intervention.merged_grid,
+            "heat_stress_area_m2": intervention.heat_stress_area_m2,
+        },
+        "headline": headline,
+        "backend": backend,
+        "disclaimer": cfg["validated_disclaimer"],
+        "site_polygon_lonlat": ring,
+        "site_width_m": SITE_WIDTH_M,
+        "site_depth_m": SITE_DEPTH_M,
+        "center_lonlat": None,
+        "error": None,
+    }

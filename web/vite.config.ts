@@ -7,6 +7,14 @@ export default defineConfig({
   server: {
     port: 5173,
     open: true,
+    // Proxy API calls to the CoolSpend backend (coolspend/api_server.py) so the
+    // frontend can fetch relative /api/* in both dev and production.
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+    },
   },
   build: {
     target: 'es2020',

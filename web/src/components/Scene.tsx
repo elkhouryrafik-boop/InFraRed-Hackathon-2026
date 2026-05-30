@@ -4,11 +4,20 @@
 
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Map, type ViewStateChangeEvent, type MapRef } from 'react-map-gl'
+import {
+  Map,
+  type ViewStateChangeEvent,
+  type MapRef,
+  type MapLayerMouseEvent,
+} from 'react-map-gl'
 
 import type { Layer } from '@deck.gl/core'
 import { DeckOverlay } from './DeckOverlay'
 import { Hud } from './Hud'
+import { DrawPanel } from './DrawPanel'
+import { GrowthSlider } from './GrowthSlider'
+import { useAreaDraw } from './useAreaDraw'
+import { canopyScale, DEFAULT_GROWTH } from '../lib/growth'
 import { useCesiumTileset, tilesetOpacity } from './useCesiumTileset'
 import { buildLayers } from '../lib/layers'
 import { boundaryOuterRing, toDeckBounds } from '../lib/bundle'
@@ -18,6 +27,7 @@ import {
   liftMatrix,
 } from '../lib/elevation'
 import type { WebBundle, UtciScenario } from '../lib/types'
+import type { LngLat } from '../lib/draw'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string
 
@@ -41,9 +51,11 @@ const EMPTY_MAP_STYLE = {
 
 interface SceneProps {
   bundle: WebBundle
+  /** Called with a freshly evaluated bundle from the drawing flow. */
+  onBundle?: (b: WebBundle) => void
 }
 
-export function Scene({ bundle }: SceneProps) {
+export function Scene({ bundle, onBundle }: SceneProps) {
   const [lon, lat] = bundle.decision.site_center_lonlat
   const mapRef = useRef<MapRef | null>(null)
 
@@ -58,6 +70,52 @@ export function Scene({ bundle }: SceneProps) {
   const [scenario, setScenario] = useState<UtciScenario>('intervention')
   const [rasterOpacity, setRasterOpacity] = useState(0.7)
   const [credits, setCredits] = useState<string | null>(null)
+  const [budgetEur, setBudgetEur] = useState(500_000)
+  const [showImpervious, setShowImpervious] = useState(true)
+
+  // Age slider: years after planting. Default = mature so the initial view
+  // matches the (mature-canopy) UTCI heatmap.
+  const growthParams = bundle.growth ?? DEFAULT_GROWTH
+  const [plantingYear, setPlantingYear] = useState(growthParams.ramp_years)
+  const treeScale = canopyScale(plantingYear, growthParams)
+
+  // ── Drawing flow (select an area anywhere, then Evaluate).
+  const draw = useAreaDraw()
+
+  const lngLatOf = (e: MapLayerMouseEvent): LngLat => [e.lngLat.lng, e.lngLat.lat]
+  const onMapClick = useCallback(
+    (e: MapLayerMouseEvent) => {
+      if (draw.mode) draw.onMapClick(lngLatOf(e))
+    },
+    [draw],
+  )
+  const onMapMouseMove = useCallback(
+    (e: MapLayerMouseEvent) => {
+      if (draw.mode) draw.onMapMouseMove(lngLatOf(e))
+    },
+    [draw],
+  )
+  const onMapDblClick = useCallback(
+    (e: MapLayerMouseEvent) => {
+      if (draw.mode === 'polygon') {
+        e.preventDefault?.()
+        draw.onMapDblClick()
+      }
+    },
+    [draw],
+  )
+
+  // When the user evaluates, recenter the camera on the new site.
+  const handleEvaluated = useCallback(
+    (b: WebBundle) => {
+      draw.clear()
+      onBundle?.(b)
+      setPlantingYear((b.growth ?? DEFAULT_GROWTH).ramp_years) // reset to mature
+      const c = b.decision.site_center_lonlat
+      if (c) setViewState((v) => ({ ...v, longitude: c[0], latitude: c[1] }))
+    },
+    [draw, onBundle],
+  )
 
   // ── Elevation lift: sample DEM once at site centre, build a modelMatrix.
   const [modelMatrix, setModelMatrix] = useState<number[] | null>(null)
@@ -111,6 +169,9 @@ export function Scene({ bundle }: SceneProps) {
         raster: { image: rasterImage, bounds: rasterBounds },
         rasterOpacity,
         trees: bundle.trees,
+        treeScale,
+        impervious: bundle.impervious,
+        showImpervious,
         modelMatrix,
         onTilesetLoad: (tileset) => {
           const t = tileset as {
@@ -135,9 +196,15 @@ export function Scene({ bundle }: SceneProps) {
       rasterBounds,
       rasterOpacity,
       bundle.trees,
+      treeScale,
+      bundle.impervious,
+      showImpervious,
       modelMatrix,
     ],
   )
+
+  // Site layers + live draw-preview layers on top.
+  const allLayers = useMemo(() => [...layers, ...draw.drawLayers], [layers, draw.drawLayers])
 
   const onMove = useCallback((e: ViewStateChangeEvent) => {
     setViewState((v) => ({ ...v, ...e.viewState }))
@@ -172,12 +239,18 @@ export function Scene({ bundle }: SceneProps) {
         reuseMaps
         {...viewState}
         onMove={onMove}
+        onClick={onMapClick}
+        onMouseMove={onMapMouseMove}
+        onDblClick={onMapDblClick}
+        dragPan={!draw.drawing}
+        doubleClickZoom={draw.mode !== 'polygon'}
+        cursor={draw.mode ? 'crosshair' : undefined}
         mapboxAccessToken={MAPBOX_TOKEN}
         mapStyle={mapStyle}
         style={{ width: '100%', height: '100%' }}
         antialias
       >
-        <DeckOverlay layers={layers} />
+        <DeckOverlay layers={allLayers} />
       </Map>
 
       <Hud
@@ -187,6 +260,91 @@ export function Scene({ bundle }: SceneProps) {
         rasterOpacity={rasterOpacity}
         onRasterOpacityChange={setRasterOpacity}
       />
+
+      <DrawPanel
+        mode={draw.mode}
+        setMode={draw.setMode}
+        clear={draw.clear}
+        ring={draw.ring}
+        area={draw.area}
+        status={draw.status}
+        budgetEur={budgetEur}
+        setBudgetEur={setBudgetEur}
+        onEvaluated={handleEvaluated}
+      />
+
+      {bundle.trees && bundle.trees.features.length > 0 && (
+        <GrowthSlider year={plantingYear} setYear={setPlantingYear} params={growthParams} />
+      )}
+
+      {(bundle.impervious?.available || bundle.canopy) && (
+        <div className="depave-chip">
+          {bundle.impervious?.available && (
+            <>
+              <label className="depave-chip__toggle">
+                <input
+                  type="checkbox"
+                  checked={showImpervious}
+                  onChange={(e) => setShowImpervious(e.target.checked)}
+                />
+                <span className="depave-chip__swatch" /> Impervious pavement
+              </label>
+              <div className="depave-chip__stat">
+                <strong>
+                  {Math.round(bundle.impervious.impervious_m2).toLocaleString()} m²
+                </strong>{' '}
+                depaveable
+                <span className="depave-chip__frac">
+                  {Math.round(bundle.impervious.impervious_fraction * 100)}% of site
+                </span>
+              </div>
+              {bundle.impervious.depaved_cooled_m2 != null &&
+                bundle.impervious.depaved_cooled_m2 > 0 && (
+                  <div className="depave-chip__cooled">
+                    {Math.round(bundle.impervious.depaved_cooled_m2).toLocaleString()} m² shaded
+                    by proposed canopy
+                  </div>
+                )}
+            </>
+          )}
+
+          {/* #1 canopy cover vs 30-40% target */}
+          {bundle.canopy && (
+            <div className="depave-chip__metric">
+              <span className="depave-chip__metric-label">Canopy cover</span>
+              <strong className={bundle.canopy.in_band ? 'is-ok' : 'is-off'}>
+                {Math.round(bundle.canopy.cover_fraction * 100)}%
+              </strong>
+              <span className="depave-chip__target">
+                target {Math.round(bundle.canopy.target_min * 100)}–
+                {Math.round(bundle.canopy.target_max * 100)}%
+              </span>
+            </div>
+          )}
+
+          {/* #2 permeable fraction vs 40-50% target, + potential if depaved */}
+          {bundle.impervious?.available && (
+            <div className="depave-chip__metric">
+              <span className="depave-chip__metric-label">Permeable</span>
+              <strong
+                className={
+                  bundle.impervious.permeable_fraction >= bundle.impervious.permeable_target_min
+                    ? 'is-ok'
+                    : 'is-off'
+                }
+              >
+                {Math.round(bundle.impervious.permeable_fraction * 100)}%
+              </strong>
+              <span className="depave-chip__target">
+                target {Math.round(bundle.impervious.permeable_target_min * 100)}–
+                {Math.round(bundle.impervious.permeable_target_max * 100)}%
+                {bundle.impervious.permeable_fraction_if_depaved != null &&
+                  ` · ${Math.round(bundle.impervious.permeable_fraction_if_depaved * 100)}% if depaved`}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {cesium.hasToken && cesium.url && tilesOpacity < 1 && (
         <div className="notice">Zoom in for photorealistic 3D…</div>
