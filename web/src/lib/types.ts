@@ -113,6 +113,39 @@ export interface CanopyCover {
   in_band: boolean
 }
 
+/** Citywide cell from /api/citywide/scan ranked results. */
+export interface CitywideCell {
+  rank: number
+  cell_id: string
+  district: string
+  barri: string
+  composite_score_B: number
+  mean_sealed: number
+  mean_lst_celsius: number
+  lst_anomaly: number
+  cooling_proxy: number
+  sample_area_m2: number
+  impervious_area_m2: number
+  est_trees: number
+  est_cost_eur: number
+  allocated_eur: number
+  centroid_lonlat: [number, number]
+  eval_polygon: [number, number][]
+}
+
+export interface CitywideScan {
+  mode: string
+  total_cells: number
+  ranked_count: number
+  budget_eur: number
+  cumulative_allocated_eur: number
+  cells: CitywideCell[]
+  note: string
+}
+
+/** App display mode: draw (Mode 1) or citywide overview (Mode 2). */
+export type AppMode = 'draw' | 'citywide'
+
 export interface WebBundle {
   decision: Decision
   boundary: BoundaryGeoJSON

@@ -67,6 +67,16 @@ export function fetchEvaluate(params: EvaluateParams): Promise<EvaluateResponse>
   return postJson<EvaluateResponse>('/api/evaluate', params)
 }
 
+// ── Citywide (Mode 2) ───────────────────────────────────────────────────────
+
+import type { CitywideScan } from './types'
+
+export async function fetchCitywideScan(topN = 20, budgetEur = 1_000_000): Promise<CitywideScan> {
+  const res = await fetch(`/api/citywide/scan?top_n=${topN}&budget_eur=${budgetEur}`)
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+  return (await res.json()) as CitywideScan
+}
+
 /**
  * Convert an /api/evaluate response into the WebBundle the Scene renders.
  * Image URLs get a cache-buster so a re-evaluation (same filename, overwritten

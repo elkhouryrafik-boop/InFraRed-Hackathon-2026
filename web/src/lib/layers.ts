@@ -8,6 +8,7 @@ import {
   SolidPolygonLayer,
   PolygonLayer,
   IconLayer,
+  GeoJsonLayer,
 } from '@deck.gl/layers'
 import { MaskExtension } from '@deck.gl/extensions'
 import { Tiles3DLoader } from '@loaders.gl/3d-tiles'
@@ -234,4 +235,55 @@ export function buildLayers(args: BuildLayersArgs): Layer[] {
   }
 
   return out
+}
+
+// ── Citywide (Mode 2) heatmap ────────────────────────────────────────────────
+
+/** Color-scale: composite_score_B → [r, g, b, a]. Hot=red, cold=blue. */
+function scoreColor(score: number): [number, number, number, number] {
+  // Clamp to [0, 1] then lerp blue (low) → yellow (mid) → red (high).
+  const t = Math.max(0, Math.min(1, score))
+  // Two-stop: blue(0) → yellow(0.5) → red(1)
+  let r: number, g: number, b: number
+  if (t < 0.5) {
+    const s = t * 2
+    r = Math.round(s * 255)
+    g = Math.round(s * 200)
+    b = Math.round(255 - s * 200)
+  } else {
+    const s = (t - 0.5) * 2
+    r = 255
+    g = Math.round(200 - s * 200)
+    b = Math.round(55 - s * 55)
+  }
+  return [r, g, b, 180]
+}
+
+export interface CitywideLayerArgs {
+  /** GeoJSON FeatureCollection (the scored_grid cells). */
+  data: GeoJSON.FeatureCollection | null
+  /** Opacity 0..1. */
+  opacity?: number
+}
+
+export function buildCitywideLayer(args: CitywideLayerArgs): Layer | null {
+  const { data, opacity = 0.6 } = args
+  if (!data) return null
+
+  return new GeoJsonLayer({
+    id: 'citywide-heatmap',
+    data,
+    pickable: true,
+    stroked: true,
+    filled: true,
+    extruded: false,
+    lineWidthScale: 1,
+    lineWidthMinPixels: 0.5,
+    getFillColor: (f: { properties?: { composite_score_B?: number } }) =>
+      scoreColor(f.properties?.composite_score_B ?? 0),
+    getLineColor: [30, 30, 40, 100] as [number, number, number, number],
+    getLineWidth: 0.5,
+    opacity,
+    updateTriggers: { getFillColor: [opacity] },
+  })
 }

@@ -26,8 +26,10 @@ import {
   fetchDemElevation,
   liftMatrix,
 } from '../lib/elevation'
-import type { WebBundle, UtciScenario } from '../lib/types'
+import type { WebBundle, UtciScenario, AppMode, CitywideScan } from '../lib/types'
 import type { LngLat } from '../lib/draw'
+import { fetchCitywideScan } from '../lib/api'
+import { buildCitywideLayer } from '../lib/layers'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string
 
@@ -53,9 +55,11 @@ interface SceneProps {
   bundle: WebBundle
   /** Called with a freshly evaluated bundle from the drawing flow. */
   onBundle?: (b: WebBundle) => void
+  appMode: AppMode
+  setAppMode: (m: AppMode) => void
 }
 
-export function Scene({ bundle, onBundle }: SceneProps) {
+export function Scene({ bundle, onBundle, appMode, setAppMode }: SceneProps) {
   const [lon, lat] = bundle.decision.site_center_lonlat
   const mapRef = useRef<MapRef | null>(null)
 
@@ -78,6 +82,36 @@ export function Scene({ bundle, onBundle }: SceneProps) {
   const growthParams = bundle.growth ?? DEFAULT_GROWTH
   const [plantingYear, setPlantingYear] = useState(growthParams.ramp_years)
   const treeScale = canopyScale(plantingYear, growthParams)
+
+  // ── Citywide (Mode 2) state.
+  const [citywideScan, setCitywideScan] = useState<CitywideScan | null>(null)
+  const [citywideGeojson, setCitywideGeojson] = useState<GeoJSON.FeatureCollection | null>(null)
+  const [citywideLoading, setCitywideLoading] = useState(false)
+
+  useEffect(() => {
+    if (appMode !== 'citywide') return
+    let cancelled = false
+    setCitywideLoading(true)
+    Promise.all([
+      fetchCitywideScan(50, 1_000_000),
+      fetch('/scored_grid.geojson').then(r => r.json()),
+    ])
+      .then(([scan, geojson]) => {
+        if (!cancelled) {
+          setCitywideScan(scan)
+          setCitywideGeojson(geojson as GeoJSON.FeatureCollection)
+        }
+      })
+      .finally(() => { if (!cancelled) setCitywideLoading(false) })
+    return () => { cancelled = true }
+  }, [appMode])
+
+  // Zoom out to Barcelona overview when switching to citywide mode.
+  useEffect(() => {
+    if (appMode === 'citywide') {
+      setViewState({ longitude: 2.17, latitude: 41.39, zoom: 10.5, pitch: 0, bearing: 0 })
+    }
+  }, [appMode])
 
   // ── Drawing flow (select an area anywhere, then Evaluate).
   const draw = useAreaDraw()
@@ -203,8 +237,26 @@ export function Scene({ bundle, onBundle }: SceneProps) {
     ],
   )
 
+  // Citywide heatmap layer (Mode 2).
+  const citywideLayer = useMemo(
+    () => buildCitywideLayer({ data: citywideGeojson, opacity: 0.55 }),
+    [citywideGeojson],
+  )
+
   // Site layers + live draw-preview layers on top.
-  const allLayers = useMemo(() => [...layers, ...draw.drawLayers], [layers, draw.drawLayers])
+  const allLayers = useMemo(
+    () => {
+      const result = [...layers]
+      if (appMode === 'citywide' && citywideLayer) {
+        result.unshift(citywideLayer)
+      }
+      if (appMode === 'draw') {
+        result.push(...draw.drawLayers)
+      }
+      return result
+    },
+    [layers, draw.drawLayers, appMode, citywideLayer],
+  )
 
   const onMove = useCallback((e: ViewStateChangeEvent) => {
     setViewState((v) => ({ ...v, ...e.viewState }))
@@ -239,12 +291,12 @@ export function Scene({ bundle, onBundle }: SceneProps) {
         reuseMaps
         {...viewState}
         onMove={onMove}
-        onClick={onMapClick}
-        onMouseMove={onMapMouseMove}
-        onDblClick={onMapDblClick}
-        dragPan={!draw.drawing}
-        doubleClickZoom={draw.mode !== 'polygon'}
-        cursor={draw.mode ? 'crosshair' : undefined}
+        onClick={appMode === 'draw' ? onMapClick : undefined}
+        onMouseMove={appMode === 'draw' ? onMapMouseMove : undefined}
+        onDblClick={appMode === 'draw' ? onMapDblClick : undefined}
+        dragPan={appMode === 'citywide' || !draw.drawing}
+        doubleClickZoom={appMode === 'citywide' || draw.mode !== 'polygon'}
+        cursor={appMode === 'draw' && draw.mode ? 'crosshair' : undefined}
         mapboxAccessToken={MAPBOX_TOKEN}
         mapStyle={mapStyle}
         style={{ width: '100%', height: '100%' }}
@@ -271,13 +323,31 @@ export function Scene({ bundle, onBundle }: SceneProps) {
         budgetEur={budgetEur}
         setBudgetEur={setBudgetEur}
         onEvaluated={handleEvaluated}
+        appMode={appMode}
+        setAppMode={setAppMode}
       />
 
-      {bundle.trees && bundle.trees.features.length > 0 && (
+      {appMode === 'citywide' && citywideScan && (
+        <div className="citywide-bar">
+          <span className="citywide-bar__title">
+            {citywideScan.total_cells} cells · top {citywideScan.cells.length} ranked
+          </span>
+          <div className="citywide-bar__top">
+            {citywideScan.cells.slice(0, 5).map((c) => (
+              <span key={c.cell_id} className="citywide-bar__chip" title={`${c.district} · ${c.barri}`}>
+                #{c.rank} {c.cell_id.replace('_', ' ')} · {Math.round(c.mean_lst_celsius)}°C ·{' '}
+                {Math.round(c.composite_score_B * 100)}%
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {appMode === 'draw' && bundle.trees && bundle.trees.features.length > 0 && (
         <GrowthSlider year={plantingYear} setYear={setPlantingYear} params={growthParams} />
       )}
 
-      {(bundle.impervious?.available || bundle.canopy) && (
+      {appMode === 'draw' && (bundle.impervious?.available || bundle.canopy) && (
         <div className="depave-chip">
           {bundle.impervious?.available && (
             <>

@@ -11,7 +11,7 @@ import {
   evaluateResponseToBundle,
   type BuildingsPreview,
 } from '../lib/api'
-import type { WebBundle } from '../lib/types'
+import type { WebBundle, AppMode } from '../lib/types'
 
 interface DrawPanelProps {
   mode: DrawMode | null
@@ -23,6 +23,9 @@ interface DrawPanelProps {
   budgetEur: number
   setBudgetEur: (v: number) => void
   onEvaluated: (bundle: WebBundle) => void
+  /** App-level display mode (draw vs citywide). */
+  appMode: AppMode
+  setAppMode: (m: AppMode) => void
 }
 
 const TOOLS: { id: DrawMode; label: string; icon: string }[] = [
@@ -46,6 +49,8 @@ export function DrawPanel({
   budgetEur,
   setBudgetEur,
   onEvaluated,
+  appMode,
+  setAppMode,
 }: DrawPanelProps) {
   const [preview, setPreview] = useState<BuildingsPreview | null>(null)
   const [detecting, setDetecting] = useState(false)
@@ -90,8 +95,25 @@ export function DrawPanel({
 
   return (
     <div className="draw-panel">
-      <div className="draw-panel__title">Design anywhere in Barcelona</div>
+      <div className="draw-panel__title">CoolSpend</div>
 
+      <div className="draw-panel__mode-toggle">
+        <button
+          className={`draw-panel__mode-btn ${appMode === 'draw' ? 'is-active' : ''}`}
+          onClick={() => setAppMode('draw')}
+        >
+          ✏️ Design
+        </button>
+        <button
+          className={`draw-panel__mode-btn ${appMode === 'citywide' ? 'is-active' : ''}`}
+          onClick={() => setAppMode('citywide')}
+        >
+          🗺️ Citywide
+        </button>
+      </div>
+
+      {appMode === 'draw' && (
+        <>
       <div className="draw-panel__tools">
         {TOOLS.map((t) => (
           <button
@@ -174,6 +196,8 @@ export function DrawPanel({
       </div>
 
       {error && <div className="draw-panel__error">{error}</div>}
+        </>
+      )}
     </div>
   )
 }

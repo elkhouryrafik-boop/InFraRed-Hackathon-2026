@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Scene } from './components/Scene'
 import { FallbackScene } from './components/FallbackScene'
 import { loadWebBundle } from './lib/bundle'
-import type { WebBundle } from './lib/types'
+import type { WebBundle, AppMode } from './lib/types'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 const hasMapboxToken = !!MAPBOX_TOKEN && MAPBOX_TOKEN.trim().length > 0
@@ -13,6 +13,7 @@ export default function App() {
   // static bundle once the user evaluates a hand-drawn area.
   const [liveBundle, setLiveBundle] = useState<WebBundle | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [appMode, setAppMode] = useState<AppMode>('draw')
 
   useEffect(() => {
     let cancelled = false
@@ -56,7 +57,7 @@ export default function App() {
   // Route on Mapbox token: full Mapbox+Cesium scene (with the drawing flow), or
   // flat deck.gl fallback (view-only; drawing needs the Mapbox map).
   return hasMapboxToken ? (
-    <Scene bundle={active} onBundle={setLiveBundle} />
+    <Scene bundle={active} onBundle={setLiveBundle} appMode={appMode} setAppMode={setAppMode} />
   ) : (
     <FallbackScene bundle={active} />
   )
