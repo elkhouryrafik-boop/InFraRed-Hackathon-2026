@@ -30,8 +30,16 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sys
 from pathlib import Path
 from typing import Any
+
+# Ensure the project root is on sys.path so `coolspend.*` imports resolve
+# whether this file is run as `python coolspend/api_server.py` or as
+# `python -m coolspend.api_server`.
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
