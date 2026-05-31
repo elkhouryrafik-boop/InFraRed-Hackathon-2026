@@ -45,8 +45,12 @@ function buildScenes(plan: CityPlan | null): Scene[] {
   const hottest = plan
     ? Math.max(...plan.allocated_cells.map((c) => c.mean_lst_celsius), 0)
     : 44.1
-  const cooled = plan?.total_cooled_footprint_m2 ?? 24356
-  const rate = plan?.avg_cost_per_m2_cooled ?? 41
+  // measured cooled m² when live; else the sim-free shade-proxy estimate (never 0,
+  // never the wrong word). `||` not `??` — a 0 measured value must fall through.
+  const measured = !!plan?.cooling_is_measured
+  const cooled =
+    plan?.total_cooled_footprint_m2 || plan?.total_cooled_m2_proxy || 24356
+  const rate = plan?.avg_cost_per_m2_cooled || 41
   const people = plan?.total_people_served ?? 22590
   const trees = plan?.total_trees ?? 99
 
@@ -73,10 +77,12 @@ function buildScenes(plan: CityPlan | null): Scene[] {
       intent: { heatReveal: 0.85, framing: 'site', intervention: true },
     },
     {
-      // Scene 3 — THE MEASURED PAYOFF (real numbers only)
-      headline: `${Math.round(cooled).toLocaleString()} m² cooled, measured.`,
+      // Scene 3 — THE PAYOFF (measured when live, else labelled estimate)
+      headline: `${Math.round(cooled).toLocaleString()} m² cooled${measured ? ', measured.' : '.'}`,
       subline: `€${rate}/m² · ${people.toLocaleString()} people · ${trees} trees`,
-      body: 'Not a forecast — we re-ran Barcelona’s microclimate with these trees in it.',
+      body: measured
+        ? 'Not a forecast — we re-ran Barcelona’s microclimate with these trees in it.'
+        : 'Estimated from sun geometry — run a site live for the measured UTCI value.',
       primary: 'Try it on a real block →',
       intent: { heatReveal: 0.85, framing: 'site', intervention: true },
     },

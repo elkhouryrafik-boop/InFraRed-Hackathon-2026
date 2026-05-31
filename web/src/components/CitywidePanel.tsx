@@ -87,8 +87,10 @@ export function CitywidePanel({
 
       <div className={`cp-credibility ${measured ? 'is-measured' : 'is-preview'}`}>
         {measured ? '● MEASURED' : '● PREVIEW'} ·{' '}
-        {Math.round(plan.total_cooled_footprint_m2 ?? 0).toLocaleString()} m² cooled ·{' '}
-        {plan.total_trees} trees
+        {Math.round(
+          plan.total_cooled_footprint_m2 || plan.total_cooled_m2_proxy || 0,
+        ).toLocaleString()}{' '}
+        m² cooled{measured ? '' : ' (est.)'} · {plan.total_trees} trees
       </div>
 
       <hr className="cp-rule" />
