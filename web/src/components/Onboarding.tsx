@@ -42,17 +42,19 @@ interface Scene {
 function buildScenes(plan: CityPlan | null): Scene[] {
   // REAL measured figures (citywide_plan.json). Fallbacks only if the file is
   // missing — never a fabricated "measured" number.
+  // Fallbacks match the current live plan (only shown in the <1s before the
+  // no-store fetch resolves; the real plan overrides them on load).
   const hottest = plan
     ? Math.max(...plan.allocated_cells.map((c) => c.mean_lst_celsius), 0)
-    : 44.1
+    : 44
   // measured cooled m² when live; else the sim-free shade-proxy estimate (never 0,
   // never the wrong word). `||` not `??` — a 0 measured value must fall through.
   const measured = !!plan?.cooling_is_measured
   const cooled =
-    plan?.total_cooled_footprint_m2 || plan?.total_cooled_m2_proxy || 24356
+    plan?.total_cooled_footprint_m2 || plan?.total_cooled_m2_proxy || 20609
   const rate = plan?.avg_cost_per_m2_cooled || 41
-  const people = plan?.total_people_served ?? 22590
-  const trees = plan?.total_trees ?? 99
+  const people = plan?.total_people_served ?? 26745
+  const trees = plan?.total_trees ?? 90
 
   return [
     {

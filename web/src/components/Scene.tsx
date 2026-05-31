@@ -184,7 +184,9 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
   // so fetch it once on mount, not only when entering citywide.
   useEffect(() => {
     let cancelled = false
-    fetch('/citywide_plan.json')
+    // no-store: the plan is regenerated server-side; never serve a stale cached
+    // copy (that showed OLD numbers after a regen).
+    fetch('/citywide_plan.json', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((p) => {
         if (!cancelled) setCityPlan((p as CityPlan) ?? null)
@@ -202,7 +204,7 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
     if (phase !== 'citywide' || citywideGeojson) return
     let cancelled = false
     setCitywideLoading(true)
-    fetch('/scored_grid.geojson')
+    fetch('/scored_grid.geojson', { cache: 'no-store' })
       .then((r) => r.json())
       .then((g) => {
         if (!cancelled) setCitywideGeojson(g as GeoJSON.FeatureCollection)
@@ -459,6 +461,14 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
         result.push(...cityTreeLayers) // 2D canopy icons
       }
       return result
+    }
+    // Design phase = DRAWING. Show ONLY the user's polygon over the satellite
+    // basemap. The bundle's climate raster + showcase trees belong to the DEFAULT
+    // showcase site, not the polygon being drawn — rendering them here made the
+    // heat field look misaligned with the polygon (it sat at a different block).
+    // The real, aligned field appears after Evaluate (result phase).
+    if (phase === 'design') {
+      return [...draw.drawLayers]
     }
     // Single-site: drop the 2D icon 'trees' in 3D and add sphere trees instead.
     const result = view3d ? layers.filter((l) => l.id !== 'trees') : [...layers]
