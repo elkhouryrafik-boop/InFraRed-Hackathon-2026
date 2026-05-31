@@ -299,23 +299,24 @@ if __name__ == "__main__":
     except Exception:  # noqa: BLE001
         pass
     import json as _json
-    from coolspend.app_pipeline import run_decision
-    from coolspend.spatial_engine import load_site, set_active_site
+    from coolspend.app_pipeline import smart_evaluate
 
     backend = os.environ.get("INFRARED_BACKEND", "live")
 
-    # Demo site = the REAL Plaça dels Àngels plaza polygon (53-vertex irregular shape
-    # from NatureGooddest/OSM), NOT a square. Load it as the active site so the
-    # optimizer places trees inside the true plaza outline (is_valid_location), then
-    # pass the same polygon as the boundary override so the web map shows/cuts the real
-    # shape (the pipeline's own site_polygon_lonlat is only the bbox rectangle).
+    # Demo site = the REAL Plaça dels Àngels plaza polygon (53-vertex irregular shape).
+    # smart_evaluate is the hard-valid greedy placer: it sets its own site frame and
+    # places trees ONLY on building-/street-/spacing-validated candidate slots inside
+    # this polygon (no roofs, no overlaps), then validates on real Infrared UTCI. We
+    # pass the same polygon as the boundary override so the map shows/cuts the real shape.
     plaza_path = Path(__file__).resolve().parent / "data" / "angels_plaza_site.geojson"
-    site = load_site(str(plaza_path))           # sets per-site UTM origin + returns geoms
-    set_active_site(site)                         # optimizer now uses the real plaza
     plaza_ring = _json.loads(plaza_path.read_text(encoding="utf-8"))[
         "features"][0]["geometry"]["coordinates"][0]
+    geojson_text = _json.dumps({"type": "Polygon", "coordinates": [plaza_ring]})
 
-    res = run_decision(budget_eur=500_000.0, weights=(0.6, 0.4), backend=backend)
+    # 200k → ~20 trees: a realistic, clean planting for this open plaza (a 500k budget
+    # over-plants it to ~49 and the €/m² degrades as canopies overlap). The web app's
+    # budget slider lets a user explore other budgets on any drawn area.
+    res = smart_evaluate(geojson_text=geojson_text, budget_eur=200_000.0, backend=backend)
     paths = export_web_bundle(res, boundary_override_lonlat=plaza_ring)
     print("\nWeb bundle:")
     for k, v in paths.items():

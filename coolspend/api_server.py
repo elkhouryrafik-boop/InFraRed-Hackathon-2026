@@ -190,7 +190,7 @@ def create_app() -> FastAPI:
         ring = _ring_closed(req.polygon)
         _validate_area(ring)
 
-        from coolspend.app_pipeline import run_decision, smart_evaluate  # noqa: PLC0415
+        from coolspend.app_pipeline import smart_evaluate  # noqa: PLC0415
         from coolspend.export_web import export_web_bundle  # noqa: PLC0415
 
         poly_geojson = json.dumps({"type": "Polygon", "coordinates": [ring]})
@@ -198,21 +198,16 @@ def create_app() -> FastAPI:
         logger.info("Evaluate: backend=%s area=%.0f m² budget=%.0f",
                     backend, _polygon_area_m2(ring), req.budget_eur)
 
-        # Mode 1 (live): greedy submodular measured-demand placement → UTCI validation.
-        # Mode 2 (mock/cached): legacy NSGA-II surrogate-scatter path (test compat).
-        if backend == "live":
-            result = smart_evaluate(
-                geojson_text=poly_geojson,
-                budget_eur=req.budget_eur,
-                backend=backend,
-            )
-        else:
-            result = run_decision(
-                budget_eur=req.budget_eur,
-                weights=(req.w_thermal, req.w_ecological),
-                geojson_text=poly_geojson,
-                backend=backend,
-            )
+        # Building-aware greedy placement on EVERY backend (was: live-only; mock used
+        # NSGA-II scatter that ignored buildings → trees on roofs / overlapping clumps).
+        # smart_evaluate places only on validated candidate slots (off buildings,
+        # spaced, crown-fit); on mock the cooling number is a labelled synthetic
+        # estimate while the PLACEMENT is real.
+        result = smart_evaluate(
+            geojson_text=poly_geojson,
+            budget_eur=req.budget_eur,
+            backend=backend,
+        )
         if result.get("error") or not result.get("configurations"):
             raise HTTPException(
                 status_code=500,

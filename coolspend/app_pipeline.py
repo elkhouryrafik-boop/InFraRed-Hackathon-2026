@@ -622,24 +622,29 @@ def smart_evaluate(
         "cooled_footprint_m2": None,  # computed below
         "cost_per_utci_degree": None,  # computed below after cooled_footprint
         "validated_disclaimer": (
-            f"LIVE Infrared UTCI — {tree_count} greedily-placed trees; "
-            f"budgeted weighted-max-coverage (submodular, 1-1/e bounded). "
-            f"Every in-ground tree requires a pre-dig utility survey (underground mains not in open data)."
+            (
+                f"LIVE Infrared UTCI — {tree_count} greedily-placed trees; "
+                if backend in ("live", "cached")
+                else (
+                    f"PREVIEW (synthetic UTCI, NOT MEASURED) — placement is real "
+                    f"(building-/street-aware, spaced), cooling is estimated until run live. "
+                    f"{tree_count} greedily-placed trees; "
+                )
+            )
+            + "budgeted weighted-max-coverage (submodular, 1-1/e bounded). "
+            "Every in-ground tree requires a pre-dig utility survey (underground mains not in open data)."
         ),
         "species": sorted(set(t["species"] for t in trees_lonlat)),
         "trees": [{"species": t["species"], "active": True, "mode": t.get("mode", "in_ground")} for t in trees_lonlat],
     }
-    # Cooled footprint: m² of ground that dropped below the heat-stress threshold.
-    if baseline.merged_grid and intervention.merged_grid:
-        try:
-            import numpy as np  # noqa: PLC0415
-            b = np.asarray(baseline.merged_grid, dtype=float)
-            i = np.asarray(intervention.merged_grid, dtype=float)
-            was_hot = b > UTCI_HEAT_STRESS_C
-            now_cool = i <= UTCI_HEAT_STRESS_C
-            cfg["cooled_footprint_m2"] = int(np.count_nonzero(was_hot & now_cool))
-        except Exception:  # noqa: BLE001
-            cfg["cooled_footprint_m2"] = None
+    # Cooled footprint + depth profile — SAME canonical definitions as the NSGA-II
+    # path (sdk_client): m² cooled by >=0.5 °C, plus the multi-threshold bands /
+    # measured dispersion / heat-stress relief. None on mock/scalar (no grid).
+    from coolspend.sdk_client import (  # noqa: PLC0415
+        cooled_footprint_m2 as _cooled_m2, cooled_footprint_profile as _cooled_profile,
+    )
+    cfg["cooled_footprint_m2"] = _cooled_m2(baseline.merged_grid, intervention.merged_grid)
+    cfg["cooled_profile"] = _cooled_profile(baseline.merged_grid, intervention.merged_grid)
 
     # KPI: € per m² of ground actually cooled below heat-stress (the headline metric).
     cooled = cfg.get("cooled_footprint_m2")

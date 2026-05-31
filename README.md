@@ -57,7 +57,9 @@ The default plaza view loads the **cached live** showcase (real Infrared UTCI). 
 new area evaluates on the mock backend (a labelled synthetic preview); the live backend
 handles new areas when an API key is present.
 
-**Regenerate the live showcase** (one real run): `INFRARED_BACKEND=live python -m coolspend.export_web`
+**Regenerate the live showcase** (one real run): set `INFRARED_BACKEND=live` and
+`INFRARED_API_KEY=<your infrared.city key>` (read from the environment / a gitignored
+`.env`, never committed), then `python -m coolspend.export_web`. Mock/cached need no key.
 
 **Tests:** `python -m pytest coolspend/tests -q` (341 offline, deterministic) · `cd web && npm test` (vitest) · `npm run build` (production).
 

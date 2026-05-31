@@ -61,6 +61,30 @@ def grid_cell_lonlat(
     return lon, lat
 
 
+def _crop_grid_to_valid(grid: list[list[float]]) -> list[list[float]]:
+    """Crop a UTCI grid to its non-NaN bounding box.
+
+    The SDK returns a square grid larger than the site polygon, with valid cells in
+    a corner. Cropping to the valid bbox makes the returned grid span the polygon's
+    own bbox, so build_demand_cells (which maps row/col over the polygon bounds)
+    positions demand cells correctly. No-op if numpy is unavailable or all-valid.
+    """
+    try:
+        import numpy as np  # noqa: PLC0415
+    except ImportError:
+        return grid
+    a = np.asarray(grid, dtype=float)
+    if a.ndim != 2:
+        return grid
+    valid = ~np.isnan(a)
+    if not valid.any():
+        return grid
+    rows = np.where(valid.any(axis=1))[0]
+    cols = np.where(valid.any(axis=0))[0]
+    sub = a[rows.min(): rows.max() + 1, cols.min(): cols.max() + 1]
+    return sub.tolist()
+
+
 def build_demand_cells(
     grid: list[list[float]],
     bounds: dict[str, float],
@@ -125,9 +149,20 @@ def _depave_cost_per_tree() -> float:
 
 
 def build_species_options() -> list[SpeciesOption]:
-    """Real Barcelona palette → SpeciesOption (crown, lifecycle cost, cooling proxy)."""
+    """Plantable Barcelona palette → SpeciesOption (crown, lifecycle cost, cooling proxy).
+
+    EXCLUDES the species Barcelona treats as exotic-invasive (Robinia, Ligustrum
+    lucidum, Ulmus pumila) — same plantable set the NSGA-II path uses
+    (coolspend.optimizer.SPECIES), so the greedy placement never recommends an
+    invasive either. See coolspend.ecology.
+    """
     from coolspend.bcn_species import SPECIES_TABLE, cooling_score  # noqa: PLC0415
     from coolspend.cost_model import DEFAULT_COST_TABLE, DEFAULT_GROWTH_DISCOUNT  # noqa: PLC0415
+    from coolspend.ecology import get_ecology  # noqa: PLC0415
+
+    def _plantable(scientific: str) -> bool:
+        eco = get_ecology(scientific)
+        return not (eco and eco.invasive)
 
     tree_cost = DEFAULT_COST_TABLE.per_tree_cost(DEFAULT_GROWTH_DISCOUNT.horizon_years)
     return [
@@ -138,6 +173,7 @@ def build_species_options() -> list[SpeciesOption]:
             cooling_score=cooling_score(s),
         )
         for s in SPECIES_TABLE
+        if _plantable(s.scientific)
     ]
 
 
@@ -170,11 +206,28 @@ def assemble_inputs(geometry: dict, backend: str = "live"):
     # One shared frame for demand + candidates + canopy.
     set_site_origin_from_polygon([(p[0], p[1]) for p in ring])
 
-    # ── Live baseline UTCI grid → heat signal ────────────────────────────────
+    # ── Baseline UTCI grid → heat signal (demand WEIGHTS) ─────────────────────
+    # Live/cached: real per-cell UTCI grid → heat-weighted demand.
+    # Mock/scalar (no grid): the cooling NUMBER is synthetic, but PLACEMENT must
+    # still be valid. Fall back to a uniform proxy demand over the site so the
+    # greedy spreads trees to cover the most plantable ground — the candidate
+    # slots remain fully building-/street-/spacing-validated either way, so the
+    # placement is real even when the cooling estimate is a labelled preview.
     baseline = get_baseline_utci({"polygon_lonlat": ring})
     grid = baseline.merged_grid
-    if not grid:
-        raise RuntimeError("No baseline UTCI grid returned; cannot build demand field.")
+    proxy_demand = not grid
+    if proxy_demand:
+        n = 40  # ~uniform lattice over the bbox; cell pitch ≈ site_size / 40
+        grid = [[COMFORT_UTCI_C + 1.0] * n for _ in range(n)]
+    else:
+        # The SDK returns a 512×512 grid spanning a square LARGER than the polygon,
+        # with the polygon's valid (non-NaN) cells in a corner. build_demand_cells
+        # maps grid (row,col) → lon/lat assuming the grid spans the polygon bbox, so
+        # the full uncropped grid would scatter demand to the WRONG positions (the
+        # exact registration bug fixed for the heatmap PNG) → demand misses every
+        # candidate slot → zero trees. Crop to the non-NaN bounding box so the grid
+        # we hand to build_demand_cells really does span the polygon bbox.
+        grid = _crop_grid_to_valid(grid)
 
     # ── Impervious (depave candidates) — prepared lon/lat union for fast tests ─
     imperv = analyze_impervious(ring, backend=backend)
@@ -211,6 +264,22 @@ def assemble_inputs(geometry: dict, backend: str = "live"):
         grid, bounds,
         is_impervious=is_impervious, is_shaded=is_shaded, to_local_m=latlon_to_local_m,
     )
+    # Robustness fallback: if the ground-material layer classified ~no impervious
+    # surface inside the site (sparse/misclassified land cover — e.g. a paved plaza
+    # tagged vegetation), the impervious filter would wipe out all demand and place
+    # ZERO trees on a genuinely plantable site. When that happens, target ALL hot,
+    # unshaded ground instead (drop only the impervious gate). Honest degradation:
+    # we couldn't confirm pavement, so we shade the hottest unshaded ground we can.
+    if not demand:
+        logger.warning(
+            "No impervious-classified demand in site; falling back to all hot, "
+            "unshaded ground (ground-material layer too sparse to localise pavement)."
+        )
+        demand = build_demand_cells(
+            grid, bounds,
+            is_impervious=lambda lon, lat: True, is_shaded=is_shaded,
+            to_local_m=latlon_to_local_m,
+        )
 
     # ── Candidate slots: building-aware, using ground-material buildings (lon/lat) ─
     # Building footprints come from analyze_impervious' buildings_geojson (the only
@@ -223,6 +292,11 @@ def assemble_inputs(geometry: dict, backend: str = "live"):
             buildings_m.append(shp_transform(lambda x, y, z=None: latlon_to_local_m(x, y), g).buffer(0))
         except Exception:  # noqa: BLE001 — skip a malformed footprint
             continue
+    # OSM building footprints — backend-INDEPENDENT (free, no Infrared key). This is
+    # what keeps a tree off a roof / clear of a facade on mock & cached, where the
+    # Infrared building layer above is empty. Union of both = best available coverage.
+    from coolspend.osm_buildings import buildings_local_m  # noqa: PLC0415
+    buildings_m += buildings_local_m(bounds, latlon_to_local_m)
     # Spatial-layer exclusions (docs/placement_spatial_constraints.md), all OSM-derived,
     # all degrade to [] if Overpass is unreachable (logged, never faked):
     #   - road carriageways (vehicle only; plazas/footways stay plantable)
@@ -248,18 +322,17 @@ def assemble_inputs(geometry: dict, backend: str = "live"):
     # = 2 × distance to the nearest building / road-or-furniture exclusion. A wide
     # plaza slot can host a big plane; a tight strip only a small species.
     buildings_union = unary_union(buildings_m) if buildings_m else None
-    streets_union = unary_union(streets_m) if streets_m else None
 
     def _max_crown(x: float, y: float) -> float:
-        p = Point(x, y)
-        d = []
-        if buildings_union is not None:
-            d.append(buildings_union.distance(p))
-        if streets_union is not None:
-            d.append(streets_union.distance(p))
-        if not d:
+        # Cap the mature crown by the distance to the nearest BUILDING FACADE only —
+        # a canopy must not grow into a wall. Streets/sidewalks are deliberately NOT
+        # a cap: a street tree's canopy SHOULD overhang the carriageway/footway (that
+        # is the shade we are buying); the trunk is already kept out of the street
+        # buffer by candidate_slots. Including streets here wrongly shrank the crown
+        # below the smallest species (5 m) on tight sites and placed zero trees.
+        if buildings_union is None:
             return float("inf")
-        return max(3.0, 2.0 * min(d))  # never below a 3 m small-tree crown
+        return max(5.0, 2.0 * buildings_union.distance(Point(x, y)))
 
     depave = _depave_cost_per_tree()
     candidates = [
