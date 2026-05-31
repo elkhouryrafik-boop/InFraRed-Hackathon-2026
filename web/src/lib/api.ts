@@ -22,6 +22,11 @@ export interface BuildingsPreview {
 }
 
 export interface EvaluateResponse {
+  // On a genuinely unplantable area the API returns { empty: true, headline, ... }
+  // (a clean 200, not a 500) — these core fields are then absent.
+  empty?: boolean
+  headline?: string
+  reason?: string
   decision: Decision
   boundary: BoundaryGeoJSON
   trees: TreesGeoJSON

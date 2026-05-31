@@ -92,6 +92,14 @@ export function ActionRail({
     setError(null)
     try {
       const resp = await fetchEvaluate({ polygon: ring, budget_eur: budgetEur })
+      // Genuinely unplantable area → clean message, keep the current scene.
+      if (resp.empty || !resp.decision) {
+        setError(
+          resp.headline ||
+            'No plantable spots found in this area. Try a larger or less built-up block.',
+        )
+        return
+      }
       onEvaluated(evaluateResponseToBundle(resp))
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e))

@@ -83,7 +83,14 @@ class EvaluateRequest(PolygonRequest):
 # ── Geometry helpers (UTM-31N via the single CRS boundary in spatial_engine) ──
 
 def _ring_closed(polygon: list[list[float]]) -> list[list[float]]:
-    ring = [[float(p[0]), float(p[1])] for p in polygon]
+    pts = [[float(p[0]), float(p[1])] for p in polygon]
+    # Drop consecutive duplicate vertices: a repeated point (common from
+    # click-drawn polygons) makes a degenerate ring that can collapse the
+    # candidate-slot geometry to empty even where there is plantable space.
+    ring: list[list[float]] = [pts[0]]
+    for p in pts[1:]:
+        if p != ring[-1]:
+            ring.append(p)
     if ring[0] != ring[-1]:
         ring.append(ring[0])
     return ring
@@ -202,25 +209,51 @@ def create_app() -> FastAPI:
         from coolspend.export_web import export_web_bundle  # noqa: PLC0415
 
         poly_geojson = json.dumps({"type": "Polygon", "coordinates": [ring]})
-        backend = _backend_mode()
+        configured = _backend_mode()
         logger.info("Evaluate: backend=%s area=%.0f m² budget=%.0f",
-                    backend, _polygon_area_m2(ring), req.budget_eur)
+                    configured, _polygon_area_m2(ring), req.budget_eur)
 
-        # Building-aware greedy placement on EVERY backend (was: live-only; mock used
-        # NSGA-II scatter that ignored buildings → trees on roofs / overlapping clumps).
-        # smart_evaluate places only on validated candidate slots (off buildings,
-        # spaced, crown-fit); on mock the cooling number is a labelled synthetic
-        # estimate while the PLACEMENT is real.
-        result = smart_evaluate(
-            geojson_text=poly_geojson,
-            budget_eur=req.budget_eur,
-            backend=backend,
-        )
-        if result.get("error") or not result.get("configurations"):
-            raise HTTPException(
-                status_code=500,
-                detail=f"Pipeline failed: {result.get('error') or 'no configurations'}",
-            )
+        # Building-aware greedy placement on EVERY backend. We try the configured
+        # backend first; if it throws (e.g. live Infrared unreachable / no key) or
+        # yields no configurations, we fall back to `mock` — real placement with a
+        # clearly-labelled synthetic cooling estimate — so a drawn area NEVER 500s
+        # on a backend hiccup. Only a genuinely unplantable area returns an empty
+        # (still 200) result the UI can explain.
+        result: dict[str, Any] | None = None
+        backend = configured
+        attempts: list[str] = []
+        for be in dict.fromkeys([configured, "mock"]):
+            try:
+                r = smart_evaluate(
+                    geojson_text=poly_geojson, budget_eur=req.budget_eur, backend=be,
+                )
+            except Exception as exc:  # noqa: BLE001 — never let a backend fault 500 the draw flow
+                logger.warning("evaluate: backend=%s raised: %s", be, exc)
+                attempts.append(f"{be}: {exc}")
+                continue
+            if r.get("error") or not r.get("configurations"):
+                attempts.append(f"{be}: {r.get('error') or 'no configurations'}")
+                result = r  # keep the graceful empty payload from the last attempt
+                continue
+            result, backend = r, be
+            break
+
+        # No backend produced a plantable plan → return a clean, explainable 200
+        # (the area is genuinely unplantable, or every backend faulted), NOT a 500.
+        if result is None or result.get("error") or not result.get("configurations"):
+            base = result or {}
+            return {
+                "empty": True,
+                "backend": backend,
+                "headline": base.get("headline")
+                or "No plantable spots found in this area. Try a larger or less built-up block.",
+                "disclaimer": base.get("disclaimer")
+                or "Zero validated tree slots after removing buildings, roads and spacing.",
+                "reason": base.get("error") or "no plantable slots",
+                "attempts": attempts,
+                "site_polygon_lonlat": ring,
+                "configurations": [],
+            }
 
         _EVAL_DIR.mkdir(parents=True, exist_ok=True)
         export_web_bundle(result, out_dir=_EVAL_DIR, boundary_override_lonlat=ring)
@@ -228,23 +261,26 @@ def create_app() -> FastAPI:
         payload = _read_bundle_payload(_EVAL_DIR, "/eval_bundle")
 
         # Depave targeting: real impervious pavement + how much of it the proposed
-        # rank-1 canopy would shade ("depaved & cooled").
+        # rank-1 canopy would shade ("depaved & cooled"). Best-effort: a fault here
+        # must not sink an otherwise-valid result.
         from coolspend.ground_analysis import (  # noqa: PLC0415
             analyze_impervious, depaved_by_canopy, canopy_cover_fraction,
         )
-        impervious = analyze_impervious(ring, backend=backend)
-        rank1_trees = (result["configurations"][0] or {}).get("trees_lonlat", [])
-        depaved = depaved_by_canopy(impervious["geojson"], rank1_trees)
-        impervious["depaved_cooled_m2"] = depaved
-        # #2: permeable fraction if the pavement under the new canopy is depaved.
-        site_m2 = impervious.get("site_area_m2") or 0.0
-        if site_m2:
-            permeable_after = impervious.get("permeable_m2", 0.0) + depaved
-            impervious["permeable_fraction_if_depaved"] = round(permeable_after / site_m2, 3)
-        payload["impervious"] = impervious
-
-        # #1: real canopy-cover fraction vs the 30-40% climate-responsive target.
-        payload["canopy"] = canopy_cover_fraction(ring, rank1_trees)
+        try:
+            impervious = analyze_impervious(ring, backend=backend)
+            rank1_trees = (result["configurations"][0] or {}).get("trees_lonlat", [])
+            depaved = depaved_by_canopy(impervious["geojson"], rank1_trees)
+            impervious["depaved_cooled_m2"] = depaved
+            # #2: permeable fraction if the pavement under the new canopy is depaved.
+            site_m2 = impervious.get("site_area_m2") or 0.0
+            if site_m2:
+                permeable_after = impervious.get("permeable_m2", 0.0) + depaved
+                impervious["permeable_fraction_if_depaved"] = round(permeable_after / site_m2, 3)
+            payload["impervious"] = impervious
+            # #1: real canopy-cover fraction vs the 30-40% climate-responsive target.
+            payload["canopy"] = canopy_cover_fraction(ring, rank1_trees)
+        except Exception as exc:  # noqa: BLE001 — secondary analysis is best-effort
+            logger.warning("evaluate: ground analysis failed (non-fatal): %s", exc)
 
         # Growth/establishment ramp params (cost_model single source of truth) so
         # the frontend age slider uses the SAME sourced curve, not a new invention.
