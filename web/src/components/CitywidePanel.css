@@ -1,0 +1,101 @@
+/* Citywide Panel — bottom-left, mirrors the Result Card (Redesign Spec §4.6). */
+
+.city-panel {
+  position: absolute;
+  bottom: var(--s-5);
+  left: var(--s-5);
+  z-index: 13;
+  width: 400px;
+  max-width: calc(100vw - 2 * var(--s-5));
+  max-height: calc(100vh - 2 * var(--s-5));
+  overflow-y: auto;
+  padding: var(--s-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.cp-loading { display: flex; align-items: center; gap: var(--s-3); color: var(--ink-2); }
+
+.cp-head { display: flex; align-items: center; justify-content: space-between; }
+.cp-budget { font-family: var(--font-ui); font-size: var(--fs-md); font-weight: var(--fw-semi); color: var(--brand); }
+
+.cp-hero { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-3); }
+.cp-hero__stat { display: flex; flex-direction: column; gap: 2px; }
+.cp-hero__val {
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
+  color: var(--ink-0);
+  line-height: var(--lh-tight);
+}
+.cp-hero__cap { font-size: var(--fs-xs); color: var(--ink-3); }
+
+.cp-credibility {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-med);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-sm);
+}
+.cp-credibility.is-measured { background: var(--measured-bg); color: var(--measured); border: 1px solid var(--measured-border); }
+.cp-credibility.is-preview { background: var(--estimate-bg); color: var(--estimate); border: 1px solid var(--estimate-border); }
+
+.cp-rule { border: none; border-top: 1px solid var(--hairline); margin: 0; }
+
+.cp-board { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-1); }
+.cp-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-2);
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--ink-1);
+  font-family: var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
+}
+.cp-row:hover, .cp-row.is-selected {
+  background: var(--surface-3);
+  border-color: var(--hairline-strong);
+}
+.cp-row__rank {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--brand-deep);
+  color: var(--brand-bright);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+}
+.cp-row__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--s-1); }
+.cp-row__name {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semi);
+  color: var(--ink-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cp-row__bar { height: 6px; border-radius: var(--r-pill); background: var(--surface-3); overflow: hidden; }
+.cp-row__fill { display: block; height: 100%; background: var(--brand); border-radius: var(--r-pill); }
+.cp-row__fill.is-partial { background: var(--estimate); }
+.cp-row__spend { flex: 0 0 auto; font-size: var(--fs-xs); font-weight: var(--fw-semi); color: var(--ink-2); }
+.cp-row__chev { flex: 0 0 auto; color: var(--ink-3); }
+
+.cp-foot { font-size: var(--fs-xs); color: var(--ink-3); line-height: var(--lh-snug); }
+
+.cp-cta { display: flex; gap: var(--s-2); }
+.cp-cta .cs-btn { flex: 1; font-size: var(--fs-xs); padding: var(--s-2) var(--s-3); }
+
+@media (max-width: 640px) {
+  .city-panel { left: var(--s-3); right: var(--s-3); width: auto; bottom: var(--s-3); }
+}

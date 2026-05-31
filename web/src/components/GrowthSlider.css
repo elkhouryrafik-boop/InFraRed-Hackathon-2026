@@ -1,0 +1,66 @@
+/* GrowthSlider — docked inside the Result Card (Redesign Spec §4.5).
+   No fixed positioning here; the parent card lays it out. */
+
+.growth-slider {
+  width: 100%;
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+.growth-slider__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: var(--s-2);
+}
+.growth-slider__label {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--ink-3);
+}
+.growth-slider__year { display: flex; align-items: baseline; gap: var(--s-2); }
+.growth-slider__year strong { font-size: var(--fs-md); color: var(--brand); }
+.growth-slider__pct { color: var(--ink-2); }
+
+.growth-slider input[type='range'] {
+  width: 100%;
+  height: 6px;
+  border-radius: var(--r-pill);
+  appearance: none;
+  -webkit-appearance: none;
+  outline-offset: 4px;
+  cursor: pointer;
+}
+.growth-slider input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--brand);
+  border: 2px solid var(--brand-ink);
+  box-shadow: var(--sh-glow);
+  cursor: pointer;
+}
+.growth-slider input[type='range']::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--brand);
+  border: 2px solid var(--brand-ink);
+  cursor: pointer;
+}
+
+.growth-slider__ticks {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  margin-top: var(--s-1);
+}
+.growth-slider__stat {
+  margin-top: var(--s-2);
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  line-height: var(--lh-snug);
+}

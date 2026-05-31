@@ -1,0 +1,134 @@
+/* Action Rail — right-edge vertical icon rail + anchored popovers (§4.4). */
+
+.action-rail-wrap {
+  position: absolute;
+  top: 50%;
+  right: var(--s-5);
+  transform: translateY(-50%);
+  z-index: 13;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: flex-start;
+  gap: var(--s-3);
+}
+
+.action-rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-2);
+  border-radius: var(--r-lg);
+}
+
+.rail-btn {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  background: var(--surface-3);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease-out),
+              color var(--t-fast) var(--ease-out),
+              box-shadow var(--t-fast) var(--ease-out);
+}
+.rail-btn__icon { font-size: 20px; line-height: 1; }
+.rail-btn:hover:not(:disabled) { background: rgba(59, 232, 192, 0.12); color: var(--ink-1); }
+.rail-btn.is-active {
+  background: rgba(59, 232, 192, 0.18);
+  border-color: var(--brand);
+  color: var(--ink-0);
+  box-shadow: var(--sh-glow);
+}
+.rail-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Popovers anchored to the left of the rail. */
+.rail-popover,
+.rail-eval {
+  width: 280px;
+  padding: var(--s-4);
+  border-radius: var(--r-lg);
+}
+
+.rail-popover__title {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--ink-3);
+  margin-bottom: var(--s-2);
+}
+
+.rail-toggle {
+  display: flex;
+  background: var(--surface-3);
+  border-radius: var(--r-md);
+  padding: 3px;
+  margin-bottom: var(--s-3);
+}
+.rail-toggle__btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semi);
+  padding: var(--s-2) 0;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.rail-toggle__btn.is-active { background: var(--brand-deep); color: var(--ink-0); }
+
+.rail-opacity {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+.rail-opacity input[type='range'] { flex: 1; accent-color: var(--brand); }
+
+/* Evaluate popover. */
+.rail-eval__area {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  margin-bottom: var(--s-2);
+}
+.rail-eval__area strong { font-size: var(--fs-lg); color: var(--ink-0); }
+.rail-eval__area--ok strong { color: var(--brand); }
+.rail-eval__area--too_large strong,
+.rail-eval__area--too_small strong { color: var(--danger); }
+.rail-eval__cap { font-size: var(--fs-xs); color: var(--ink-3); }
+
+.rail-eval__detect {
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  min-height: 18px;
+  margin-bottom: var(--s-3);
+}
+.rail-eval__depave { display: block; margin-top: var(--s-1); color: var(--estimate); }
+
+.rail-eval__budget {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  margin-bottom: var(--s-3);
+}
+.rail-eval__budget input { width: 100%; margin-top: var(--s-2); accent-color: var(--brand); }
+
+.rail-eval__go { width: 100%; }
+
+.rail-eval__error {
+  margin-top: var(--s-3);
+  font-size: var(--fs-xs);
+  color: var(--danger);
+  word-break: break-word;
+}
+
+@media (max-width: 640px) {
+  .action-rail-wrap { top: auto; bottom: var(--s-4); right: var(--s-3); transform: none; }
+}

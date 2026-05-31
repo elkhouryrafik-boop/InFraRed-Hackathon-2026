@@ -24,13 +24,19 @@ export interface ColorStop {
  *   32-38 : strong heat stress
  *   38-46 : very strong heat stress
  *   > 46  : extreme heat stress
+ *
+ * Colours are the Redesign Spec v4 §2 CVD-SAFE, MONOTONIC-LIGHTNESS ramp:
+ * hot = bright, cool = dark, so the scale survives deuteran/protan/tritan
+ * colour-vision deficiency and pure greyscale (B1 release-blocker). The
+ * value/label anchors (26/32/38/46) are preserved so the legend still reads
+ * like the UTCI literature.
  */
 export const UTCI_STOPS: ColorStop[] = [
-  { value: 18, color: [49, 54, 149], label: 'Comfortable' },
-  { value: 26, color: [69, 117, 180], label: 'No stress' },
-  { value: 32, color: [254, 224, 144], label: 'Moderate' },
-  { value: 38, color: [253, 141, 60], label: 'Strong' },
-  { value: 46, color: [215, 48, 39], label: 'Extreme' },
+  { value: 18, color: [13, 33, 73], label: 'Comfortable' }, // --t-20 (dark indigo)
+  { value: 26, color: [58, 77, 160], label: 'No stress' }, // --t-24
+  { value: 32, color: [181, 73, 122], label: 'Moderate' }, // --t-32 (magenta)
+  { value: 38, color: [249, 168, 37], label: 'Strong' }, // --t-38 (amber)
+  { value: 46, color: [252, 232, 79], label: 'Extreme' }, // --t-40 (bright yellow)
 ]
 
 export const UTCI_MIN = UTCI_STOPS[0].value
@@ -90,6 +96,29 @@ export function utciGradientCss(steps = 24): string {
     parts.push(`${utciCssColor(value)} ${(t * 100).toFixed(1)}%`)
   }
   return `linear-gradient(90deg, ${parts.join(', ')})`
+}
+
+/**
+ * Alpha-by-intensity (Redesign Spec §4.9-3): comfortable cells ≈0.35, extreme
+ * cells ≈0.9. Danger glows; safe zones let the city show through. This is the
+ * single change that "kills the flat blob". Input is a 0..1 intensity (e.g. a
+ * normalised composite score or normalised UTCI); output is 0..1 alpha.
+ */
+export function alphaByIntensity(t: number): number {
+  const v = clamp(t, 0, 1)
+  return 0.35 + 0.55 * v
+}
+
+/** UTCI °C → 0..1 intensity across the ramp range (for alphaByIntensity). */
+export function utciIntensity(value: number): number {
+  if (!Number.isFinite(value)) return 0
+  return (clamp(value, UTCI_MIN, UTCI_MAX) - UTCI_MIN) / (UTCI_MAX - UTCI_MIN)
+}
+
+/** UTCI °C → [r,g,b,a] with alpha ramped by intensity (luminous thermal field). */
+export function utciRgba(value: number): [number, number, number, number] {
+  const [r, g, b] = utciColor(value)
+  return [r, g, b, Math.round(alphaByIntensity(utciIntensity(value)) * 255)]
 }
 
 /** Muted olive colour for pre-existing trees (per app spec). */

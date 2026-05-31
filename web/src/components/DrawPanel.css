@@ -276,60 +276,8 @@
   color: #6f8a84;
 }
 
-/* Growth / age slider — bottom centre. */
-.growth-slider {
-  position: absolute;
-  bottom: 18px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 11;
-  width: 340px;
-  max-width: calc(100vw - 36px);
-  padding: 12px 16px 14px;
-  border-radius: 14px;
-  color: #eaf2f0;
-  background: rgba(13, 20, 26, 0.72);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  border: 1px solid rgba(120, 200, 190, 0.18);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
-  font-size: 12px;
-}
-.growth-slider__head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 6px;
-}
-.growth-slider__label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #8aa6a0;
-}
-.growth-slider__year {
-  font-size: 15px;
-  font-weight: 650;
-  color: #46f0c8;
-}
-.growth-slider input {
-  width: 100%;
-  accent-color: #46f0c8;
-}
-.growth-slider__stat {
-  margin-top: 6px;
-  font-size: 12px;
-  color: #cfe6e0;
-}
-.growth-slider__stat strong {
-  color: #ffffff;
-}
-.growth-slider__note {
-  display: block;
-  font-size: 10px;
-  color: #6f8a84;
-  margin-top: 2px;
-}
+/* (Old .growth-slider chrome removed — GrowthSlider.css now owns it, docked
+   inside the Result Card per Redesign Spec §4.5.) */
 
 /* Citywide bar — bottom, shows top-ranked cells. */
 .city-plan {

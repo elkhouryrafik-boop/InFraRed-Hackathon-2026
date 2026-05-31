@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
+import './styles/tokens.css' // design tokens + shared .panel/.tile/.vignette — MUST be first
 import './components/Hud.css' // global: HUD + overlays + spinner styles
 import './components/DrawPanel.css' // draw / "design anywhere" control panel
 

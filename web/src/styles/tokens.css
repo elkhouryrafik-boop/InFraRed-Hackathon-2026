@@ -1,0 +1,172 @@
+/* CoolSpend design tokens — Redesign Spec v4 §2 (paste-ready).
+   These supersede every inline hex in Hud.css / DrawPanel.css / TreeInspect.css. */
+
+:root {
+  /* ─── BRAND / ACCENT (mint = "the answer / the active thing"; use SPARINGLY) ─── */
+  --brand:        #3BE8C0;   --brand-bright: #5FF6D6;
+  --brand-deep:   #0E5C50;   --brand-ink:    #042B25;   /* text ON a mint button */
+
+  /* ─── INK (text on dark) — all pre-cleared on --surface-1 (see §6) ─── */
+  --ink-0: #FFFFFF;   /* hero numbers only (~15:1) */
+  --ink-1: #EAF3F1;   /* primary text */
+  --ink-2: #C2D2DA;   /* secondary / labels (~9:1) */
+  --ink-3: #8FA6B0;   /* MINIMUM allowed text — captions/units (~4.6:1). Nothing dimmer for text. */
+  --ink-4: #46615B;   /* hairlines / disabled only — NEVER text */
+
+  /* ─── SURFACES — near-opaque so text never relies on the map for contrast (A1) ─── */
+  --bg:            #060B0E;
+  --surface-1:     rgba(11, 31, 42, 0.93);   /* primary panels — ≥92% opacity (A1 release-blocker) */
+  --surface-2:     rgba(18, 28, 33, 0.90);   /* nested cards */
+  --surface-3:     rgba(255,255,255,0.06);   /* flat inner wells, slider tracks */
+  --surface-scrim: rgba(4, 8, 10, 0.62);     /* onboarding / dialog backdrop */
+  --map-pill:      rgba(11, 31, 42, 0.85);   /* scrim for any label floating on the map (A1) */
+  --hairline:        rgba(140, 200, 190, 0.18);
+  --hairline-strong: rgba(140, 200, 190, 0.30);
+
+  /* ─── DATA RAMP — UTCI 20→40 °C, CVD-SAFE, MONOTONIC LIGHTNESS (B1 release-blocker) ─── */
+  /* hot = bright, cool = dark. Survives deuteran/protan/tritan + greyscale. Replaces RdYlBu_r. */
+  --t-20: #0D2149;  --t-24: #3A4DA0;  --t-28: #6A5ACD;  --t-32: #B5497A;
+  --t-36: #E8602C;  --t-38: #F9A825;  --t-40: #FCE84F;
+  --ramp-utci: linear-gradient(90deg,
+      #0D2149 0%, #3A4DA0 20%, #6A5ACD 40%, #B5497A 60%, #E8602C 80%, #F9A825 90%, #FCE84F 100%);
+  /* diverging ramp ONLY for ΔUTCI cooling effect (B3): teal ↔ neutral ↔ magenta (never red–green) */
+  --ramp-delta: linear-gradient(90deg, #1A9988 0%, #F0EAD6 50%, #A6207A 100%);
+
+  /* ─── SEMANTIC / CREDIBILITY (measured mint vs estimate amber — NEVER both at once) ─── */
+  --success: #3BE8C0;  --warn: #F0B968;  --danger: #FF7A66;  --info: #6FB6E8;
+  --measured: #3BE8C0;  --measured-bg: rgba(59,232,192,0.14);  --measured-border: rgba(59,232,192,0.55);
+  --estimate: #F0B968;  --estimate-bg: rgba(240,185,104,0.13); --estimate-border: rgba(240,185,104,0.50);
+  --tree-proposed: #3BE8C0;  --tree-existing: #738C6B;   /* = EXISTING_TREE_COLOR [115,140,107] */
+
+  /* ─── TYPE — Fraunces (editorial serif, hero numbers+headline) + Inter (UI) + IBM Plex Mono ─── */
+  --font-display: 'Fraunces','Spectral',Georgia,serif;
+  --font-ui:      'Inter',system-ui,-apple-system,sans-serif;
+  --font-mono:    'IBM Plex Mono','JetBrains Mono',monospace;
+  /* scale: ratio 1.25, base 16. FLOOR for meaningful text = 14px (E1 release-blocker). */
+  --fs-xs:  0.875rem;  /* 14px  MIN — captions, units, legend ticks */
+  --fs-sm:  1rem;      /* 16px  body, controls (also prevents iOS input zoom) */
+  --fs-md:  1.125rem;  /* 18px  emphasised body */
+  --fs-lg:  1.25rem;   /* 20px  secondary KPI value */
+  --fs-xl:  1.75rem;   /* 28px  panel title */
+  --fs-2xl: 2.5rem;    /* 40px  big KPI — hero FLOOR (E1) */
+  --fs-3xl: 3.75rem;   /* 60px  HERO Cool Score / felt-temp */
+  --fs-4xl: 5rem;      /* 80px  onboarding headline */
+  --fw-reg:400; --fw-med:500; --fw-semi:600; --fw-bold:700;
+  --lh-tight:1.05; --lh-snug:1.22; --lh-body:1.5;   /* body ≥1.4 (E1) */
+  --tracking-label:0.10em; --tracking-tight:-0.02em;
+
+  /* ─── SPACING (4px base) ─── */
+  --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:20px; --s-6:24px;
+  --s-8:32px; --s-10:40px; --s-12:48px; --s-16:64px;
+
+  /* ─── RADII / ELEVATION / BLUR ─── */
+  --r-sm:8px; --r-md:12px; --r-lg:18px; --r-xl:24px; --r-pill:999px;
+  --sh-1:0 2px 8px rgba(0,0,0,.35); --sh-2:0 12px 32px rgba(0,0,0,.45); --sh-3:0 24px 64px rgba(0,0,0,.55);
+  --sh-glow:0 0 24px rgba(59,232,192,.35); --sh-inset-top:inset 0 1px 0 rgba(255,255,255,.06);
+  --blur-panel:20px; --blur-chip:12px; --saturate:135%;
+
+  /* ─── MOTION (all gated by prefers-reduced-motion, §6 D1) ─── */
+  --ease-out:cubic-bezier(.22,1,.36,1); --ease-inout:cubic-bezier(.65,0,.35,1);
+  --ease-spring:cubic-bezier(.34,1.56,.64,1);
+  --t-fast:140ms; --t-base:240ms; --t-slow:420ms; --t-flyto:1200ms;  /* flyto ≤1.2s (D5) */
+
+  /* ─── FOCUS RING (C3 release-blocker, ≥3:1, ≥2px) ─── */
+  --focus-ring: #9FE8FF;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SHARED VISUAL SYSTEM — the one glass .panel, the flat .tile, the vignette.
+   §7-2: "define the one .panel glass + flat .tile + vignette."
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Near-opaque dark glass — the single panel surface (A1: ≥92% opaque). */
+.panel {
+  color: var(--ink-1);
+  background: var(--surface-1);
+  -webkit-backdrop-filter: blur(var(--blur-panel)) saturate(var(--saturate));
+  backdrop-filter: blur(var(--blur-panel)) saturate(var(--saturate));
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-2), var(--sh-inset-top);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+}
+
+/* Flat inner well — KPI tiles, slider tracks. No blur (it sits inside a .panel). */
+.tile {
+  background: var(--surface-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  padding: var(--s-3) var(--s-4);
+}
+
+/* Cinematic spotlight overlay above the map, below the UI (§5). Non-interactive. */
+.vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 42%,
+              transparent 38%, rgba(4, 8, 10, 0.55) 100%);
+  transition: opacity var(--t-slow) var(--ease-inout);
+}
+
+/* Eyebrow / label microtype, used across panels (◖ EL RAVAL BLOCK style). */
+.eyebrow {
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semi);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--brand);
+}
+
+/* Tabular numerals everywhere a value can tween (no jitter). */
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* Visible focus ring on every control (C3). */
+.panel :focus-visible,
+.mode-switch :focus-visible,
+.action-rail :focus-visible,
+.onboarding :focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Shared primary / ghost buttons in the new system. */
+.cs-btn {
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semi);
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  padding: var(--s-3) var(--s-5);
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease-out),
+              transform var(--t-fast) var(--ease-out),
+              box-shadow var(--t-fast) var(--ease-out);
+}
+.cs-btn--primary {
+  background: var(--brand);
+  color: var(--brand-ink);
+  box-shadow: var(--sh-glow);
+}
+.cs-btn--primary:hover:not(:disabled) { background: var(--brand-bright); }
+.cs-btn--primary:disabled {
+  background: rgba(59, 232, 192, 0.25);
+  color: rgba(4, 43, 37, 0.55);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+.cs-btn--ghost {
+  background: var(--surface-3);
+  color: var(--ink-1);
+  border-color: var(--hairline-strong);
+}
+.cs-btn--ghost:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); }
+
+@media (prefers-reduced-motion: reduce) {
+  .vignette,
+  .cs-btn { transition: none; }
+}

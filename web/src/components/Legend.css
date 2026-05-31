@@ -1,0 +1,51 @@
+/* Legend — gradient key (§4.8). Sits in .legend-dock (bottom-right). */
+
+.legend {
+  width: 220px;
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-md);
+}
+.legend__title {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--ink-3);
+  margin-bottom: var(--s-2);
+}
+.legend__bar {
+  position: relative;
+  height: 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--hairline);
+  background: var(--ramp-utci);
+  overflow: hidden;
+}
+/* Hatch over the hot ≥38 °C band (right ~13% of the 20→46 range). */
+.legend__hatch {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 31%; /* (46-38)/(46-20) ≈ 0.31 */
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(0, 0, 0, 0.35) 0,
+    rgba(0, 0, 0, 0.35) 1.5px,
+    transparent 1.5px,
+    transparent 4px
+  );
+}
+.legend__scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  margin-top: var(--s-1);
+}
+.legend__ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  margin-top: 2px;
+}

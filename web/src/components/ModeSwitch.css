@@ -1,0 +1,51 @@
+/* Mode Switch — top-center floating pill (Redesign Spec §4.3). */
+
+.mode-switch {
+  position: absolute;
+  top: var(--s-5);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 14;
+  display: flex;
+  gap: 0;
+  padding: var(--s-1);
+  border-radius: var(--r-pill);
+  /* override .panel radius to a pill */
+}
+
+.mode-switch__thumb {
+  position: absolute;
+  top: var(--s-1);
+  left: var(--s-1);
+  width: calc(50% - var(--s-1));
+  height: calc(100% - var(--s-2));
+  border-radius: var(--r-pill);
+  background: var(--brand);
+  box-shadow: var(--sh-glow);
+  transition: transform var(--t-base) var(--ease-spring);
+  pointer-events: none;
+}
+
+.mode-switch__seg {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  white-space: nowrap;
+  border: none;
+  background: transparent;
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semi);
+  color: var(--ink-2);
+  padding: var(--s-2) var(--s-5);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  transition: color var(--t-fast) var(--ease-out);
+}
+.mode-switch__seg.is-active {
+  color: var(--brand-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mode-switch__thumb { transition: none; }
+}

@@ -50,6 +50,7 @@ export interface Decision {
 
 // ── Citywide €1M multi-site plan (web/public/citywide_plan.json) ──────────────
 export interface CityPlanSite {
+  rank: number
   cell_id: string
   district: string
   barri: string
@@ -66,6 +67,7 @@ export interface CityPlanSite {
 
 export interface CityPlan {
   allocated_count: number
+  total_cells_scanned?: number
   total_trees: number
   total_allocated_eur: number
   budget_eur: number
@@ -74,6 +76,7 @@ export interface CityPlan {
   total_person_degrees: number | null
   total_cooled_footprint_m2?: number
   total_cooled_m2_proxy?: number
+  avg_cost_per_m2_cooled?: number
   // "measured_utci" | "shade_proxy_estimate" | "heat_vulnerability"
   cooling_source?: string
   cooling_is_measured?: boolean
@@ -225,6 +228,22 @@ export interface CitywideScan {
 
 /** App display mode: draw (Mode 1) or citywide overview (Mode 2). */
 export type AppMode = 'draw' | 'citywide'
+
+/**
+ * Phase machine (Redesign Spec §3.1) — the single source of truth that absorbs
+ * the loose `appMode` and gates which contextual surface is mounted.
+ *   intro    : one-time skippable onboarding heat reveal
+ *   design   : free-pan draw tool (Mode Switch + Action Rail)
+ *   result   : evaluated site, Result Card + docked Growth Slider
+ *   citywide : €1M overview, Citywide Panel
+ */
+export type Phase = 'intro' | 'design' | 'result' | 'citywide'
+
+/**
+ * Camera authority (Redesign Spec §5). 'auto' runs scripted flyTo/jumpTo; the
+ * first user drag/zoom flips to 'user' and cancels any in-flight flight.
+ */
+export type CameraMode = 'auto' | 'user'
 
 export interface WebBundle {
   decision: Decision

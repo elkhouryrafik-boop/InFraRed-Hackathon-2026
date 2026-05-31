@@ -1,0 +1,108 @@
+/* Onboarding — full-bleed guided heat reveal over the live map (§4.1). */
+
+.onboarding {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+}
+
+.onboarding__scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--surface-scrim);
+  /* deeper at the bottom-left where the copy sits, so text always clears (A1) */
+  background: linear-gradient(
+    105deg,
+    rgba(4, 8, 10, 0.82) 0%,
+    rgba(4, 8, 10, 0.62) 45%,
+    rgba(4, 8, 10, 0.30) 100%
+  );
+}
+
+.onboarding__skip {
+  position: absolute;
+  top: var(--s-5);
+  right: var(--s-6);
+  z-index: 2;
+  border: 1px solid var(--hairline-strong);
+  background: var(--map-pill);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semi);
+  padding: var(--s-2) var(--s-4);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+}
+.onboarding__skip:hover { color: var(--ink-0); }
+
+.onboarding__content {
+  position: relative;
+  z-index: 1;
+  max-width: 640px;
+  padding: var(--s-12) var(--s-12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.onboarding__eyebrow { margin-bottom: var(--s-2); }
+
+.onboarding__headline {
+  font-family: var(--font-display);
+  font-weight: var(--fw-semi);
+  font-size: var(--fs-4xl);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--ink-0);
+  margin: 0;
+}
+
+.onboarding__subline {
+  font-family: var(--font-ui);
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semi);
+  color: var(--brand);
+}
+
+.onboarding__body {
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  line-height: var(--lh-body);
+  color: var(--ink-2);
+  max-width: 46ch;
+  margin: 0;
+}
+
+.onboarding__actions { display: flex; gap: var(--s-3); flex-wrap: wrap; margin-top: var(--s-2); }
+
+.onboarding__proof {
+  display: flex;
+  gap: var(--s-5);
+  flex-wrap: wrap;
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  margin-top: var(--s-3);
+}
+.onboarding__proof span::first-letter { color: var(--brand); }
+
+.onboarding__dots { display: flex; gap: var(--s-2); margin-top: var(--s-2); }
+.onboarding__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink-4);
+  transition: background var(--t-base) var(--ease-out);
+}
+.onboarding__dot.is-active { background: var(--brand); box-shadow: var(--sh-glow); }
+
+@media (max-width: 640px) {
+  .onboarding__content { padding: var(--s-8) var(--s-6); }
+  .onboarding__headline { font-size: var(--fs-2xl); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding__dot { transition: none; }
+}
