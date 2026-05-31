@@ -154,6 +154,20 @@ def get_ecology(scientific: str) -> Ecology | None:
     return _BY_NAME.get(_norm_key(scientific))
 
 
+# Typical urban time-to-near-mature-canopy by growth rate (years). Arboricultural
+# consensus / i-Tree establishment ranges; consistent with the climate-responsive
+# skill's "trees at 8–10 m create continuous canopy at maturity (20–30 years)".
+# This is what makes the "years after planting" growth species-specific rather than
+# one flat ramp — a fast Tipuana fills its crown ~2× sooner than a slow Cercis.
+_MATURITY_YEARS = {"fast": 20, "medium": 30, "slow": 40}
+
+
+def maturity_years(scientific: str) -> int:
+    """Years to near-mature canopy for a species (from its growth_rate band)."""
+    e = get_ecology(scientific)
+    return _MATURITY_YEARS.get(e.growth_rate if e else "medium", 30)
+
+
 def is_plantable(scientific: str) -> bool:
     """Whether a species may be used for NEW plantings in Barcelona.
 
@@ -185,6 +199,7 @@ def ecology_public(scientific: str) -> dict | None:
         "pest_disease_risk": e.pest_disease_risk,
         "longevity_years": e.longevity_years,
         "growth_rate": e.growth_rate,
+        "maturity_years": _MATURITY_YEARS.get(e.growth_rate, 30),
         "water_demand": e.water_demand,
         "maintenance_burden": e.maintenance_burden,
         "carbon_sequestration": e.carbon_sequestration,

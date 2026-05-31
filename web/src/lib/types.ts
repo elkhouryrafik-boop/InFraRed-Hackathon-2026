@@ -107,6 +107,7 @@ export interface TreeEcology {
   pest_disease_risk?: number // higher = worse
   longevity_years?: number
   growth_rate?: string
+  maturity_years?: number // years to near-mature canopy (from growth_rate band)
   water_demand?: string
   maintenance_burden?: string
   carbon_sequestration?: number

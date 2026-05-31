@@ -94,6 +94,11 @@ function EcologyBlock({ eco }: { eco: TreeEcology }) {
           <span className="tin__chip">~{eco.longevity_years} yr lifespan</span>
         )}
         {eco.growth_rate && <span className="tin__chip">{eco.growth_rate} growth</span>}
+        {eco.maturity_years != null && (
+          <span className="tin__chip" title="Typical urban time to near-mature canopy (from growth rate)">
+            ~{eco.maturity_years} yr to mature canopy
+          </span>
+        )}
         {eco.water_demand && <span className="tin__chip">{eco.water_demand} water</span>}
         {eco.maintenance_burden && (
           <span className="tin__chip">{eco.maintenance_burden} upkeep</span>
