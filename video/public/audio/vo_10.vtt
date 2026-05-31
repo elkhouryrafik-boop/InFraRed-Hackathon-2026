@@ -1,0 +1,40 @@
+1
+00:00:00,100 --> 00:00:03,275
+And here is the idea we are proudest of.
+
+2
+00:00:03,225 --> 00:00:08,900
+Most prototypes blur the line between a number that was computed and a number that was merely hoped for.
+
+3
+00:00:08,900 --> 00:00:12,525
+CoolSpend forces that line into the code itself.
+
+4
+00:00:12,525 --> 00:00:17,600
+Every result comes from one of three backends, chosen by a single setting.
+
+5
+00:00:17,600 --> 00:00:24,287
+Mock is a clearly fake preview: it makes zero network calls and stamps every output "not measured data.
+
+6
+00:00:24,287 --> 00:00:34,037
+Cached replays a real prior run, matched by a hash of the exact geometry; if there's no match, it raises an error — it never quietly falls back to the fake one.
+
+7
+00:00:34,037 --> 00:00:39,512
+Live calls the real Infrared engine, then writes its answer to the cache for replay.
+
+8
+00:00:39,512 --> 00:00:45,450
+And every number wears a provenance tag — verified, declared, or requires-verification.
+
+9
+00:00:45,450 --> 00:00:50,462
+The interface will not say "measured" unless a real thermal grid sits behind it.
+
+10
+00:00:50,462 --> 00:00:54,862
+The discipline is simple: never report a number we did not compute.
+

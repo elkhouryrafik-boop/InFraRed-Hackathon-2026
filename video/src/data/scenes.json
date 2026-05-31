@@ -1,0 +1,938 @@
+[
+  {
+    "id": "01-the-heat-and-the-decision",
+    "title": "The Hottest Block in Barcelona",
+    "start_seconds": 0,
+    "seconds": 60,
+    "vo_text": "Cities are warmer than the land around them. We call it the urban heat island: the built city runs hotter than the countryside, because dark, sealed surfaces soak up the sun all day, and there is little vegetation left to cool the air by evaporation. And heat is among the deadliest of all climate hazards. But it does not fall evenly. The hottest blocks in Barcelona are the most paved, the least green, and often the most densely lived-in, all at once. Meet the person who has to act on that map — a city's Chief Heat Officer. One fixed budget. A heatwave coming. And a single, unforgiving question: of all these streets, where do we plant the trees?",
+    "captions": [
+      {
+        "text": "Cities run hotter than the countryside"
+      },
+      {
+        "text": "The urban heat island"
+      },
+      {
+        "text": "Dark sealed surfaces store the sun"
+      },
+      {
+        "text": "Too little greenery to cool the air"
+      },
+      {
+        "text": "Heat is a deadly hazard"
+      },
+      {
+        "text": "But it is not shared evenly"
+      },
+      {
+        "text": "Hottest blocks: most paved"
+      },
+      {
+        "text": "Least green, most densely inhabited"
+      },
+      {
+        "text": "Meet the Chief Heat Officer"
+      },
+      {
+        "text": "One fixed budget"
+      },
+      {
+        "text": "A heatwave coming"
+      },
+      {
+        "text": "Where do we plant the trees?"
+      }
+    ],
+    "on_screen_text": [
+      "THE HOTTEST BLOCK IN BARCELONA",
+      "URBAN HEAT ISLAND",
+      "most sealed - least green - most inhabited",
+      "ONE BUDGET. WHERE DO WE PLANT?"
+    ],
+    "term_glosses": [
+      {
+        "term": "urban heat island",
+        "plain": "Cities run hotter than the surrounding countryside because dark, sealed surfaces store daytime heat and there is little vegetation left to evaporate it away."
+      },
+      {
+        "term": "Chief Heat Officer",
+        "plain": "A city official responsible for protecting residents from extreme heat, who must decide how to spend a fixed budget before a heatwave hits."
+      }
+    ],
+    "shot": {
+      "type": "higgsfield",
+      "higgsfield_prompt": "Cinematic climate-documentary aerial drift over a dense Mediterranean city at the peak of a summer afternoon, Barcelona-like grid of tight blocks and bare paved plazas shimmering in heat haze, asphalt and stone radiating warmth, almost no trees, a few green pockets standing out as cool oases; slow descending push toward one sun-blasted treeless plaza where heat distortion ripples off the pavement; light is harsh, high overhead sun, oppressive stillness; cool teal-green grade in the shaded corners against hot bleached concrete, restrained and serious, shallow depth, subtle volumetric haze; no people in focus, no on-screen text, no logos, no maps."
+    }
+  },
+  {
+    "id": "02-what-people-actually-feel",
+    "title": "UTCI: Measuring What People Feel",
+    "start_seconds": 60,
+    "seconds": 55,
+    "vo_text": "And to act on it, you first have to measure heat the way a body does. A thermometer reads the air. But a body on a sunlit plaza feels something else entirely. The pavement, the walls, the sky all radiate heat onto your skin — and that radiant load, not the air, is the biggest driver of daytime discomfort. So CoolSpend judges every plan on UTCI, the Universal Thermal Climate Index. UTCI folds four things into one number in degrees Celsius: air temperature, radiant heat off hot surfaces, wind, and humidity. It is, in short, what a body actually feels. Above twenty-six degrees, comfort tips into moderate heat stress. We evaluate it where it matters — a July day, nine to five, at one-point-one metres, the height of a walking person. And here is the lever: shade attacks the radiant term directly. Cool the surfaces, and you cool the person.",
+    "captions": [
+      {
+        "text": "First, measure heat like a body does"
+      },
+      {
+        "text": "A thermometer reads the air"
+      },
+      {
+        "text": "A body feels something else"
+      },
+      {
+        "text": "Pavement and walls radiate heat"
+      },
+      {
+        "text": "Radiant heat drives daytime discomfort"
+      },
+      {
+        "text": "So we judge plans on UTCI"
+      },
+      {
+        "text": "Air, radiant heat, wind, humidity"
+      },
+      {
+        "text": "One number for what you feel"
+      },
+      {
+        "text": "Above 26 C: moderate heat stress"
+      },
+      {
+        "text": "July, 9 to 5, at 1.1m"
+      },
+      {
+        "text": "Shade attacks the radiant term"
+      },
+      {
+        "text": "Cool surfaces, cool the person"
+      }
+    ],
+    "on_screen_text": [
+      "UTCI",
+      "°C = what a body feels",
+      "26 °C",
+      "July 09:00–17:00 · 1.1 m",
+      "SHADE → radiant heat"
+    ],
+    "term_glosses": [
+      {
+        "term": "UTCI / Universal Thermal Climate Index",
+        "plain": "One number, in degrees Celsius, for what a body actually feels: it folds air temperature, radiant heat off hot surfaces, wind, and humidity into a single value."
+      },
+      {
+        "term": "Mean radiant temperature",
+        "plain": "The heat radiating off sunlit pavement and walls — the biggest driver of daytime discomfort, and exactly what shade removes."
+      },
+      {
+        "term": "26 °C UTCI threshold",
+        "plain": "The boundary between no thermal stress and moderate heat stress; above it, comfort starts to break down."
+      }
+    ],
+    "shot": {
+      "type": "dataviz",
+      "dataviz_spec": "Remotion motion graphic, cool documentary palette (deep teal-to-amber on near-black). BEAT 1 (0-9s): a single thermometer fills frame showing a calm air reading (~31°C); a translucent human silhouette stands beside it on a plaza tile. Animated wavy arrows of heat radiate UP from the pavement and IN from side walls onto the silhouette's skin — label these arrows 'RADIANT HEAT' and grow them larger/redder than a small wind arrow and a humidity droplet, establishing radiant heat as dominant. BEAT 2 (9-32s): the four inputs — thermometer (air temp), radiant arrows, a wind streamline, a humidity droplet — slide in and FUNNEL into a single rounded chip that lands as the big label 'UTCI' with subtitle 'what a body actually feels (°C)'. Keep the radiant-heat input visibly weighted heaviest as it merges. BEAT 3 (32-43s): a vertical UTCI gauge sweeps upward; a hard tick at '26 °C' splits it into a calm lower band 'no thermal stress' and a warmer upper band 'moderate heat stress'; the needle settles just into the warm band. Pin an evaluation-window stamp: 'July 09:00–17:00 · 1.1 m (pedestrian height)'. BEAT 4 (43-55s): the silhouette returns on the hot plaza; a tree canopy slides in to cast a shadow over it; the upward radiant arrows under the shadow dim and shorten while air/wind/humidity icons stay unchanged, and the UTCI needle eases back toward the 26°C line. End card text: 'SHADE → cuts radiant heat → cuts UTCI'. No logos, no photoreal footage, clean typographic motion only."
+    }
+  },
+  {
+    "id": "03-four-real-data-sources",
+    "title": "Four Real Maps of a Real City",
+    "start_seconds": 115,
+    "seconds": 60,
+    "vo_text": "A model is only as honest as the maps beneath it. CoolSpend stands on four real, independently sourced layers of Barcelona. The first is a satellite vulnerability grid: four hundred and ninety-four cells, each roughly four hundred metres across. Landsat reads land-surface temperature. Sentinel-one radar reads sealed, paved ground. And Sentinel-two reads NDVI — a satellite greenness index, where low values mean little existing vegetation. Together they answer where to look — not how much a plan will cool. Second, OpenStreetMap gives real building, road and street-furniture geometry, so no tree lands on a roof or in traffic. Third, Barcelona's arbrat-viari street-tree inventory supplies a twelve-species candidate table. And fourth, the Padró municipal register: one million, seven hundred and two thousand, eight hundred and fourteen residents, across seventy-three neighbourhoods. Four maps. One real city.",
+    "captions": [
+      {
+        "text": "Only as honest as its maps"
+      },
+      {
+        "text": "Four real layers of Barcelona"
+      },
+      {
+        "text": "494 vulnerability cells, ~400m each"
+      },
+      {
+        "text": "Landsat: land-surface temperature"
+      },
+      {
+        "text": "Sentinel-1 radar: sealed ground"
+      },
+      {
+        "text": "Sentinel-2: NDVI greenness"
+      },
+      {
+        "text": "Tells you WHERE to look"
+      },
+      {
+        "text": "OpenStreetMap geometry"
+      },
+      {
+        "text": "No tree on a roof"
+      },
+      {
+        "text": "Arbrat-viari: 12-species table"
+      },
+      {
+        "text": "Padró: 1,702,814 residents"
+      },
+      {
+        "text": "Across 73 neighbourhoods"
+      },
+      {
+        "text": "Four maps. One real city."
+      }
+    ],
+    "on_screen_text": [
+      "FOUR REAL MAPS",
+      "494 cells · ~400 m",
+      "Landsat · Sentinel-1 · Sentinel-2",
+      "NDVI = greenness",
+      "WHERE to look, not how much cooling",
+      "OpenStreetMap",
+      "arbrat viari · 12 species",
+      "Padró: 1,702,814 residents",
+      "73 barris"
+    ],
+    "term_glosses": [
+      {
+        "term": "vulnerability grid",
+        "plain": "A heat-and-sealing risk map that tells you WHERE in the city to look, not how much cooling a given plan will deliver."
+      },
+      {
+        "term": "NDVI",
+        "plain": "A satellite greenness index, where low values mean little existing vegetation on the ground."
+      },
+      {
+        "term": "land-surface temperature",
+        "plain": "How hot the ground itself is, read by Landsat's thermal infrared bands from orbit."
+      },
+      {
+        "term": "sealed surface",
+        "plain": "Paved, impervious ground that traps heat, detected by Sentinel-1 radar."
+      },
+      {
+        "term": "arbrat viari",
+        "plain": "Barcelona's municipal street-tree inventory, the source of the 12-species candidate table."
+      },
+      {
+        "term": "Padró",
+        "plain": "Barcelona's official municipal population register of who lives where, by neighbourhood."
+      }
+    ],
+    "shot": {
+      "type": "dataviz",
+      "dataviz_spec": "Remotion motion graphic, cool documentary palette (deep teal-to-green, white labels). A dark map of Barcelona's outline sits center. Sequence: (1) Four translucent map layers fan out and stack into the city outline, each labeled as it lands — building the 'four real maps' idea. (2) Zoom to the vulnerability grid: a tessellation of ~494 square cells (~400m) tiles the city; cells pulse warm-to-cool by composite score. Three small source chips slide in beneath, each animating its signal: a Landsat thermal swatch heating red ('land-surface temperature'), a Sentinel-1 radar swatch filling solid ('sealed surface'), a Sentinel-2 swatch where a low-NDVI bar stays nearly empty with gloss 'low NDVI = little vegetation'. A caption stamp lands: 'WHERE to look — not how much cooling.' (3) Layer 2: OSM vector geometry draws on — building footprints, road centerlines, furniture dots — with a tiny tree icon bouncing OFF a rooftop to read 'no roofs, no traffic.' (4) Layer 3: a compact 12-row species table flickers in, header 'arbrat viari'. (5) Layer 4: a population register card counts up to 1,702,814 and 73 barris fill with soft dots. End frame: the four layers re-stack with the line 'Four maps. One real city.' Every number animates as an odometer counter; keep motion slow and measured, no flashy easing."
+    }
+  },
+  {
+    "id": "04-candidate-slots",
+    "title": "Where a Tree Can Actually Go",
+    "start_seconds": 175,
+    "seconds": 55,
+    "vo_text": "Before the algorithm chooses anything, the city has to know where a tree can actually go. CoolSpend never optimizes over open space. It first builds a finite set of candidate slots — each one a single, pre-validated spot a tree could physically occupy. It starts on a four-metre lattice, then tests every point against the plantability constraints: inside the site, off the buildings, off the roadway, clear of every façade, and at least eight metres from any other tree. That eight-metre spacing isn't a guess — it's where three standards converge: NACTO's six-to-nine, the climate guideline's eight-to-ten, de-paving practice's six-to-ten. Then each slot picks a mode. A planter sits on pavement — contained roots, just point-six metres off a wall, no digging. In-ground means a de-paved pit, roots in real soil — a larger mature crown, so more cooling, but a six-metre foundation setback and a buried-utility risk the system won't pretend it can see. So every in-ground slot ships with one honest flag: requires utility survey.",
+    "captions": [
+      {
+        "text": "Where can a tree actually go?"
+      },
+      {
+        "text": "A finite set of candidate slots"
+      },
+      {
+        "text": "Each one pre-validated"
+      },
+      {
+        "text": "Start on a 4 m lattice"
+      },
+      {
+        "text": "Test the plantability constraints"
+      },
+      {
+        "text": "Inside the site, off buildings"
+      },
+      {
+        "text": "Off the roadway, clear of facades"
+      },
+      {
+        "text": "8 m from any other tree"
+      },
+      {
+        "text": "Three standards converge on 8 m"
+      },
+      {
+        "text": "Then each slot picks a mode"
+      },
+      {
+        "text": "Planter: on pavement, no digging"
+      },
+      {
+        "text": "0.6 m wall clearance"
+      },
+      {
+        "text": "In-ground: roots in real soil"
+      },
+      {
+        "text": "6 m foundation setback"
+      },
+      {
+        "text": "It won't pretend it sees buried mains"
+      },
+      {
+        "text": "Flag: requires utility survey"
+      }
+    ],
+    "on_screen_text": [
+      "WHERE A TREE CAN ACTUALLY GO",
+      "4 m lattice",
+      "8 m minimum spacing",
+      "NACTO 6–9 m · climate 8–10 m · de-paving 6–10 m",
+      "PLANTER · 0.6 m wall · no de-paving",
+      "IN-GROUND · 6 m setback · pit cost",
+      "requires_utility_survey"
+    ],
+    "term_glosses": [
+      {
+        "term": "candidate slot",
+        "plain": "A single pre-validated spot a tree could physically occupy, rather than any point in open space."
+      },
+      {
+        "term": "plantability constraints",
+        "plain": "The rules a spot must pass: inside the site, off buildings, off the roadway, clear of facades, and 8 m from any other tree."
+      },
+      {
+        "term": "4 m generation lattice",
+        "plain": "A regular 4-metre grid of test points the system walks to propose candidate spots before validating them."
+      },
+      {
+        "term": "8 m minimum spacing",
+        "plain": "No two trees sit closer than 8 m, the distance where street, climate and de-paving standards all agree."
+      },
+      {
+        "term": "planter mode",
+        "plain": "A contained planter resting on pavement — roots boxed in, no digging, only 0.6 m of wall clearance needed."
+      },
+      {
+        "term": "in-ground mode",
+        "plain": "A de-paved pit with roots in real soil — a larger mature crown and more cooling, but it needs a 6 m foundation setback and carries buried-utility risk."
+      },
+      {
+        "term": "requires utility survey",
+        "plain": "An honesty flag on every in-ground slot: the system can't see underground pipes in open data, so it asks for a dig survey instead of assuming the ground is clear."
+      }
+    ],
+    "shot": {
+      "type": "dataviz",
+      "dataviz_spec": "Pure Remotion motion graphic, top-down on a stylised Barcelona plaza in the cool/green palette. BEAT 1 (0-12s): an empty plaza outline with a grey building block on one edge and a road strip on another. A faint 4 m square lattice of dots floods in row-major, left-to-right top-to-bottom, with a subtle '4 m' caliper between two adjacent dots. BEAT 2 (12-30s): constraint filtering animates as elimination — dots inside the building block snap red and vanish ('off buildings'), dots on the road strip turn amber and vanish ('off roadway'), a thin clearance ring sweeps each facade and culls dots within it ('clear of facades'). Surviving green dots then run the spacing test: as each is accepted, an 8 m radius circle blooms and any dot inside it greys out, leaving a clean, evenly spaced set — a legible allee, not a clump. Show the '8 m' caliper. BEAT 3 (30-44s): a small inset bar shows three bracketed ranges stacking and aligning on a shared tick at 8 m, labelled 'NACTO 6–9 m', 'climate 8–10 m', 'de-paving 6–10 m', converging with a soft snap. BEAT 4 (44-55s): two surviving slots flip to mode cards side by side. PLANTER: a box on pavement, tiny '0.6 m' clearance tick to the wall, 'no de-paving'. IN-GROUND: a dark de-paved pit, a '6 m' setback line to the building, a faint dashed unknown utility line under it, and a stamped tag 'requires_utility_survey' that pulses once. No logos, no satellite imagery, clean line-art with thin labels."
+    }
+  },
+  {
+    "id": "05-greedy-shade-gain",
+    "title": "The Greedy Shade-Gain Engine",
+    "start_seconds": 230,
+    "seconds": 80,
+    "vo_text": "So how does CoolSpend decide where each tree goes? It starts with a demand field — a map of the ground that actually needs cooling. A cell counts only if it is hot, paved, and unshaded: felt temperature above twenty-six degrees, an impervious surface, and not already under a canopy. Each cell's weight is simply its temperature minus twenty-six, so the hottest ground asks loudest for shade. Then comes the key idea: shade-gain. A tree earns credit only for the ground its real shadow actually covers, traced across many July sun angles. Because the sun sits to the south, shade falls north — so the engine plants trees south of the hotspot, not on top of it. Now the greedy. At every step it picks the single tree giving the most shade-gain per euro, then repeats. Shaded ground can't be cooled twice, so each new tree helps a little less — diminishing returns. That property, submodularity, carries a mathematical guarantee: this simple step-by-step rule reaches at least sixty-three percent of the perfect answer. It stops only when no affordable tree adds value, or the budget runs dry — never on a fixed counter.",
+    "captions": [
+      {
+        "text": "Where does each tree go?"
+      },
+      {
+        "text": "Start with a demand field"
+      },
+      {
+        "text": "Hot, paved, and unshaded ground"
+      },
+      {
+        "text": "UTCI above 26 C"
+      },
+      {
+        "text": "Weight = temperature minus 26"
+      },
+      {
+        "text": "Hottest ground asks loudest"
+      },
+      {
+        "text": "The key idea: shade-gain"
+      },
+      {
+        "text": "Credit only where shadow lands"
+      },
+      {
+        "text": "Traced across July sun angles"
+      },
+      {
+        "text": "Sun south, shade north"
+      },
+      {
+        "text": "Plant south of the hotspot"
+      },
+      {
+        "text": "The greedy: best euro each step"
+      },
+      {
+        "text": "Can't cool shaded ground twice"
+      },
+      {
+        "text": "Diminishing returns"
+      },
+      {
+        "text": "Submodular: a real guarantee"
+      },
+      {
+        "text": "At least 63% of optimum"
+      },
+      {
+        "text": "Stops on a real condition"
+      },
+      {
+        "text": "No value left, or budget dry"
+      }
+    ],
+    "on_screen_text": [
+      "THE DEMAND FIELD",
+      "UTCI > 26 C  +  impervious  +  not-already-shaded",
+      "weight = UTCI - 26",
+      "SHADE-GAIN",
+      "plant SOUTH of the hotspot",
+      "gain per euro",
+      "(1 - 1/e) = 63% of optimum",
+      "stops on a real condition, never a fixed cap"
+    ],
+    "term_glosses": [
+      {
+        "term": "demand field",
+        "plain": "The map of ground that needs cooling — hot, paved, and sunlit — with hotter ground weighted more heavily."
+      },
+      {
+        "term": "UTCI (felt temperature)",
+        "plain": "What a person actually feels outdoors, combining air, radiant heat, wind, and humidity into one temperature in degrees Celsius."
+      },
+      {
+        "term": "shade-gain",
+        "plain": "The credit a tree earns only for the ground its real shadow actually covers across July sun angles, which pushes trees south of the hotspot."
+      },
+      {
+        "term": "greedy (cost-benefit)",
+        "plain": "At each step it simply takes the tree that gives the most shade-gain per euro, then repeats."
+      },
+      {
+        "term": "submodular / diminishing returns",
+        "plain": "Each extra tree helps a little less, because shaded ground cannot be cooled twice."
+      },
+      {
+        "term": "(1-1/e) guarantee",
+        "plain": "Because of diminishing returns, taking the best-value tree at each step is mathematically proven to reach at least about 63% of the perfect answer."
+      }
+    ],
+    "shot": {
+      "type": "dataviz",
+      "dataviz_spec": "Pure Remotion motion graphic in a cool green/teal palette on near-black, top-down schematic of a small Barcelona plaza. ACT 1 — DEMAND FIELD (0-22s): fade in a grid of ground cells over a faint plaza outline; cells animate to color only if they pass three stamped conditions shown as ticking chips ('UTCI > 26 C', 'impervious', 'not already shaded'). Surviving demand cells glow on a heat ramp; a small number floats up on the hottest cells reading 'weight = UTCI - 26' (e.g. 31 -> weight 5, 28 -> weight 2) so brighter = heavier. ACT 2 — SHADE-GAIN (22-44s): drop one candidate tree as a circle; show a translucent sun arc sweeping low across the south of the frame (label 'July sun angles'); for each sun position cast a shadow ellipse that lands NORTH of the trunk; the cells the shadow actually touches light up and tally a 'shade-gain' fraction (e.g. 0.0 -> 0.6). Punch-in caption 'shade falls north -> plant SOUTH of the hotspot' as the tree visibly slides to the south edge of the hot cluster and its captured cells jump. ACT 3 — THE GREEDY (44-66s): replay as a ranked pick — several ghost candidate trees each show a 'gain / euro' chip; the highest chip pulses and is placed; captured cells dim to 'already cooled'; the next pick's gain is visibly smaller. A small live curve in the corner plots cumulative cooled area vs. trees placed, bending over into a concave 'diminishing returns' shape; label 'submodular'. ACT 4 — GUARANTEE + STOP (66-80s): the concave curve gets a dashed horizontal 'OPTIMUM' line and a filled band up to ~63% with the formula '(1 - 1/e) = 63%' snapping in (cite small: Nemhauser 1978; cost-benefit Leskovec 2007). End card: two stop conditions blink — 'no positive-gain affordable slot' and 'budget exhausted' — with a struck-through 'fixed iteration cap'. Motion is calm and deliberate, documentary pacing, every number animates from its source rather than appearing pre-baked."
+    }
+  },
+  {
+    "id": "06-ecology-plantability-gate",
+    "title": "No Invasives, No London Plane",
+    "start_seconds": 310,
+    "seconds": 50,
+    "vo_text": "A tree is not just a cooling machine. Plant the wrong species and you trade a heat problem for an ecological one. So before the algorithm places a single tree, every candidate passes the plantability gate — a hard filter that refuses invasive and over-represented species outright. Three exotic invasives — Robinia, Ligustrum, Ulmus pumila — are vetoed; even Robinia, a prized honey tree, loses, because escaping cultivation and damaging native ecosystems outweighs its nectar. The London plane is phased down: a quarter of Barcelona's street trees, heavy on allergy and disease. Twelve species become a plantable eight. Each survivor earns a health score — drought, biodiversity, pollinators, longevity, native status. And an anti-monoculture cap holds any one species at forty percent, so a single pest can never take the whole plan down.",
+    "captions": [
+      {
+        "text": "A tree is not just cooling"
+      },
+      {
+        "text": "Wrong species, new problem"
+      },
+      {
+        "text": "The plantability gate"
+      },
+      {
+        "text": "A hard ecological filter"
+      },
+      {
+        "text": "3 exotic invasives vetoed"
+      },
+      {
+        "text": "Robinia, Ligustrum, Ulmus pumila"
+      },
+      {
+        "text": "Even a prized honey tree loses"
+      },
+      {
+        "text": "London plane: phased down"
+      },
+      {
+        "text": "~25% of BCN street trees"
+      },
+      {
+        "text": "12 species become 8"
+      },
+      {
+        "text": "Each earns a health score"
+      },
+      {
+        "text": "Anti-monoculture cap: max 40%"
+      },
+      {
+        "text": "One pest can't kill the plan"
+      }
+    ],
+    "on_screen_text": [
+      "THE PLANTABILITY GATE",
+      "12 → 8 SPECIES",
+      "3 INVASIVES VETOED",
+      "LONDON PLANE ≈ 25% → PHASED DOWN",
+      "HEALTH SCORE",
+      "drought 0.30 · biodiversity 0.20 · pollinator 0.20 · longevity 0.15 · native 0.15",
+      "INVASIVE = −0.30 HARD VETO",
+      "MAX 40% ONE SPECIES"
+    ],
+    "term_glosses": [
+      {
+        "term": "plantability gate",
+        "plain": "A hard filter that refuses ecologically wrong species before any optimisation even runs."
+      },
+      {
+        "term": "exotic-invasive",
+        "plain": "A non-native species that escapes cultivation and damages local ecosystems."
+      },
+      {
+        "term": "anti-monoculture cap",
+        "plain": "No single species may exceed 40% of the planting, so one pest cannot wipe out the whole plan."
+      },
+      {
+        "term": "health score",
+        "plain": "A 0-to-1 ecological rating combining drought tolerance, biodiversity, pollinator value, longevity and native status, minus penalties."
+      }
+    ],
+    "shot": {
+      "type": "dataviz",
+      "dataviz_spec": "Remotion motion graphic, cool/green palette on near-black. BEAT 1 (0-12s): a 12-row species table fades in (Latin names, small leaf glyphs). A scanning 'GATE' bar sweeps top to bottom. As it passes Robinia pseudoacacia, Ligustrum lucidum, and Ulmus pumila, each row flashes a red 'EXOTIC-INVASIVE − VETOED' stamp and slides out. Platanus × acerifolia gets an amber 'PHASE-DOWN — ≈25% of BCN street trees, high allergy/disease' tag and dims out. Counter morphs 12 → 8 with the 8 survivors snapping into a clean green palette grid (Celtis australis, Cercis siliquastrum, Brachychiton populneus, Styphnolobium japonicum, Tipuana tipu, Jacaranda mimosifolia, Melia azedarach, plus one). BEAT 2 (12-32s): zoom into one survivor card; an animated stacked weight bar assembles the health score from labelled segments drought 0.30, biodiversity 0.20, pollinator 0.20, longevity 0.15, native 0.15 (benefits sum to 1.0), then small grey penalty notches subtract (allergen 0.15, pest 0.10, water 0.10, maint 0.10), and a red −0.30 'INVASIVE VETO' block visibly drives an invasive species' bar to zero for contrast. BEAT 3 (32-50s): nine little tree icons drop into a row; a 40% ceiling line appears; after a 4-icon grace period the cap line starts binding and a would-be 5th-of-same-species icon is gently swapped to a different species, with a callout 'MAX 40% ONE SPECIES — after 4-tree grace'. End card: 'ECOLOGY-REAL, NOT JUST COOL' over the 8-species palette. All figures rendered exactly as on-screen-text; no logos."
+    }
+  },
+  {
+    "id": "07-growth-and-cost",
+    "title": "Decades of Canopy, Counted in Euros",
+    "start_seconds": 360,
+    "seconds": 50,
+    "vo_text": "A tree is not a switch you flip. Plant it, and its crown is barely a metre and a half across. So CoolSpend grows each species on a Chapman-Richards curve — the forester's S-shape: slow at first, fast in the middle, easing off as it matures. A fast Tipuana fills its crown in twenty years; a slow Cercis takes forty — roughly twice as long. Now the money. Every euro is itemised. Two thousand two hundred to plant one tree — stock, pit, soil, guarding, labour. Then sixty euros a year to keep it alive, a figure we did not invent: it's Barcelona's own parks budget, twelve point six million divided by two hundred thousand trees. Run that over forty years, discounted at three and a half percent, and one tree costs about three thousand five hundred euros. Auditable, line by line.",
+    "captions": [
+      {
+        "text": "A tree is not a switch"
+      },
+      {
+        "text": "Crown starts at 1.5 metres"
+      },
+      {
+        "text": "Chapman-Richards: the forester's S-curve"
+      },
+      {
+        "text": "Slow, then fast, then easing"
+      },
+      {
+        "text": "Fast Tipuana: 20 years"
+      },
+      {
+        "text": "Slow Cercis: 40 years"
+      },
+      {
+        "text": "Twice as slow to fill in"
+      },
+      {
+        "text": "Now the money"
+      },
+      {
+        "text": "Every euro itemised"
+      },
+      {
+        "text": "EUR 2,200 to plant one tree"
+      },
+      {
+        "text": "EUR 60/yr to keep it alive"
+      },
+      {
+        "text": "From Barcelona's parks budget"
+      },
+      {
+        "text": "12.6M / 206,556 trees"
+      },
+      {
+        "text": "40 years at 3.5% discount"
+      },
+      {
+        "text": "~EUR 3,481 per tree, auditable"
+      }
+    ],
+    "on_screen_text": [
+      "crown(age)",
+      "Chapman-Richards",
+      "fast k~0.204 / slow k~0.102",
+      "CapEx EUR 2,200",
+      "OpEx EUR 60/tree/yr",
+      "12,658,229 / 206,556 = 61.28 (VERIFIED)",
+      "40 yr @ 3.5%",
+      "PV ~ EUR 3,481/tree"
+    ],
+    "term_glosses": [
+      {
+        "term": "Chapman-Richards growth",
+        "plain": "The standard forestry S-curve — canopy grows slowly at first, fast in the middle, then slows as it matures — so cooling ramps up realistically over years, not instantly."
+      },
+      {
+        "term": "CapEx vs OpEx",
+        "plain": "CapEx is the one-time cost to plant the tree; OpEx is the yearly cost to keep it alive."
+      },
+      {
+        "term": "discount rate",
+        "plain": "Future euros are counted as slightly less valuable than today's euros — the standard EU/UK Green Book convention for comparing costs across decades."
+      }
+    ],
+    "shot": {
+      "type": "dataviz",
+      "dataviz_spec": "Remotion motion-graphic in two linked acts on a cool dark-green documentary palette. ACT 1 - GROWTH (0-24s): center stage, an empty x-y axis labeled 'crown diameter (m)' vs 'tree age (years, 0-40)'. A single dot anchors at y=1.5m, age 0, with a small caption 'planting crown 1.5 m'. Two Chapman-Richards sigmoid curves draw on simultaneously from that shared origin: a bright green FAST curve (Tipuana tipu, k~0.204/yr, maturity year T=20) that rises steeply and reaches a plateau dashed gridline labeled '95% of mature crown' at age 20; and a muted teal SLOW curve (Cercis siliquastrum, k~0.102/yr, T=40) that rises gently and reaches its 95% plateau only at age 40. Animate the classic slow-fast-slow inflection by having a small glowing tracer ride each curve so the eye sees it accelerate through the middle then ease off. A floating equation chip shows crown(age) = max(1.5, A.(1 - e^(-k.age))^3). A side caption: 'fast fills its crown ~2x faster'. Underneath each curve, a small top-down canopy disc visibly grows in step with the curve. ACT 2 - COST (24-50s): curves slide left and shrink to a thumbnail; a clean itemised ledger animates in line-by-line on the right. CapEx stack builds as rising bars summing to a bold total: stock 600 + pit 500 + soil 600 + guarding 200 + labour 300 = EUR 2,200/tree. Then a separate OpEx callout: EUR 60/tree/yr, with the derivation typed out as a fraction that resolves: 12,658,229 / 206,556 = 61.28 EUR (tagged VERIFIED, source: BCN parks accounts). Finally a 40-year timeline sweeps left-to-right; small euro coins drop each year but visibly shrink as they recede (literal visual metaphor for the 3.5% discount), collapsing into a single headline counter that tallies up and locks on 'lifecycle PV ~ EUR 3,481/tree'. End on that figure with a thin underline and the word 'auditable'. No photoreal imagery, no logos."
+    }
+  },
+  {
+    "id": "08-optimise-then-validate",
+    "title": "Optimise, Then Validate - Live",
+    "start_seconds": 410,
+    "seconds": 75,
+    "vo_text": "Now watch a layout stop being a proposal and become a measurement. CoolSpend follows one rule: optimise, then validate. Let the fast, deterministic greedy engine choose the layout, then spend the expensive real simulations to find out what it actually does. Four steps. Build the demand field from a measured baseline UTCI field. Greedily place the trees where their shadows truly fall. Run a live before-and-after simulation on the Infrared engine. Then report only the measured difference between the two grids. On this site, the greedy placed twenty trees: eight Tipuana tipu, five Styphnolobium japonicum, four Cercis siliquastrum, three Melia azedarach. Zero invasive. Zero London plane. Live calls are hard-capped at three per run, so one evaluation can never burn a runaway stack of paid simulations. And the result is the proof. Two thousand seven hundred and seventy-nine square metres cooled by at least half a degree. Two thousand two hundred and thirty-nine, by a full degree. Fourteen ninety-one, by two. Mean felt-temperature drop, one point four eight degrees. At the busiest sun-exposed cell, peak felt heat falls from thirty-one to thirty point six. Seventy-two euros per square metre cooled. Not estimated. Measured.",
+    "captions": [
+      {
+        "text": "Optimise, then validate"
+      },
+      {
+        "text": "Greedy chooses the layout"
+      },
+      {
+        "text": "Real simulation measures it"
+      },
+      {
+        "text": "Build the demand field"
+      },
+      {
+        "text": "Place where shadows fall"
+      },
+      {
+        "text": "Run live before and after"
+      },
+      {
+        "text": "Report the measured difference"
+      },
+      {
+        "text": "20 trees placed"
+      },
+      {
+        "text": "Zero invasive, zero London plane"
+      },
+      {
+        "text": "Capped at 3 live calls"
+      },
+      {
+        "text": "2,779 m2 cooled >= 0.5 C"
+      },
+      {
+        "text": "Mean drop 1.48 C"
+      },
+      {
+        "text": "31.0 to 30.6 C peak"
+      },
+      {
+        "text": "72 euros per m2 cooled"
+      },
+      {
+        "text": "Measured, not estimated"
+      }
+    ],
+    "on_screen_text": [
+      "OPTIMISE, THEN VALIDATE",
+      "20 TREES",
+      "2,779 m2  >= 0.5 C",
+      "2,239 m2  >= 1 C",
+      "1,491 m2  >= 2 C",
+      "-1.48 C MEAN",
+      "31.0 -> 30.6 C",
+      "EUR 72 / m2 COOLED",
+      "MEASURED"
+    ],
+    "term_glosses": [
+      {
+        "term": "optimise-then-validate",
+        "plain": "Let the fast deterministic engine pick the layout, then spend the expensive real simulation to measure its true cooling instead of trusting an estimate."
+      },
+      {
+        "term": "cooled-footprint bands",
+        "plain": "How many square metres of ground dropped by at least 0.5, 1, and 2 degrees, counted threshold by threshold."
+      },
+      {
+        "term": "peak felt temperature (90th-percentile cell)",
+        "plain": "The headline hot reading is taken at the 90th-percentile cell, not the single hottest pixel, so one freak hot spot cannot inflate the number."
+      },
+      {
+        "term": "shade-gain",
+        "plain": "A tree only earns ground its shadow actually reaches, which is why the greedy plants south of a hotspot rather than on top of it."
+      },
+      {
+        "term": "SimBudget",
+        "plain": "A hard cap of three live simulations per run so a single evaluation can never trigger an unbounded burst of paid calls."
+      }
+    ],
+    "shot": {
+      "type": "app_capture",
+      "app_capture_steps": "Capture the live CoolSpend single-site UI in 2D analysis mode on the satellite basemap. Open with the proposed canopy discs already placed (20 green crown-footprint discs at 8 m spacing). Step 1: toggle the UTCI heatmap to the BASELINE grid (red-hot draped bitmap, 20-40 C red-blue scale, cropped to polygon). Step 2: toggle to the INTERVENTION grid so the audience sees the same area shift cooler under the discs - this is the visible before/after. Step 3: let the cooled-footprint readout / HUD surface the measured numbers (2,779 / 2,239 / 1,491 m2 bands, mean -1.48 C, peak 31.0 -> 30.6 C, EUR 72/m2). Step 4: click one tree to pop the inspector showing species identity (e.g. Tipuana tipu), shade footprint, and the data-provenance footer with the MEASURED badge lit (live UTCI behind it). Keep motion calm and documentary; hold on the MEASURED badge at the end.",
+      "dataviz_spec": "Lower-third overlay rendered in Remotion over the capture: a tight 4-step pipeline ribbon - 'measured baseline UTCI field -> greedy place -> live before/after -> measured grid difference' - with the active step highlighting in sync with the VO; and a count-up of the EUR 72 / m2 headline counter as the final beat lands."
+    }
+  },
+  {
+    "id": "09-citywide-portfolio",
+    "title": "Spending a Million Euros Across the City",
+    "start_seconds": 485,
+    "seconds": 70,
+    "vo_text": "One plaza is a proof. A city is the real question. So we hand CoolSpend a single instruction: spend a million euros, anywhere in Barcelona, where it relieves the most people. It starts from the satellite map — ranks all four hundred ninety-four vulnerability cells, then drops a two-hundred by two-hundred metre sample over the highest-priority candidates and evaluates each one live, on real Infrared comfort fields. A hard rule keeps it honest: no single site may take more than a hundred and fifty thousand euros — so it can never saturate one plaza. It funds the best cost-per-square-metre first, spreads sites apart, and stops on its own. The result: nine hundred thousand euros committed; ninety trees across six separated sites; a measured twenty thousand, six hundred and nine square metres cooled; about twenty-six thousand, seven hundred and forty-five residents reached inside a three-hundred-metre walk — counted once, not twice. Forty-four euros per square metre cooled. The mix is drawn entirely from the plantable palette: zero invasive, zero London plane. The remaining hundred thousand stays uncommitted, by design. This is the answer a Chief Heat Officer can sign.",
+    "captions": [
+      {
+        "text": "One plaza was a proof"
+      },
+      {
+        "text": "A city is the real question"
+      },
+      {
+        "text": "Spend a million euros across Barcelona"
+      },
+      {
+        "text": "Ranks all 494 vulnerability cells"
+      },
+      {
+        "text": "Evaluates top sites live, 200x200 m"
+      },
+      {
+        "text": "Per-site cap: EUR 150,000"
+      },
+      {
+        "text": "Never saturate one plaza"
+      },
+      {
+        "text": "Funds best cost-per-m2 first"
+      },
+      {
+        "text": "EUR 900,000 committed"
+      },
+      {
+        "text": "90 trees, 6 separated sites"
+      },
+      {
+        "text": "20,609 m2 cooled (measured)"
+      },
+      {
+        "text": "~26,745 residents reached"
+      },
+      {
+        "text": "300 m walk: 3-30-300 rule"
+      },
+      {
+        "text": "Counted once, de-duplicated"
+      },
+      {
+        "text": "EUR 44 per m2 cooled"
+      },
+      {
+        "text": "Zero invasive, zero London plane"
+      },
+      {
+        "text": "EUR 100,000 uncommitted, by design"
+      },
+      {
+        "text": "An answer a Chief Heat Officer can sign"
+      }
+    ],
+    "on_screen_text": [
+      "SPEND EUR 1,000,000",
+      "494 cells ranked",
+      "Per-site cap EUR 150,000",
+      "EUR 900,000 committed",
+      "90 trees / 6 sites",
+      "20,609 m2 cooled",
+      "~26,745 residents served",
+      "EUR 44 / m2 cooled",
+      "3-30-300: green within 300 m",
+      "EUR 100,000 uncommitted (by design)",
+      "ZERO invasive | ZERO London plane"
+    ],
+    "term_glosses": [
+      {
+        "term": "3-30-300 rule / 300 m catchment",
+        "plain": "An access norm: every home should have quality green space within a 300-metre walk, so we count the residents living inside that radius of each new planting."
+      },
+      {
+        "term": "de-duplicated catchment union",
+        "plain": "When two sites' 300-metre circles overlap, the people in the overlap are counted only once, giving an honest population-served number instead of an inflated sum."
+      },
+      {
+        "term": "person-degrees",
+        "plain": "Residents served multiplied by the cooling they actually feel - one people-weighted number for how much heat relief a plan delivers."
+      },
+      {
+        "term": "EUR per m2 cooled",
+        "plain": "The cost-efficiency the budget is allocated by - euros spent divided by the ground area measurably cooled, so cheaper-to-cool sites get funded first."
+      },
+      {
+        "term": "per-site cap",
+        "plain": "A EUR 150,000 ceiling on any one location so the budget spreads across the city instead of over-planting a single plaza."
+      }
+    ],
+    "shot": {
+      "type": "app_capture",
+      "app_capture_steps": "Open CoolSpend in city-wide mode on the Mapbox satellite basemap of Barcelona with the satellite vulnerability grid (the 494 cells) shaded by composite heat score. (1) Start zoomed out showing the full city grid, hottest cells glowing. (2) Trigger the citywide allocate run: show the allocator dropping 200m x 200m sample polygons over the top candidate cells one at a time, each flashing a live UTCI evaluation. (3) As sites get funded, drop 6 geographically separated per-site markers spread across distinct districts, each with a small budget chip showing it staying under EUR 150,000. (4) Pan to one funded site, click its marker to open the portfolio panel / per-site inspector showing placed trees as canopy-footprint discs and its population-served catchment. (5) Toggle on the 300 m catchment circles around all 6 sites so the judge sees the unioned, non-overlapping coverage. (6) End on the portfolio summary panel with headline figures populated: EUR 900,000 committed, 90 trees, 6 sites, 20,609 m2 cooled with a MEASURED badge, ~26,745 residents, EUR 44 / m2, EUR 100,000 uncommitted, zero invasive / zero London plane. Keep the MEASURED provenance badge visible throughout.",
+      "dataviz_spec": "Lower-third overlay (Remotion) layered on the app capture: an animated counter ticking from EUR 0 to EUR 900,000 of EUR 1,000,000. Cool/green palette, thin type, no logos. No portfolio per-species counts are shown - none exist in the source."
+    }
+  },
+  {
+    "id": "10-honesty-architecture",
+    "title": "Never Report a Number We Didn't Compute",
+    "start_seconds": 555,
+    "seconds": 45,
+    "vo_text": "And here is the idea we are proudest of. Most prototypes blur the line between a number that was computed and a number that was merely hoped for. CoolSpend forces that line into the code itself. Every result comes from one of three backends, chosen by a single setting. Mock is a clearly fake preview: it makes zero network calls and stamps every output \"not measured data.\" Cached replays a real prior run, matched by a hash of the exact geometry; if there's no match, it raises an error — it never quietly falls back to the fake one. Live calls the real Infrared engine, then writes its answer to the cache for replay. And every number wears a provenance tag — verified, declared, or requires-verification. The interface will not say \"measured\" unless a real thermal grid sits behind it. The discipline is simple: never report a number we did not compute.",
+    "captions": [
+      {
+        "text": "Computed, or merely hoped for?"
+      },
+      {
+        "text": "We force the line into the code"
+      },
+      {
+        "text": "Three backends, one setting"
+      },
+      {
+        "text": "Mock: a clearly fake preview"
+      },
+      {
+        "text": "Zero network calls"
+      },
+      {
+        "text": "Stamped 'NOT MEASURED DATA'"
+      },
+      {
+        "text": "Cached: a real run, replayed"
+      },
+      {
+        "text": "Matched by geometry hash"
+      },
+      {
+        "text": "A miss raises an error"
+      },
+      {
+        "text": "Never silently falls to mock"
+      },
+      {
+        "text": "Live: the real Infrared engine"
+      },
+      {
+        "text": "Writes to cache for replay"
+      },
+      {
+        "text": "Every number gets a provenance tag"
+      },
+      {
+        "text": "VERIFIED / DECLARED / REQUIRES_VERIFICATION"
+      },
+      {
+        "text": "Never 'measured' without a real grid"
+      },
+      {
+        "text": "Never report a number we didn't compute"
+      }
+    ],
+    "on_screen_text": [
+      "NEVER REPORT A NUMBER WE DIDN'T COMPUTE",
+      "MOCK · CACHED · LIVE",
+      "MOCK = NOT MEASURED DATA",
+      "ZERO NETWORK CALLS",
+      "CACHE MISS → ERROR, NOT MOCK",
+      "LIVE → REAL UTCI → WRITES CACHE",
+      "VERIFIED / DECLARED / REQUIRES_VERIFICATION"
+    ],
+    "term_glosses": [
+      {
+        "term": "three-tier backend",
+        "plain": "Three ways to get a result, picked by one setting: mock is a clearly fake preview, cached is a saved real run replayed, and live is a fresh real simulation."
+      },
+      {
+        "term": "provenance tag",
+        "plain": "A label on every number stating how sure we are of it: verified from a source, declared as a design choice, or still needing verification."
+      },
+      {
+        "term": "measured-vs-estimate badge",
+        "plain": "A UI label that refuses to say 'measured' unless a real UTCI grid is actually behind the number."
+      },
+      {
+        "term": "geometry hash",
+        "plain": "A short fingerprint of the exact shape being simulated, used to find the matching saved result in the cache."
+      }
+    ],
+    "shot": {
+      "type": "dataviz",
+      "dataviz_spec": "Remotion motion graphic on a deep cool-green/charcoal climate-doc palette. CENTER: three horizontal lanes stacked as a vertical 'tier switch' labelled MOCK / CACHED / LIVE, with a single glowing toggle on the left that slides between them to show 'selected by one setting'. Beat 1 (MOCK lane lights up): a flat synthetic plaza tile fills in; a red rubber-stamp 'NOT MEASURED DATA' slams across it; a small network-globe icon shows a strikethrough with the label 'ZERO NETWORK CALLS'. Beat 2 (CACHED lane): a geometry polygon morphs into a short hash string (e.g. a13ccde...), a magnifier scans a row of cached cards and snaps onto a match that replays a real heatmap; then show the failure branch — a non-matching hash, the magnifier finds nothing, and a hard red 'ERROR' card appears with the caption 'never silently falls to mock' (an X explicitly blocks an arrow pointing back to the MOCK lane). Beat 3 (LIVE lane): an arrow hits the real Infrared engine, a genuine red-blue UTCI grid renders, then a return arrow deposits a card back into the CACHED store ('writes to cache for replay'). FINALE: zoom out; every number that appeared gets a small colored pill tag — green VERIFIED, amber DECLARED, grey REQUIRES_VERIFICATION — and a 'MEASURED' badge visibly stays dark/locked over the mock tile but illuminates only over the live grid. Close on the headline lockup 'NEVER REPORT A NUMBER WE DIDN'T COMPUTE' centered, with the three tier labels beneath. Clean kinetic typography, thin technical line-work, restrained motion, no logos."
+    }
+  },
+  {
+    "id": "11-limitations-and-thesis",
+    "title": "What We Don't Yet Know - and Why That's the Point",
+    "start_seconds": 600,
+    "seconds": 35,
+    "vo_text": "And in the end, a tool that guides public money should be judged on what it admits it cannot see. CoolSpend cannot see buried pipes or exact sidewalk widths, so every in-ground slot is flagged for a pre-dig survey, never assumed clear. Its six-metre setback is deliberately cautious. Its shade-gain is only a placement guide; the cooling number always comes from the live simulation. It leaves one hundred thousand of a million euros uncommitted by design, and it speaks for one city, one July. That honesty is the point. Trust is earned through fidelity, not novelty.",
+    "captions": [
+      {
+        "text": "Judge a tool by what it admits"
+      },
+      {
+        "text": "It cannot see buried pipes"
+      },
+      {
+        "text": "In-ground slots flagged for a survey"
+      },
+      {
+        "text": "Six-metre setback, deliberately cautious"
+      },
+      {
+        "text": "Shade-gain only guides placement"
+      },
+      {
+        "text": "Cooling comes from the live sim"
+      },
+      {
+        "text": "100,000 of 1,000,000 left, by design"
+      },
+      {
+        "text": "One city, one July"
+      },
+      {
+        "text": "Trust through fidelity, not novelty"
+      }
+    ],
+    "on_screen_text": [
+      "WHAT WE DON'T YET KNOW",
+      "FLAGGED, NOT ASSUMED",
+      "6 m setback",
+      "shade-gain = placement proxy",
+      "cooling = live UTCI sim",
+      "EUR 100,000 / EUR 1,000,000 uncommitted",
+      "one city - one July",
+      "FIDELITY, NOT NOVELTY"
+    ],
+    "term_glosses": [
+      {
+        "term": "honest limitation",
+        "plain": "A gap the system flags out loud rather than hides - it refuses to claim a buried pipe is clear when it simply cannot see it."
+      },
+      {
+        "term": "shade-gain (placement proxy)",
+        "plain": "A fast estimate of how much real shadow a tree casts on a hot spot, used only to choose where to plant - never as the reported cooling."
+      },
+      {
+        "term": "6 m setback",
+        "plain": "A conservative safe distance kept between an in-ground tree pit and any building, until species roots and local code confirm a tighter number."
+      }
+    ],
+    "shot": {
+      "type": "higgsfield",
+      "higgsfield_prompt": "Cinematic climate-documentary aerial drifting slowly over a hot, sealed Barcelona block at golden dusk; long tree shadows stretch north across pale paving stones, a few mature canopies casting cool green pools onto bright concrete; one open de-paved soil pit sits empty and waiting beside a sidewalk; slow descending crane move settling toward street level as warm light cools to dusk blue; haze of heat shimmer easing; cool teal-and-green palette, soft volumetric light, shallow depth of field, no people in focus, no on-screen text, no logos, no UI; quiet, measured, reflective mood, 7 seconds"
+    }
+  }
+]

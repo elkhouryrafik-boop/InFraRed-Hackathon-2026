@@ -1,0 +1,84 @@
+1
+00:00:00,100 --> 00:00:04,337
+Now watch a layout stop being a proposal and become a measurement.
+
+2
+00:00:04,287 --> 00:00:08,562
+CoolSpend follows one rule: optimise, then validate.
+
+3
+00:00:08,562 --> 00:00:16,875
+Let the fast, deterministic greedy engine choose the layout, then spend the expensive real simulations to find out what it actually does.
+
+4
+00:00:16,875 --> 00:00:18,512
+Four steps.
+
+5
+00:00:18,512 --> 00:00:23,037
+Build the demand field from a measured baseline UTCI field.
+
+6
+00:00:23,037 --> 00:00:26,800
+Greedily place the trees where their shadows truly fall.
+
+7
+00:00:26,800 --> 00:00:30,850
+Run a live before-and-after simulation on the Infrared engine.
+
+8
+00:00:30,850 --> 00:00:34,725
+Then report only the measured difference between the two grids.
+
+9
+00:00:34,725 --> 00:00:44,737
+On this site, the greedy placed twenty trees: eight Tipuana tipu, five Styphnolobium japonicum, four Cercis siliquastrum, three Melia azedarach.
+
+10
+00:00:44,737 --> 00:00:46,812
+Zero invasive.
+
+11
+00:00:46,812 --> 00:00:49,025
+Zero London plane.
+
+12
+00:00:49,025 --> 00:00:56,412
+Live calls are hard-capped at three per run, so one evaluation can never burn a runaway stack of paid simulations.
+
+13
+00:00:56,412 --> 00:00:58,750
+And the result is the proof.
+
+14
+00:00:58,750 --> 00:01:04,225
+Two thousand seven hundred and seventy-nine square metres cooled by at least half a degree.
+
+15
+00:01:04,225 --> 00:01:08,337
+Two thousand two hundred and thirty-nine, by a full degree.
+
+16
+00:01:08,337 --> 00:01:11,300
+Fourteen ninety-one, by two.
+
+17
+00:01:11,300 --> 00:01:15,400
+Mean felt-temperature drop, one point four eight degrees.
+
+18
+00:01:15,400 --> 00:01:21,500
+At the busiest sun-exposed cell, peak felt heat falls from thirty-one to thirty point six.
+
+19
+00:01:21,500 --> 00:01:25,012
+Seventy-two euros per square metre cooled.
+
+20
+00:01:25,012 --> 00:01:26,987
+Not estimated.
+
+21
+00:01:26,987 --> 00:01:28,425
+Measured.
+

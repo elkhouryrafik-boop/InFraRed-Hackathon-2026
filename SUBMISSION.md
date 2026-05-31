@@ -116,8 +116,23 @@ tree's ecosystem → the €/m² headline and the citywide €1M map.
 
 ---
 
+## Explainer film
+
+A ~11-minute cinematic explainer (built with Remotion + Higgsfield Seedance 2.0, VO via
+edge-tts) walks through the whole system — heat → UTCI → the four real data sources →
+candidate slots → the greedy shade-gain engine → the plantability gate → growth & cost →
+optimise-then-validate (live UTCI) → the €1M city-wide portfolio → the honesty
+architecture → limitations. Its script was written by a multi-agent pipeline sourced
+strictly from `PAPER.md` and fact-checked against it. It plays as a full-screen autoplay
+gate when the web app opens, then drops the viewer into the live citywide plan.
+
+- Source project: [`video/`](video/) · final render: `video/out/coolspend-explainer.mp4`
+- In-app gate: `web/src/components/IntroVideoGate.tsx` (plays `web/public/coolspend-explainer.mp4`)
+- Music: "Lightless Dawn" by Kevin MacLeod (incompetech.com), Licensed under CC-BY 4.0
+  (http://creativecommons.org/licenses/by/4.0/)
+
 ## Links
 
 - GitHub repo: `<FILL IN>`
 - Hugging Face Space / deployed app: `<FILL IN>`
-- Demo video: `<FILL IN after recording>`
+- Demo video (explainer): `video/out/coolspend-explainer.mp4` — upload & paste public URL here

@@ -1,0 +1,157 @@
+/**
+ * generate-vo.ts
+ *
+ * Generates VO audio from a script file using edge-tts (free, no API key).
+ * Also supports ElevenLabs and OpenAI TTS as premium options.
+ *
+ * Usage:
+ *   npx tsx scripts/generate-vo.ts \
+ *     --script scripts/vo-script.txt \
+ *     --voice en-GB-RyanNeural \
+ *     --output public/audio/vo.mp3 \
+ *     --provider edge-tts
+ *
+ * Voice presets (from SKILL.md):
+ *   calm      → en-GB-RyanNeural
+ *   energetic → en-US-GuyNeural
+ *   editorial → en-US-AriaNeural
+ *   french    → fr-FR-HenriNeural
+ *   arabic    → ar-SA-HamedNeural
+ */
+
+import { execSync } from "child_process";
+import * as fs from "fs";
+
+interface Args {
+  script: string;
+  voice: string;
+  output: string;
+  provider: "edge-tts" | "elevenlabs" | "openai";
+  rate?: string;
+}
+
+const VOICE_PRESETS: Record<string, string> = {
+  calm: "en-GB-RyanNeural",
+  energetic: "en-US-GuyNeural",
+  editorial: "en-US-AriaNeural",
+  french: "fr-FR-HenriNeural",
+  arabic: "ar-SA-HamedNeural",
+};
+
+function parseArgs(): Args {
+  const args = process.argv.slice(2);
+  const parsed: Record<string, string> = {};
+  for (let i = 0; i < args.length; i += 2) {
+    const key = args[i].replace(/^--/, "");
+    const val = args[i + 1] ?? "";
+    parsed[key] = val;
+  }
+
+  const voice = VOICE_PRESETS[parsed.voice] ?? parsed.voice ?? "en-GB-RyanNeural";
+  const provider = (parsed.provider as Args["provider"]) ?? "edge-tts";
+
+  if (!parsed.script) throw new Error("--script is required (path to VO script .txt file)");
+  if (!parsed.output) throw new Error("--output is required (path for output .mp3 file)");
+
+  return { script: parsed.script, voice, output: parsed.output, provider, rate: parsed.rate };
+}
+
+function generateEdgeTts(args: Args): void {
+  const scriptText = fs.readFileSync(args.script, "utf-8").trim();
+  if (!scriptText) throw new Error("VO script is empty");
+
+  // Write a temp file for edge-tts --file flag (avoids shell escaping issues)
+  const tmpFile = args.script + ".edge-tts.tmp";
+  fs.writeFileSync(tmpFile, scriptText, "utf-8");
+
+  const rateFlag = args.rate ? `--rate=${args.rate}` : "";
+  const cmd = `python -m edge_tts --voice "${args.voice}" --file "${tmpFile}" ${rateFlag} --write-media "${args.output}"`.trim();
+
+  console.log(`Running: ${cmd}`);
+  execSync(cmd, { stdio: "inherit" });
+
+  fs.unlinkSync(tmpFile);
+  console.log(`VO written to ${args.output}`);
+}
+
+function generateElevenLabs(args: Args): void {
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  if (!apiKey) throw new Error("ELEVENLABS_API_KEY env var not set");
+
+  const scriptText = fs.readFileSync(args.script, "utf-8").trim();
+  // ElevenLabs max chunk size is ~5000 chars; split if needed
+  // For typical 150-170 word scripts this is one chunk
+  const body = JSON.stringify({
+    text: scriptText,
+    model_id: "eleven_flash_v2_5",
+    voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+  });
+
+  const cmd = `curl -sS -X POST "https://api.elevenlabs.io/v1/text-to-speech/${args.voice}" \\
+    -H "xi-api-key: ${apiKey}" \\
+    -H "Content-Type: application/json" \\
+    -d '${body}' \\
+    -o "${args.output}"`;
+
+  console.log("Generating VO via ElevenLabs...");
+  execSync(cmd, { stdio: "inherit" });
+  console.log(`VO written to ${args.output}`);
+}
+
+function generateOpenAI(args: Args): void {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error("OPENAI_API_KEY env var not set");
+
+  const scriptText = fs.readFileSync(args.script, "utf-8").trim();
+  const body = JSON.stringify({
+    model: "tts-1",
+    input: scriptText,
+    voice: args.voice,
+    response_format: "mp3",
+  });
+
+  const cmd = `curl -sS -X POST "https://api.openai.com/v1/audio/speech" \\
+    -H "Authorization: Bearer ${apiKey}" \\
+    -H "Content-Type: application/json" \\
+    -d '${body}' \\
+    -o "${args.output}"`;
+
+  console.log("Generating VO via OpenAI TTS...");
+  execSync(cmd, { stdio: "inherit" });
+  console.log(`VO written to ${args.output}`);
+}
+
+function main(): void {
+  const args = parseArgs();
+
+  // Ensure output directory exists
+  const outDir = args.output.replace(/[/\\][^/\\]+$/, "");
+  if (outDir && !fs.existsSync(outDir)) {
+    fs.mkdirSync(outDir, { recursive: true });
+  }
+
+  switch (args.provider) {
+    case "edge-tts":
+      generateEdgeTts(args);
+      break;
+    case "elevenlabs":
+      generateElevenLabs(args);
+      break;
+    case "openai":
+      generateOpenAI(args);
+      break;
+  }
+
+  // Probe duration
+  try {
+    const dur = execSync(
+      `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${args.output}"`,
+      { encoding: "utf-8" },
+    ).trim();
+    console.log(`VO duration: ${dur}s`);
+  } catch {
+    console.warn("Could not probe VO duration (ffprobe not found?)");
+  }
+}
+
+main();

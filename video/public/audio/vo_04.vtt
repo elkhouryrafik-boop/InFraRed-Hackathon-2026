@@ -1,0 +1,36 @@
+1
+00:00:00,100 --> 00:00:05,612
+Before the algorithm chooses anything, the city has to know where a tree can actually go.
+
+2
+00:00:05,562 --> 00:00:09,175
+CoolSpend never optimizes over open space.
+
+3
+00:00:09,175 --> 00:00:16,737
+It first builds a finite set of candidate slots — each one a single, pre-validated spot a tree could physically occupy.
+
+4
+00:00:16,737 --> 00:00:29,150
+It starts on a four-metre lattice, then tests every point against the plantability constraints: inside the site, off the buildings, off the roadway, clear of every façade, and at least eight metres from any other tree.
+
+5
+00:00:29,150 --> 00:00:39,587
+That eight-metre spacing isn't a guess — it's where three standards converge: NACTO's six-to-nine, the climate guideline's eight-to-ten, de-paving practice's six-to-ten.
+
+6
+00:00:39,587 --> 00:00:42,012
+Then each slot picks a mode.
+
+7
+00:00:42,012 --> 00:00:48,325
+A planter sits on pavement — contained roots, just point-six metres off a wall, no digging.
+
+8
+00:00:48,325 --> 00:00:59,987
+In-ground means a de-paved pit, roots in real soil — a larger mature crown, so more cooling, but a six-metre foundation setback and a buried-utility risk the system won't pretend it can see.
+
+9
+00:00:59,987 --> 00:01:05,412
+So every in-ground slot ships with one honest flag: requires utility survey.
+

@@ -1,0 +1,101 @@
+[
+  {
+    "id": "01-the-heat-and-the-decision",
+    "idx": 1,
+    "file": "audio/vo_01.mp3",
+    "duration_s": 42.624,
+    "first": 0.0,
+    "last": 42.624,
+    "segs": []
+  },
+  {
+    "id": "02-what-people-actually-feel",
+    "idx": 2,
+    "file": "audio/vo_02.mp3",
+    "duration_s": 59.736,
+    "first": 0.0,
+    "last": 59.736,
+    "segs": []
+  },
+  {
+    "id": "03-four-real-data-sources",
+    "idx": 3,
+    "file": "audio/vo_03.mp3",
+    "duration_s": 62.28,
+    "first": 0.0,
+    "last": 62.28,
+    "segs": []
+  },
+  {
+    "id": "04-candidate-slots",
+    "idx": 4,
+    "file": "audio/vo_04.mp3",
+    "duration_s": 65.424,
+    "first": 0.0,
+    "last": 65.424,
+    "segs": []
+  },
+  {
+    "id": "05-greedy-shade-gain",
+    "idx": 5,
+    "file": "audio/vo_05.mp3",
+    "duration_s": 73.392,
+    "first": 0.0,
+    "last": 73.392,
+    "segs": []
+  },
+  {
+    "id": "06-ecology-plantability-gate",
+    "idx": 6,
+    "file": "audio/vo_06.mp3",
+    "duration_s": 55.464,
+    "first": 0.0,
+    "last": 55.464,
+    "segs": []
+  },
+  {
+    "id": "07-growth-and-cost",
+    "idx": 7,
+    "file": "audio/vo_07.mp3",
+    "duration_s": 55.584,
+    "first": 0.0,
+    "last": 55.584,
+    "segs": []
+  },
+  {
+    "id": "08-optimise-then-validate",
+    "idx": 8,
+    "file": "audio/vo_08.mp3",
+    "duration_s": 88.44,
+    "first": 0.0,
+    "last": 88.44,
+    "segs": []
+  },
+  {
+    "id": "09-citywide-portfolio",
+    "idx": 9,
+    "file": "audio/vo_09.mp3",
+    "duration_s": 76.752,
+    "first": 0.0,
+    "last": 76.752,
+    "segs": []
+  },
+  {
+    "id": "10-honesty-architecture",
+    "idx": 10,
+    "file": "audio/vo_10.mp3",
+    "duration_s": 54.864,
+    "first": 0.0,
+    "last": 54.864,
+    "segs": []
+  },
+  {
+    "id": "11-limitations-and-thesis",
+    "idx": 11,
+    "file": "audio/vo_11.mp3",
+    "duration_s": 37.008,
+    "first": 0.0,
+    "last": 37.008,
+    "segs": []
+  }
+]

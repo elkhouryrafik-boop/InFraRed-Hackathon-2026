@@ -1,0 +1,91 @@
+.introgate {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #060809;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  transition: opacity 0.48s ease;
+}
+.introgate--leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+.introgate__video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #060809;
+}
+.introgate__skip {
+  position: absolute;
+  top: 26px;
+  right: 28px;
+  font-family: ui-monospace, 'JetBrains Mono', monospace;
+  font-size: 15px;
+  letter-spacing: 0.5px;
+  color: #cfe9df;
+  background: rgba(8, 11, 16, 0.62);
+  border: 1px solid rgba(55, 208, 138, 0.5);
+  border-radius: 999px;
+  padding: 10px 20px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background 0.2s, border-color 0.2s;
+}
+.introgate__skip:hover {
+  background: rgba(55, 208, 138, 0.18);
+  border-color: #37d08a;
+}
+.introgate__unmute {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: #060809;
+  background: #37d08a;
+  border: none;
+  border-radius: 999px;
+  padding: 13px 26px;
+  cursor: pointer;
+  box-shadow: 0 8px 40px rgba(55, 208, 138, 0.5);
+  animation: introgate-pulse 1.8s ease-in-out infinite;
+}
+.introgate__unmute-icon {
+  font-size: 19px;
+}
+@keyframes introgate-pulse {
+  0%, 100% { transform: translateX(-50%) scale(1); box-shadow: 0 8px 40px rgba(55, 208, 138, 0.45); }
+  50% { transform: translateX(-50%) scale(1.05); box-shadow: 0 8px 56px rgba(55, 208, 138, 0.7); }
+}
+.introgate__caption {
+  position: absolute;
+  top: 28px;
+  left: 30px;
+  font-family: ui-monospace, 'JetBrains Mono', monospace;
+  font-size: 14px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: rgba(207, 233, 223, 0.7);
+}
+.introgate__bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.introgate__bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4ea8de, #37d08a);
+  transition: width 0.2s linear;
+}

@@ -1,0 +1,48 @@
+1
+00:00:00,100 --> 00:00:03,487
+A model is only as honest as the maps beneath it.
+
+2
+00:00:03,437 --> 00:00:08,425
+CoolSpend stands on four real, independently sourced layers of Barcelona.
+
+3
+00:00:08,425 --> 00:00:15,787
+The first is a satellite vulnerability grid: four hundred and ninety-four cells, each roughly four hundred metres across.
+
+4
+00:00:15,787 --> 00:00:18,987
+Landsat reads land-surface temperature.
+
+5
+00:00:18,987 --> 00:00:22,950
+Sentinel-one radar reads sealed, paved ground.
+
+6
+00:00:22,950 --> 00:00:30,412
+And Sentinel-two reads NDVI — a satellite greenness index, where low values mean little existing vegetation.
+
+7
+00:00:30,412 --> 00:00:34,625
+Together they answer where to look — not how much a plan will cool.
+
+8
+00:00:34,625 --> 00:00:42,650
+Second, OpenStreetMap gives real building, road and street-furniture geometry, so no tree lands on a roof or in traffic.
+
+9
+00:00:42,650 --> 00:00:49,100
+Third, Barcelona's arbrat-viari street-tree inventory supplies a twelve-species candidate table.
+
+10
+00:00:49,100 --> 00:00:58,737
+And fourth, the Padró municipal register: one million, seven hundred and two thousand, eight hundred and fourteen residents, across seventy-three neighbourhoods.
+
+11
+00:00:58,737 --> 00:01:00,375
+Four maps.
+
+12
+00:01:00,375 --> 00:01:02,262
+One real city.
+
