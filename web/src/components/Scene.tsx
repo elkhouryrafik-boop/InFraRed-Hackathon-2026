@@ -18,7 +18,7 @@ import { TreeInspect } from './TreeInspect'
 import { DrawPanel } from './DrawPanel'
 import { GrowthSlider } from './GrowthSlider'
 import { useAreaDraw } from './useAreaDraw'
-import { canopyScale, DEFAULT_GROWTH } from '../lib/growth'
+import { canopyScale, DEFAULT_GROWTH, MAX_MATURITY_YEARS } from '../lib/growth'
 import { useCesiumTileset, tilesetOpacity } from './useCesiumTileset'
 import { buildLayers } from '../lib/layers'
 import { boundaryOuterRing, toDeckBounds } from '../lib/bundle'
@@ -94,7 +94,10 @@ export function Scene({ bundle, onBundle, appMode, setAppMode }: SceneProps) {
   // Age slider: years after planting. Default = mature so the initial view
   // matches the (mature-canopy) UTCI heatmap.
   const growthParams = bundle.growth ?? DEFAULT_GROWTH
-  const [plantingYear, setPlantingYear] = useState(growthParams.ramp_years)
+  // Default to the slowest species' maturity so the initial view shows every
+  // canopy mature (matching the mature-canopy UTCI heatmap). Each tree then
+  // shrinks toward its own species curve as the slider moves to younger ages.
+  const [plantingYear, setPlantingYear] = useState(MAX_MATURITY_YEARS)
   const treeScale = canopyScale(plantingYear, growthParams)
 
   // ── Citywide (Mode 2) state.
@@ -171,7 +174,7 @@ export function Scene({ bundle, onBundle, appMode, setAppMode }: SceneProps) {
       draw.clear()
       setSelectedTree(null)
       onBundle?.(b)
-      setPlantingYear((b.growth ?? DEFAULT_GROWTH).ramp_years) // reset to mature
+      setPlantingYear(MAX_MATURITY_YEARS) // reset to mature (all species)
       const c = b.decision.site_center_lonlat
       if (c) setViewState((v) => ({ ...v, longitude: c[0], latitude: c[1] }))
     },
@@ -238,6 +241,7 @@ export function Scene({ bundle, onBundle, appMode, setAppMode }: SceneProps) {
         rasterOpacity,
         trees: bundle.trees,
         treeScale,
+        growthYear: plantingYear,
         impervious: bundle.impervious,
         showImpervious,
         // No elevation lift without the ellipsoidal mesh — overlays sit flat.
@@ -267,6 +271,7 @@ export function Scene({ bundle, onBundle, appMode, setAppMode }: SceneProps) {
       rasterOpacity,
       bundle.trees,
       treeScale,
+      plantingYear,
       bundle.impervious,
       showImpervious,
       modelMatrix,

@@ -36,3 +36,45 @@ export function coolingFraction(year: number, p: GrowthParams = DEFAULT_GROWTH):
 export function canopyScale(year: number, p: GrowthParams = DEFAULT_GROWTH): number {
   return coolingFraction(year, p)
 }
+
+// ── Species-specific allometric growth (Chapman–Richards) ───────────────────
+// Mirrors coolspend/growth.py exactly: crown(age) grows sigmoidally from a
+// nursery planting crown to the species' mature crown, reaching ~95% at the
+// species' maturity year. Used to grow each tree's canopy disk at its OWN pace
+// (a fast Tipuana fills in ~2x sooner than a slow Cercis) instead of one flat
+// global ramp. Anchored to real per-species values (mature crown + maturity
+// band), not invented coefficients.
+
+export const PLANTING_CROWN_M = 1.5 // large-caliper nursery stock crown at age 0
+export const MAX_MATURITY_YEARS = 40 // slowest band — the slider's upper bound
+const SHAPE_P = 3.0
+const MATURITY_FRACTION = 0.95
+
+function rateK(maturityYears: number): number {
+  if (maturityYears <= 0) return 1.0
+  const inner = 1 - Math.pow(MATURITY_FRACTION, 1 / SHAPE_P) // = e^(−k·T)
+  return -Math.log(inner) / maturityYears
+}
+
+/** Mature-anchored crown diameter (m) at a given age after planting. */
+export function crownDiameterAtAge(
+  matureCrownM: number,
+  maturityYears: number,
+  ageYears: number,
+): number {
+  if (ageYears <= 0) return PLANTING_CROWN_M
+  const k = rateK(maturityYears)
+  const raw = matureCrownM * Math.pow(1 - Math.exp(-k * ageYears), SHAPE_P)
+  return Math.max(PLANTING_CROWN_M, Math.min(matureCrownM, raw))
+}
+
+/** Fraction of mature shade delivered at a given age (crown AREA ratio, 0..1). */
+export function coolingFractionAtAge(
+  matureCrownM: number,
+  maturityYears: number,
+  ageYears: number,
+): number {
+  if (matureCrownM <= 0) return 1
+  const r = crownDiameterAtAge(matureCrownM, maturityYears, ageYears) / matureCrownM
+  return Math.min(1, r * r)
+}

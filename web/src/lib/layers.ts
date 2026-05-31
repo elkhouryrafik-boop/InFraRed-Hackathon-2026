@@ -16,6 +16,7 @@ import type { Layer } from '@deck.gl/core'
 
 import type { TreesGeoJSON, TreeFeature, ImperviousAnalysis } from './types'
 import { EXISTING_TREE_COLOR } from './colorscale'
+import { crownDiameterAtAge } from './growth'
 
 const MASK_ID = 'cutout-mask'
 
@@ -25,8 +26,10 @@ export interface BuildLayersArgs {
   raster: { image: string; bounds: [number, number, number, number] } | null
   rasterOpacity: number
   trees: TreesGeoJSON | null
-  /** Visual canopy scale (0..1) for the age slider; 1 = mature. */
+  /** Visual canopy scale (0..1) for the age slider; 1 = mature. (legacy fallback) */
   treeScale?: number
+  /** Years after planting (age slider); each tree grows on its own species curve. */
+  growthYear?: number
   /** Depaveable impervious pavement overlay (optional). */
   impervious?: ImperviousAnalysis | null
   showImpervious?: boolean
@@ -57,6 +60,7 @@ export function buildLayers(args: BuildLayersArgs): Layer[] {
     rasterOpacity,
     trees,
     treeScale = 1,
+    growthYear,
     impervious,
     showImpervious,
     modelMatrix,
@@ -185,12 +189,19 @@ export function buildLayers(args: BuildLayersArgs): Layer[] {
         radiusUnits: 'meters',
         getRadius: (f: TreeFeature) => {
           const crown = f.properties.crown_diameter_m ?? 6
-          const grow = f.properties.kind === 'existing' ? 1 : treeScale
-          return Math.max(1.5, (crown / 2) * grow)
+          // Existing trees are mature context. Proposed trees grow on their own
+          // species allometric curve when a growthYear (age slider) is given;
+          // otherwise fall back to the legacy global treeScale.
+          if (f.properties.kind === 'existing') return Math.max(1.5, crown / 2)
+          if (growthYear != null) {
+            const maturity = f.properties.ecology?.maturity_years ?? 30
+            return Math.max(1.5, crownDiameterAtAge(crown, maturity, growthYear) / 2)
+          }
+          return Math.max(1.5, (crown / 2) * treeScale)
         },
         radiusMinPixels: 4,
         radiusMaxPixels: 140,
-        updateTriggers: { getRadius: treeScale },
+        updateTriggers: { getRadius: [treeScale, growthYear] },
         stroked: true,
         filled: true,
         lineWidthUnits: 'pixels',
