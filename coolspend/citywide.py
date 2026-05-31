@@ -243,6 +243,20 @@ def _eur_per_m2_cooled(cfg: dict[str, Any]) -> float | None:
     return None
 
 
+def _people_served_for_cell(cell: dict[str, Any], catchment_m: float = 300.0) -> int | None:
+    """Residents within a 300 m walking catchment of the cell centroid (WHO 3-30-300).
+
+    Real Padró population × barri density (coolspend.population). Returns None if the
+    population data is unavailable — never fabricated, never breaks allocation.
+    """
+    try:
+        from coolspend.population import served_for_centroid  # noqa: PLC0415
+        return served_for_centroid(cell["centroid_lonlat"], catchment_m=catchment_m)["people_served"]
+    except Exception as exc:  # noqa: BLE001 — population is optional context
+        logger.warning("people_served lookup failed for a cell: %s", exc)
+        return None
+
+
 def allocate_citywide(
     cells: list[dict[str, Any]] | None = None,
     budget_eur: float = 1_000_000.0,
@@ -319,12 +333,17 @@ def allocate_citywide(
             "mean_lst_celsius": props.get("mean_lst_celsius", 0.0),
             "tree_count": cfg.get("tree_count", 0),
             "cost_eur": cfg.get("cost_eur", 0),
+            # Per-site placed trees (lon/lat + species + mode) so the frontend can
+            # draw each funded site's planting, and so the last site can be trimmed
+            # to the remaining budget. Greedy order = best-value first.
+            "trees_lonlat": cfg.get("trees_lonlat", []),
             "delta_utci_c": cfg.get("delta_utci_c", 0.0),
             "baseline_utci_c": cfg.get("baseline_utci_c", 0.0),
             "validated_utci_c": cfg.get("validated_utci_c", 0.0),
             "heat_stress_area_m2": cfg.get("heat_stress_area_m2", 0),
             "cooled_footprint_m2": cfg.get("cooled_footprint_m2") or 0,
             "cost_per_m2_cooled": _eur_per_m2_cooled(cfg),
+            "people_served": _people_served_for_cell(cell),
             "headline": result.get("headline", ""),
             "centroid_lonlat": cell["centroid_lonlat"],
             "eval_polygon": ring,
@@ -372,10 +391,32 @@ def allocate_citywide(
     unallocated_cells = []
     for r in results:
         cost = r.get("cost_eur", 0) or 0
-        if cost <= remaining and cost > 0 and _far_enough(r, allocated_cells):
+        trees = r.get("trees_lonlat", []) or []
+        if remaining <= 0 or cost <= 0 or not _far_enough(r, allocated_cells):
+            r["allocation_eur"] = 0.0
+            unallocated_cells.append(r)
+            continue
+        if cost <= remaining:
             r["allocation_eur"] = cost
             remaining -= cost
             allocated_cells.append(r)
+        elif trees:
+            # PARTIAL fund: the budget can't cover this whole site, but we must spend
+            # all the money — so plant only the prefix of (best-value-first) trees that
+            # fits the remainder, and trim this site's cost/count to match.
+            per_tree = cost / len(trees)
+            k = max(1, int(remaining // per_tree)) if per_tree > 0 else 0
+            if k >= 1:
+                r["trees_lonlat"] = trees[:k]
+                r["tree_count"] = k
+                r["cost_eur"] = round(k * per_tree, 2)
+                r["allocation_eur"] = r["cost_eur"]
+                r["partial"] = True
+                remaining -= r["cost_eur"]
+                allocated_cells.append(r)
+            else:
+                r["allocation_eur"] = 0.0
+                unallocated_cells.append(r)
         else:
             r["allocation_eur"] = 0.0
             unallocated_cells.append(r)
@@ -383,6 +424,38 @@ def allocate_citywide(
     total_allocated = budget_eur - remaining
     total_trees = sum(c.get("tree_count", 0) for c in allocated_cells)
     total_cooled = sum(c.get("cooled_footprint_m2", 0) or 0 for c in allocated_cells)
+
+    # Portfolio population served (WHO 3-30-300): unique residents within 300 m of any
+    # funded site, de-duplicating overlapping catchments. Real Padró data; degrades to
+    # None if unavailable. Cheap — one geometric union over the funded centroids.
+    total_people_served: int | None = None
+    try:
+        from coolspend.population import portfolio_people_served  # noqa: PLC0415
+        centroids = [c["centroid_lonlat"] for c in allocated_cells if c.get("centroid_lonlat")]
+        if centroids:
+            total_people_served = portfolio_people_served(centroids, catchment_m=300.0).get(
+                "total_people_served"
+            )
+    except Exception as exc:  # noqa: BLE001 — population is optional context
+        logger.warning("portfolio people_served failed: %s", exc)
+
+    # Urban-design metrics (from the urban-design skill audit): per-site canopy area
+    # / cover% / est. ΔT, and portfolio canopy + per-euro + person-degrees (people ×
+    # mean °C relief). Geometric crown estimates; the measured cooling is the UTCI sim.
+    from coolspend.design_metrics import design_metrics, person_degrees  # noqa: PLC0415
+    _sample_area = _CELL_SAMPLE_SIZE_M ** 2  # 200×200 m per-cell evaluation sample
+    for c in allocated_cells:
+        c["design_metrics"] = design_metrics(
+            c.get("trees_lonlat", []), site_area_m2=_sample_area, cost_eur=c.get("cost_eur"),
+        )
+    total_canopy_m2 = round(
+        sum((c.get("design_metrics", {}).get("canopy_area_m2") or 0) for c in allocated_cells), 1
+    )
+    _mean_drop = (
+        sum((c.get("delta_utci_c") or 0) for c in allocated_cells) / len(allocated_cells)
+        if allocated_cells else None
+    )
+    total_person_degrees = person_degrees(total_people_served, _mean_drop)
 
     return {
         "mode": "allocate",
@@ -394,6 +467,10 @@ def allocate_citywide(
         "remaining_eur": round(remaining),
         "total_trees": total_trees,
         "total_cooled_footprint_m2": total_cooled,
+        "total_people_served": total_people_served,
+        "total_canopy_m2": total_canopy_m2,
+        "total_canopy_m2_per_1000eur": round(total_canopy_m2 / (total_allocated / 1000.0), 1) if total_allocated else None,
+        "total_person_degrees": total_person_degrees,
         "avg_cost_per_m2_cooled": round(total_allocated / total_cooled) if total_cooled > 0 else None,
         "allocated_cells": allocated_cells,
         "unallocated_cells": unallocated_cells,
