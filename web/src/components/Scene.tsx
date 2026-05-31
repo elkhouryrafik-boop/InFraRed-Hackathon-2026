@@ -40,6 +40,7 @@ import type {
 } from '../lib/types'
 import type { LngLat } from '../lib/draw'
 import { buildCitywideLayer, buildCityPlanLayer, buildCityTreesLayer } from '../lib/layers'
+import { speciesDims, foliageColor } from '../lib/species'
 import { useReducedMotion } from '../lib/useReducedMotion'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string
@@ -245,15 +246,32 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
       if (info.layer?.id === 'trees' && info.object) {
         const f = info.object as { properties?: TreeProperties }
         if (f.properties) setSelectedTree(f.properties)
-      } else if (
-        (info.layer?.id === 'city-plan-sites' || info.layer?.id === 'city-trees') &&
-        info.object
-      ) {
-        // Click a funded pin OR one of its canopies → drill into that site.
-        const o = info.object as { cell_id?: string; cell?: string }
-        const cellId = o.cell_id ?? o.cell
+      } else if (info.layer?.id === 'city-trees' && info.object) {
+        // Click a citywide canopy → show its DATA (species, size, shade). The
+        // €1M plan stores only species+position per tree, so we build the profile
+        // from the species table (no per-tree ecology — labelled as such).
+        const o = info.object as { species: string; cell: string }
+        const dims = speciesDims(o.species)
+        const [r, g, b] = foliageColor(o.species)
+        const site = cityPlan?.allocated_cells.find((c) => c.cell_id === o.cell)
+        setSelectedTree({
+          kind: 'proposed',
+          species: o.species,
+          crown_diameter_m: dims.crown_m,
+          height_m: dims.height_m,
+          crown_area_m2: Math.round(Math.PI * (dims.crown_m / 2) ** 2),
+          color: [r, g, b],
+          ecology: {
+            notes: site
+              ? `Part of the €1M plan — ${site.district} · ${site.barri}. Per-tree ecology is shown in the single-site view.`
+              : 'Part of the €1M citywide plan.',
+          },
+        } as TreeProperties)
+      } else if (info.layer?.id === 'city-plan-sites' && info.object) {
+        // Click a funded pin → drill into that site.
+        const o = info.object as { cell_id?: string }
         const sorted = cityPlan ? [...cityPlan.allocated_cells].sort((a, b) => a.rank - b.rank) : []
-        const idx = sorted.findIndex((x) => x.cell_id === cellId)
+        const idx = sorted.findIndex((x) => x.cell_id === o.cell_id)
         if (idx >= 0) {
           setSelectedSiteIndex(idx)
           const ctr = sorted[idx].centroid_lonlat
@@ -362,7 +380,7 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
   )
 
   const citywideLayer = useMemo(
-    () => buildCitywideLayer({ data: citywideGeojson, opacity: 0.55, fundedCellIds }),
+    () => buildCitywideLayer({ data: citywideGeojson, opacity: 0.42, fundedCellIds }),
     [citywideGeojson, fundedCellIds],
   )
 
@@ -404,14 +422,19 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
     return result
   }, [layers, draw.drawLayers, phase, isDrawPhase, citywideLayer, cityPlanLayer, cityTreeLayers])
 
-  // viewState comes from onMove ONLY (§5). The first user gesture flips camera
-  // authority to 'user' and cancels any in-flight scripted fly.
+  // PERF: the map is uncontrolled (initialViewState), so it pans natively on the
+  // GPU. We must NOT setViewState on every frame — that re-renders the whole
+  // Scene (heavy panels) per frame and makes the pan choppy. onMove only flips
+  // camera authority on the first user gesture; the zoom-dependent state syncs
+  // once the gesture ends (onMoveEnd).
   const onMove = useCallback((e: ViewStateChangeEvent) => {
     const ev = e as ViewStateChangeEvent & { originalEvent?: unknown }
-    if (ev.originalEvent) {
+    if (ev.originalEvent && cameraModeRef.current !== 'user') {
       cameraModeRef.current = 'user'
       mapRef.current?.getMap()?.stop()
     }
+  }, [])
+  const onMoveEnd = useCallback((e: ViewStateChangeEvent) => {
     setViewState((v) => ({ ...v, ...e.viewState }))
   }, [])
 
@@ -427,7 +450,7 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
     } else if (phase === 'design' && (prev === 'intro' || prev === 'citywide')) {
       // Design is for DRAWING — a flat, top-down view is far easier to place a
       // polygon on than the cinematic 50° tilt (which fought the user's draw).
-      flyToSite(lon, lat, { zoom: 15.5, pitch: 0, bearing: 0 })
+      flyToSite(lon, lat, { zoom: 16.3, pitch: 0, bearing: 0 })
     }
     // 'result' is driven by handleEvaluated's flyTo.
   }, [phase, lon, lat, flyToSite, flyToCity])
@@ -450,7 +473,7 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
   const onMapLoad = useCallback(() => {
     if (cameraModeRef.current === 'user') return
     if (phase === 'citywide') flyToCity()
-    else if (phase === 'design') flyToSite(lon, lat, { zoom: 15.5, pitch: 0, bearing: 0 })
+    else if (phase === 'design') flyToSite(lon, lat, { zoom: 16.3, pitch: 0, bearing: 0 })
     else if (phase !== 'intro') flyToSite(lon, lat)
     // intro framing is driven by the Onboarding's first intent.
   }, [phase, lon, lat, flyToCity, flyToSite])
@@ -546,6 +569,7 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
         // the camera zoomed-out over all Barcelona.
         initialViewState={viewState}
         onMove={onMove}
+        onMoveEnd={onMoveEnd}
         onLoad={onMapLoad}
         onClick={isDrawPhase ? onMapClick : undefined}
         onMouseMove={isDrawPhase ? onMapMouseMove : undefined}

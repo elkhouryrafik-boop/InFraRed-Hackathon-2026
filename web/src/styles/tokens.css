@@ -63,7 +63,9 @@
   --r-sm:8px; --r-md:12px; --r-lg:18px; --r-xl:24px; --r-pill:999px;
   --sh-1:0 2px 8px rgba(0,0,0,.35); --sh-2:0 12px 32px rgba(0,0,0,.45); --sh-3:0 24px 64px rgba(0,0,0,.55);
   --sh-glow:0 0 24px rgba(59,232,192,.35); --sh-inset-top:inset 0 1px 0 rgba(255,255,255,.06);
-  --blur-panel:20px; --blur-chip:12px; --saturate:135%;
+  /* PERF: panels are ~93% opaque, so heavy backdrop-blur barely shows but costs a
+     full-screen recomposite every pan frame (choppy map). Keep it light. */
+  --blur-panel:4px; --blur-chip:3px; --saturate:120%;
 
   /* ─── MOTION (all gated by prefers-reduced-motion, §6 D1) ─── */
   --ease-out:cubic-bezier(.22,1,.36,1); --ease-inout:cubic-bezier(.65,0,.35,1);

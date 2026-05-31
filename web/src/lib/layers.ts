@@ -8,6 +8,7 @@ import {
   SolidPolygonLayer,
   PolygonLayer,
   ScatterplotLayer,
+  IconLayer,
   GeoJsonLayer,
 } from '@deck.gl/layers'
 import { MaskExtension } from '@deck.gl/extensions'
@@ -18,6 +19,7 @@ import type { TreesGeoJSON, TreeFeature, ImperviousAnalysis } from './types'
 import { EXISTING_TREE_COLOR, utciColor, alphaByIntensity } from './colorscale'
 import { crownDiameterAtAge } from './growth'
 import { speciesDims, foliageColor } from './species'
+import { CANOPY_ICON, CANOPY_ICON_MAPPING } from './treeIcon'
 
 const MASK_ID = 'cutout-mask'
 
@@ -217,84 +219,43 @@ export function buildLayers(args: BuildLayersArgs): Layer[] {
   // fill lets the UTCI heatmap read through. Proposed canopies grow with the age
   // slider; existing trees are mature context.
   if (trees && trees.features.length > 0) {
-    // Shared canopy radius (m) — used by both the canopy disk and its inner core.
-    const treeRadius = (f: TreeFeature): number => {
+    // Mature-anchored canopy diameter (m), growing on the species curve with the age slider.
+    const treeDiameter = (f: TreeFeature): number => {
       const crown = f.properties.crown_diameter_m ?? 6
-      // Existing trees are mature context. Proposed trees grow on their own
-      // species allometric curve when a growthYear (age slider) is given;
-      // otherwise fall back to the legacy global treeScale.
-      if (f.properties.kind === 'existing') return Math.max(1.5, crown / 2)
+      if (f.properties.kind === 'existing') return Math.max(3, crown)
       if (growthYear != null) {
         const maturity = f.properties.ecology?.maturity_years ?? 30
-        return Math.max(1.5, crownDiameterAtAge(crown, maturity, growthYear) / 2)
+        return Math.max(3, crownDiameterAtAge(crown, maturity, growthYear))
       }
-      return Math.max(1.5, (crown / 2) * treeScale)
+      return Math.max(3, crown * treeScale)
     }
+    // Textured leafy-canopy sprite (treeIcon), laid flat on the ground, tinted per
+    // species — reads as a TREE from above, not a flat disk.
     out.push(
-      new ScatterplotLayer({
+      new IconLayer({
         id: 'trees',
         data: trees.features,
+        iconAtlas: CANOPY_ICON,
+        iconMapping: CANOPY_ICON_MAPPING,
+        getIcon: () => 'canopy',
         getPosition: (f: TreeFeature) => f.geometry.coordinates,
-        radiusUnits: 'meters',
-        getRadius: treeRadius,
-        radiusMinPixels: 4,
-        radiusMaxPixels: 140,
-        updateTriggers: { getRadius: [treeScale, growthYear] },
-        // Trees pop in / grow on reveal (§5): staggered getRadius transition.
-        transitions: animateReveal ? { getRadius: { duration: 800 } } : undefined,
-        stroked: true,
-        filled: true,
-        lineWidthUnits: 'pixels',
-        getLineWidth: 1.5,
-        lineWidthMinPixels: 1,
-        getFillColor: (f: TreeFeature): [number, number, number, number] => {
+        sizeUnits: 'meters',
+        getSize: treeDiameter,
+        sizeMinPixels: 10,
+        sizeMaxPixels: 280,
+        billboard: false, // lie flat (top-down canopy footprint)
+        getColor: (f: TreeFeature): [number, number, number, number] => {
           if (f.properties.kind === 'existing') {
             const [r, g, b] = EXISTING_TREE_COLOR
-            return [r, g, b, 90]
+            return [r, g, b, 150]
           }
-          const c = f.properties.color ?? [60, 160, 90]
-          return [c[0], c[1], c[2], 150]
+          const c = f.properties.color ?? [86, 160, 86]
+          return [c[0], c[1], c[2], 235]
         },
-        getLineColor: (f: TreeFeature): [number, number, number, number] =>
-          f.properties.kind === 'existing'
-            ? [180, 200, 150, 160]
-            : [240, 255, 245, 220],
+        updateTriggers: { getSize: [treeScale, growthYear] },
+        transitions: animateReveal ? { getSize: { duration: 800 } } : undefined,
         parameters: { depthTest: false },
         pickable: true,
-      }),
-    )
-    // Inner canopy core — a smaller, lighter, more opaque concentric disk that
-    // reads as canopy density/volume from top-down (more tree-like than a flat
-    // disk), and gives the foliage a soft highlighted centre. Non-pickable so it
-    // never steals clicks from the main canopy.
-    out.push(
-      new ScatterplotLayer({
-        id: 'tree-cores',
-        data: trees.features,
-        getPosition: (f: TreeFeature) => f.geometry.coordinates,
-        radiusUnits: 'meters',
-        getRadius: (f: TreeFeature) => treeRadius(f) * 0.5,
-        radiusMinPixels: 2,
-        radiusMaxPixels: 70,
-        updateTriggers: { getRadius: [treeScale, growthYear] },
-        stroked: false,
-        filled: true,
-        getFillColor: (f: TreeFeature): [number, number, number, number] => {
-          if (f.properties.kind === 'existing') {
-            const [r, g, b] = EXISTING_TREE_COLOR
-            return [r, g, b, 70]
-          }
-          const c = f.properties.color ?? [60, 160, 90]
-          // Lighter, denser centre: lift toward white, higher alpha.
-          return [
-            Math.min(255, c[0] + 50),
-            Math.min(255, c[1] + 55),
-            Math.min(255, c[2] + 40),
-            120,
-          ]
-        },
-        parameters: { depthTest: false },
-        pickable: false,
       }),
     )
   }
@@ -409,55 +370,29 @@ export function buildCityTreesLayer(
     }
   }
   if (flat.length === 0) return []
-  const radiusOf = (d: CT) => Math.max(2.5, speciesDims(d.species).crown_m / 2)
+  const diaOf = (d: CT) => Math.max(4, speciesDims(d.species).crown_m)
   const focusA = (d: CT, base: number) =>
-    selected && d.cell !== selected ? Math.round(base * 0.45) : base
+    selected && d.cell !== selected ? Math.round(base * 0.4) : base
   return [
-    new ScatterplotLayer({
+    new IconLayer({
       id: 'city-trees',
       data: flat,
+      iconAtlas: CANOPY_ICON,
+      iconMapping: CANOPY_ICON_MAPPING,
+      getIcon: () => 'canopy',
       getPosition: (d: CT) => [d.lon, d.lat],
-      radiusUnits: 'meters',
-      getRadius: radiusOf,
-      radiusMinPixels: 5,
-      radiusMaxPixels: 90,
-      stroked: true,
-      filled: true,
-      lineWidthUnits: 'pixels',
-      getLineWidth: 1,
-      lineWidthMinPixels: 0.5,
-      getFillColor: (d: CT) => {
+      sizeUnits: 'meters',
+      getSize: diaOf,
+      sizeMinPixels: 9, // legible green canopies even at the city overview
+      sizeMaxPixels: 160,
+      billboard: false,
+      getColor: (d: CT) => {
         const [r, g, b] = foliageColor(d.species)
-        return [r, g, b, focusA(d, 165)] as [number, number, number, number]
+        return [r, g, b, focusA(d, 235)] as [number, number, number, number]
       },
-      getLineColor: (d: CT) =>
-        [235, 255, 240, focusA(d, 200)] as [number, number, number, number],
-      updateTriggers: { getFillColor: [selected], getLineColor: [selected] },
+      updateTriggers: { getColor: [selected] },
       parameters: { depthTest: false },
-      pickable: true, // click a canopy → drill into its site (handled in Scene)
-    }),
-    new ScatterplotLayer({
-      id: 'city-tree-cores',
-      data: flat,
-      getPosition: (d: CT) => [d.lon, d.lat],
-      radiusUnits: 'meters',
-      getRadius: (d: CT) => radiusOf(d) * 0.5,
-      radiusMinPixels: 1.5,
-      radiusMaxPixels: 45,
-      stroked: false,
-      filled: true,
-      getFillColor: (d: CT) => {
-        const [r, g, b] = foliageColor(d.species)
-        return [
-          Math.min(255, r + 55),
-          Math.min(255, g + 55),
-          Math.min(255, b + 45),
-          focusA(d, 150),
-        ] as [number, number, number, number]
-      },
-      updateTriggers: { getFillColor: [selected] },
-      parameters: { depthTest: false },
-      pickable: false,
+      pickable: true, // click a canopy → see its data + drill into its site
     }),
   ]
 }
