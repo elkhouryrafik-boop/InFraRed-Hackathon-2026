@@ -380,10 +380,10 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
     prevPhaseRef.current = phase
     if (phase === 'citywide') {
       flyToCity()
-    } else if (phase === 'design' && prev === 'intro') {
-      flyToSite(lon, lat)
-    } else if (phase === 'design' && prev === 'citywide') {
-      flyToSite(lon, lat)
+    } else if (phase === 'design' && (prev === 'intro' || prev === 'citywide')) {
+      // Design is for DRAWING — a flat, top-down view is far easier to place a
+      // polygon on than the cinematic 50° tilt (which fought the user's draw).
+      flyToSite(lon, lat, { zoom: 15.5, pitch: 0, bearing: 0 })
     }
     // 'result' is driven by handleEvaluated's flyTo.
   }, [phase, lon, lat, flyToSite, flyToCity])
@@ -394,6 +394,7 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
   const onMapLoad = useCallback(() => {
     if (cameraModeRef.current === 'user') return
     if (phase === 'citywide') flyToCity()
+    else if (phase === 'design') flyToSite(lon, lat, { zoom: 15.5, pitch: 0, bearing: 0 })
     else if (phase !== 'intro') flyToSite(lon, lat)
     // intro framing is driven by the Onboarding's first intent.
   }, [phase, lon, lat, flyToCity, flyToSite])
