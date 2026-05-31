@@ -122,7 +122,7 @@ def place_trees_greedy(
     species: list[SpeciesOption],
     *,
     budget_eur: float,
-    min_spacing_m: float = 5.0,
+    min_spacing_m: float = 8.0,
     max_species_share: float = 0.40,
     diversity_grace: int = 4,
 ) -> PlacementResult:

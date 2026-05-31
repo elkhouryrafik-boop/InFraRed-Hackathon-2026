@@ -31,8 +31,14 @@ from coolspend import spatial_engine as se
 
 # ── Slot constraints (DECLARED arboricultural guidelines — REQUIRES_VERIFICATION
 # against Barcelona municipal planting code; see MOCKS.md ecological-rules row). ──
-MIN_SPACING_M: float = 5.0
-"""Minimum centre-to-centre spacing between trees (existing or proposed), metres."""
+MIN_SPACING_M: float = 8.0
+"""Minimum centre-to-centre spacing between trees (existing or proposed), metres.
+
+8 m is the urban-design street-tree interval where three independent guidelines
+converge: NACTO street trees 6–9 m o.c. (street-design), climate-responsive
+"trees at 8–10 m create continuous canopy at maturity" (climate-responsive-design,
+Mediterranean), and de-paving practice default 6–10 m (depaving_practice.md). 5 m
+(the old value) packed canopies into overlapping clumps — too crowded, not an allée."""
 
 GRID_STEP_M: float = 4.0
 """Candidate-grid pitch. Finer = more slots = finer search, more sim cost."""
