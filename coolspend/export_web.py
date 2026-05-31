@@ -161,7 +161,6 @@ def export_web_bundle(
                 "kind": "proposed",
                 "species": sp,
                 "color": color,
-                "species_index": species_order.index(sp),
                 **pub,
             },
             "geometry": {"type": "Point", "coordinates": [t["lon"], t["lat"]]},

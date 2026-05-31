@@ -98,7 +98,6 @@ export interface TreeProperties {
   shade_density?: string
   crown_area_m2?: number // ground footprint the canopy shades
   cooling_score?: number // 0–1 species cooling proxy (ranking only)
-  species_index?: number // stable per-site species index (drives visual variant)
   known?: boolean // false = species not in the BCN palette
   ecology?: TreeEcology
   color: [number, number, number] // 0-255 rgb

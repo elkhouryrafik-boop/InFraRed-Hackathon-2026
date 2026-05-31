@@ -292,6 +292,13 @@ def create_app() -> FastAPI:
         cells = load_scored_grid()
         return allocate_citywide(cells, budget_eur=budget_eur, top_n=min(top_n, 20), backend=backend)
 
+    # Serve the runtime-written evaluate bundle so its PNGs resolve in BOTH dev and
+    # a built deploy. In dev vite serves web/public/eval_bundle; in production the
+    # catch-all "/" mount below serves web/dist (which never receives runtime files),
+    # so we mount _EVAL_DIR explicitly at /eval_bundle BEFORE the catch-all.
+    _EVAL_DIR.mkdir(parents=True, exist_ok=True)
+    app.mount("/eval_bundle", StaticFiles(directory=str(_EVAL_DIR)), name="eval_bundle")
+
     # Serve the built frontend (production) if present. In dev, vite serves it.
     if _WEB_DIST.is_dir():
         app.mount("/", StaticFiles(directory=str(_WEB_DIST), html=True), name="web")

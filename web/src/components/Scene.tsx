@@ -69,7 +69,7 @@ export function Scene({ bundle, onBundle, appMode, setAppMode }: SceneProps) {
     if (import.meta.env.DEV) {
       ;(window as unknown as { __map?: unknown }).__map = mapRef.current?.getMap?.() ?? null
     }
-  })
+  }, [])
 
   const [viewState, setViewState] = useState({
     longitude: lon,
@@ -456,14 +456,6 @@ export function Scene({ bundle, onBundle, appMode, setAppMode }: SceneProps) {
             </div>
           )}
         </div>
-      )}
-
-      {cesium.hasToken && cesium.url && tilesOpacity < 1 && (
-        <div className="notice">Zoom in for photorealistic 3D…</div>
-      )}
-
-      {!cesium.hasToken && (
-        <div className="notice">Add Cesium Ion token for photorealistic 3D.</div>
       )}
 
       {credits && <div className="attribution">{credits}</div>}
