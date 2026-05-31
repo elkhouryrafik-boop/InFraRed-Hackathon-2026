@@ -350,18 +350,43 @@ def allocate_citywide(
             "eval_polygon": ring,
         })
 
+        # Sim-free shade-proxy cooled-m² estimate (Limitation #2/#3 Tier 0), so
+        # that even without a measured grid the funding order is driven by an
+        # estimated cooled footprint rather than heat-vulnerability alone.
+        try:
+            from coolspend.cooling_estimator import estimate_site_cooling  # noqa: PLC0415
+
+            est = estimate_site_cooling(cfg.get("trees_lonlat", []), ring, "proxy")
+            results[-1]["cooled_m2_proxy"] = est.cooled_m2 or 0
+            results[-1]["cooling_is_measured"] = bool((cfg.get("cooled_footprint_m2") or 0) > 0)
+        except Exception as exc:  # noqa: BLE001 — proxy is best-effort
+            logger.warning("shade-proxy estimate failed for %s: %s", cell_id, exc)
+            results[-1]["cooled_m2_proxy"] = 0
+
     # Funding order. With measured cooling (live), fund cheapest €/m²-cooled first.
     # Without it (mock/cached have no per-cell grid → no real cooled m²), fall back
     # to heat-vulnerability: fund the hottest, most-sealed cells first (the real
     # Landsat-derived composite_score_B), which IS the strategic priority.
     have_cooling = any((r.get("cooled_footprint_m2") or 0) > 0 for r in results)
+    have_proxy = any((r.get("cooled_m2_proxy") or 0) > 0 for r in results)
     if have_cooling:
+        cooling_source = "measured_utci"  # live/cached: real cooled grid
+
         def _key(r: dict) -> float:
             cooled = r.get("cooled_footprint_m2", 0) or 0
             cost = r.get("cost_eur", 0) or 0
             return cost / cooled if (cooled > 0 and cost > 0) else float("inf")
         results.sort(key=_key)
+    elif have_proxy:
+        cooling_source = "shade_proxy_estimate"  # sim-free €/m² ordering (better than heat alone)
+
+        def _key(r: dict) -> float:
+            cooled = r.get("cooled_m2_proxy", 0) or 0
+            cost = r.get("cost_eur", 0) or 0
+            return cost / cooled if (cooled > 0 and cost > 0) else float("inf")
+        results.sort(key=_key)
     else:
+        cooling_source = "heat_vulnerability"  # composite_score_B fallback
         results.sort(key=lambda r: -(r.get("composite_score_B") or 0.0))
 
     # Greedy budget allocation across the sorted cells, with a GEOGRAPHIC-SPREAD
@@ -425,6 +450,7 @@ def allocate_citywide(
     total_allocated = budget_eur - remaining
     total_trees = sum(c.get("tree_count", 0) for c in allocated_cells)
     total_cooled = sum(c.get("cooled_footprint_m2", 0) or 0 for c in allocated_cells)
+    total_cooled_proxy = round(sum(c.get("cooled_m2_proxy", 0) or 0 for c in allocated_cells), 1)
 
     # Portfolio population served (WHO 3-30-300): unique residents within 300 m of any
     # funded site, de-duplicating overlapping catchments. Real Padró data; degrades to
@@ -469,6 +495,9 @@ def allocate_citywide(
         "remaining_eur": round(remaining),
         "total_trees": total_trees,
         "total_cooled_footprint_m2": total_cooled,
+        "total_cooled_m2_proxy": total_cooled_proxy,
+        "cooling_source": cooling_source,
+        "cooling_is_measured": cooling_source == "measured_utci",
         "total_people_served": total_people_served,
         "total_canopy_m2": total_canopy_m2,
         "total_canopy_m2_per_1000eur": round(total_canopy_m2 / (total_allocated / 1000.0), 1) if total_allocated else None,
@@ -483,8 +512,15 @@ def allocate_citywide(
         ),
         "disclaimer": (
             "Per-cell evaluation uses a 200 m × 200 m sample polygon centred on "
-            "each cell's centroid. Real per-cell cooling may differ from full-cell "
-            "coverage. All in-ground trees tagged requires_utility_survey=True."
+            "each cell's centroid. Funding order driven by "
+            + {
+                "measured_utci": "MEASURED Infrared UTCI €/m²-cooled.",
+                "shade_proxy_estimate": "an ESTIMATED €/m²-cooled from the sim-free "
+                "shade proxy (real sun geometry; NOT measured UTCI).",
+                "heat_vulnerability": "heat-vulnerability (composite_score_B) — no "
+                "cooling estimate available.",
+            }[cooling_source]
+            + " All in-ground trees tagged requires_utility_survey=True."
         ),
     }
 
