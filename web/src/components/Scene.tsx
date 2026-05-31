@@ -89,6 +89,8 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
     bearing: phase === 'citywide' ? 0 : SITE_BEARING,
   })
   const cameraModeRef = useRef<CameraMode>('auto')
+  // Declared early: flyToCity / fundedCentroids (below) read it to frame the 7 sites.
+  const [cityPlan, setCityPlan] = useState<CityPlan | null>(null)
 
   const flyToSite = useCallback(
     (clon: number, clat: number, opts?: { zoom?: number; pitch?: number; bearing?: number }) => {
@@ -113,26 +115,44 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
     [reducedMotion],
   )
 
+  // Funded-site centroids, for framing the citywide view tightly on the 7 sites
+  // (not all-Barcelona-plus-sea, where they were lost specks).
+  const fundedCentroids = useMemo(
+    () =>
+      (cityPlan?.allocated_cells ?? [])
+        .map((c) => c.centroid_lonlat)
+        .filter((p): p is [number, number] => Array.isArray(p)),
+    [cityPlan],
+  )
+
   const flyToCity = useCallback(() => {
     const map = mapRef.current?.getMap()
+    // Fit the bounding box of the 7 funded sites so they fill the frame.
+    if (map && fundedCentroids.length > 0) {
+      let w = 180, s = 90, e = -180, n = -90
+      for (const [clon, clat] of fundedCentroids) {
+        w = Math.min(w, clon); e = Math.max(e, clon)
+        s = Math.min(s, clat); n = Math.max(n, clat)
+      }
+      cameraModeRef.current = 'auto'
+      map.fitBounds([[w, s], [e, n]], {
+        padding: { top: 110, bottom: 90, left: 380, right: 90 }, // left pad clears the panel
+        maxZoom: 13.5,
+        pitch: 0,
+        bearing: 0,
+        duration: reducedMotion ? 0 : FLYTO_DURATION,
+      })
+      return
+    }
     if (!map) {
       setViewState((v) => ({ ...v, ...CITY_VIEW }))
       return
     }
-    if (reducedMotion) {
-      cameraModeRef.current = 'auto'
-      map.jumpTo({ center: [CITY_VIEW.longitude, CITY_VIEW.latitude], zoom: CITY_VIEW.zoom, pitch: 0, bearing: 0 })
-    } else {
-      cameraModeRef.current = 'auto'
-      map.flyTo({
-        center: [CITY_VIEW.longitude, CITY_VIEW.latitude],
-        zoom: CITY_VIEW.zoom,
-        pitch: 0,
-        bearing: 0,
-        duration: FLYTO_DURATION,
-      })
-    }
-  }, [reducedMotion])
+    cameraModeRef.current = 'auto'
+    const opts = { center: [CITY_VIEW.longitude, CITY_VIEW.latitude] as [number, number], zoom: CITY_VIEW.zoom, pitch: 0, bearing: 0 }
+    if (reducedMotion) map.jumpTo(opts)
+    else map.flyTo({ ...opts, duration: FLYTO_DURATION })
+  }, [reducedMotion, fundedCentroids])
 
   const [scenario, setScenario] = useState<UtciScenario>('intervention')
   const [selectedTree, setSelectedTree] = useState<TreeProperties | null>(null)
@@ -148,9 +168,8 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
   const [plantingYear, setPlantingYear] = useState(MAX_MATURITY_YEARS)
   const treeScale = canopyScale(plantingYear, growthParams)
 
-  // ── Citywide state.
+  // ── Citywide state. (cityPlan is declared earlier — used by flyToCity.)
   const [citywideGeojson, setCitywideGeojson] = useState<GeoJSON.FeatureCollection | null>(null)
-  const [cityPlan, setCityPlan] = useState<CityPlan | null>(null)
   const [citywideLoading, setCitywideLoading] = useState(false)
   const [hoverSiteIndex, setHoverSiteIndex] = useState<number | null>(null)
   const [selectedSiteIndex, setSelectedSiteIndex] = useState<number | null>(null)
@@ -387,6 +406,18 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
     }
     // 'result' is driven by handleEvaluated's flyTo.
   }, [phase, lon, lat, flyToSite, flyToCity])
+
+  // Re-fit the citywide frame once the plan's centroids arrive (boot race: we
+  // may land in citywide before /citywide_plan.json resolves). Only while the
+  // camera is still scripted — never yank a view the user grabbed.
+  const didFitCityRef = useRef(false)
+  useEffect(() => {
+    if (phase === 'citywide' && fundedCentroids.length > 0 && !didFitCityRef.current) {
+      if (cameraModeRef.current === 'auto') flyToCity()
+      didFitCityRef.current = true
+    }
+    if (phase !== 'citywide') didFitCityRef.current = false
+  }, [phase, fundedCentroids.length, flyToCity])
 
   // On map-ready, frame the current phase. This guarantees the initial framing
   // even if the mount-time effects ran before the map ref existed — so the app

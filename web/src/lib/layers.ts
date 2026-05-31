@@ -393,7 +393,7 @@ export function buildCityTreesLayer(
       getPosition: (d: CT) => [d.lon, d.lat],
       radiusUnits: 'meters',
       getRadius: radiusOf,
-      radiusMinPixels: 4,
+      radiusMinPixels: 5,
       radiusMaxPixels: 90,
       stroked: true,
       filled: true,
