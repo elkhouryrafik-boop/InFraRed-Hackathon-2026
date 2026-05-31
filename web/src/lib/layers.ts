@@ -418,7 +418,7 @@ export function buildCitywideLayer(args: CitywideLayerArgs): Layer | null {
   return new GeoJsonLayer({
     id: 'citywide-heatmap',
     data,
-    pickable: true,
+    pickable: false, // must not steal clicks from the canopies/pins on top
     stroked: true,
     filled: true,
     extruded: false,

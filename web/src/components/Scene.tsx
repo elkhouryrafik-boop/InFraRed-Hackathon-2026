@@ -248,31 +248,37 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
       // While a draw tool is armed, the click belongs to the polygon — never let
       // a tree pick steal it (that blocked placing a polygon over the showcase).
       if (draw.mode) return
-      if (info.layer?.id === 'trees' && info.object) {
-        const f = info.object as { properties?: TreeProperties }
-        if (f.properties) setSelectedTree(f.properties)
-      } else if (info.layer?.id === 'city-trees' && info.object) {
-        // Click a citywide canopy → show its DATA (species, size, shade). The
-        // €1M plan stores only species+position per tree, so we build the profile
-        // from the species table (no per-tree ecology — labelled as such).
-        const o = info.object as { species: string; cell: string }
-        const dims = speciesDims(o.species)
-        const [r, g, b] = foliageColor(o.species)
-        const site = cityPlan?.allocated_cells.find((c) => c.cell_id === o.cell)
-        setSelectedTree({
+      const layerId = info.layer?.id
+      // Build a lite TreeProperties from a species name (for layers that only
+      // store species+position: the citywide trees + all 3D spheres).
+      const liteFromSpecies = (species: string, cell?: string): TreeProperties => {
+        const dims = speciesDims(species)
+        const [r, g, b] = foliageColor(species)
+        const site = cell ? cityPlan?.allocated_cells.find((c) => c.cell_id === cell) : undefined
+        return {
           kind: 'proposed',
-          species: o.species,
+          species,
           crown_diameter_m: dims.crown_m,
           height_m: dims.height_m,
           crown_area_m2: Math.round(Math.PI * (dims.crown_m / 2) ** 2),
           color: [r, g, b],
           ecology: {
             notes: site
-              ? `Part of the €1M plan — ${site.district} · ${site.barri}. Per-tree ecology is shown in the single-site view.`
-              : 'Part of the €1M citywide plan.',
+              ? `Part of the €1M plan — ${site.district} · ${site.barri}. Per-tree ecology is in the single-site view.`
+              : 'Proposed planting. Per-tree ecology is in the single-site view.',
           },
-        } as TreeProperties)
-      } else if (info.layer?.id === 'city-plan-sites' && info.object) {
+        } as TreeProperties
+      }
+
+      if (layerId === 'trees' && info.object) {
+        // 2D single-site icons carry full ecology.
+        const f = info.object as { properties?: TreeProperties }
+        if (f.properties) setSelectedTree(f.properties)
+      } else if ((layerId === 'trees-3d' || layerId === 'city-trees-3d' || layerId === 'city-trees') && info.object) {
+        // 3D spheres + 2D citywide canopies → species profile (lite).
+        const o = info.object as { species: string; cell?: string }
+        setSelectedTree(liteFromSpecies(o.species, o.cell))
+      } else if (layerId === 'city-plan-sites' && info.object) {
         // Click a funded pin → drill into that site.
         const o = info.object as { cell_id?: string }
         const sorted = cityPlan ? [...cityPlan.allocated_cells].sort((a, b) => a.rank - b.rank) : []

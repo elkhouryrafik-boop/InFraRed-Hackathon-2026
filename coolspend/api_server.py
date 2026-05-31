@@ -122,6 +122,14 @@ def _backend_mode() -> str:
 
 
 def create_app() -> FastAPI:
+    # Load .env (INFRARED_API_KEY) regardless of how the app is launched, so a
+    # live backend always has its key — not only via the __main__ block.
+    try:
+        from dotenv import load_dotenv  # noqa: PLC0415
+        load_dotenv(_REPO_ROOT / ".env")
+    except Exception:  # noqa: BLE001
+        pass
+
     app = FastAPI(title="CoolSpend API", version="1.0")
 
     # Vite dev server runs on a different origin; allow local dev origins.
