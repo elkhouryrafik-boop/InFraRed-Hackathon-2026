@@ -1,6 +1,7 @@
 // TreeInspect — side panel showing one clicked tree: identity, shade it
 // provides, and its ecological profile (an "ecosystem", not just a dot).
 
+import { useEffect } from 'react'
 import type { TreeProperties, TreeEcology } from '../lib/types'
 import './TreeInspect.css'
 
@@ -124,12 +125,22 @@ function EcologyBlock({ eco }: { eco: TreeEcology }) {
 }
 
 export function TreeInspect({ tree, onClose }: TreeInspectProps) {
+  // Esc closes the inspector (Redesign Spec §4.7 accessibility).
+  useEffect(() => {
+    if (!tree) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [tree, onClose])
+
   if (!tree) return null
   const isProposed = tree.kind === 'proposed'
   const shade = tree.crown_area_m2
 
   return (
-    <div className="tin">
+    <div className="tin" role="dialog" aria-modal="false" aria-label="Tree details">
       <button className="tin__close" onClick={onClose} aria-label="Close">
         ×
       </button>
