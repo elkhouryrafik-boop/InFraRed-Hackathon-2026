@@ -277,12 +277,9 @@ def create_app() -> FastAPI:
         first for a fast overview, then allocate on a shortlist.
         """
         backend = _backend_mode()
-        if backend != "live":
-            raise HTTPException(
-                status_code=400,
-                detail="Citywide allocation requires live backend (INFRARED_BACKEND=live). "
-                       "Use /api/citywide/scan for mock-mode overview.",
-            )
+        # mock/cached are allowed: placement is real (building-aware urban-design),
+        # per-site cooling is a labelled synthetic estimate and site PRIORITY uses the
+        # real Landsat heat × sealed ranking. live adds measured per-site cooling.
         from coolspend.citywide import load_scored_grid, allocate_citywide  # noqa: PLC0415
         cells = load_scored_grid()
         return allocate_citywide(cells, budget_eur=budget_eur, top_n=min(top_n, 20), backend=backend)

@@ -246,18 +246,27 @@ def _eur_per_m2_cooled(cfg: dict[str, Any]) -> float | None:
 def allocate_citywide(
     cells: list[dict[str, Any]] | None = None,
     budget_eur: float = 1_000_000.0,
-    top_n: int = 5,
+    top_n: int = 12,
     backend: str = "live",
+    per_site_budget_eur: float = 150_000.0,
 ) -> dict[str, Any]:
-    """Run smart_evaluate on the top-N cells, sort by €/m²-cooled, allocate budget.
+    """Spread the TOTAL budget across MULTIPLE strategic sites (not one crowded site).
 
-    Each cell gets its centroid sub-polygon evaluated with the full Mode-1 chain:
-    baseline UTCI → greedy placement → live intervention UTCI → ΔUTCI + €/m²-cooled.
+    The €1M is NOT dumped into a single plaza. Instead:
+      1. Rank the 494 Barcelona cells by composite_score_B (real Landsat heat ×
+         sealed surface) and take the top `top_n` as candidate sites.
+      2. Plant each candidate at a capped PER-SITE budget (per_site_budget_eur →
+         ~15 trees), via the building-aware urban-design greedy placement. A
+         per-site cap is what keeps any one site from being over-planted/crowded.
+      3. Fund the best candidates first — by measured €/m²-cooled when live, else by
+         heat-vulnerability (composite_score_B) — until the TOTAL budget is spent.
+         The number of funded sites falls out of the budget (≈ budget / per-site).
 
-    Cells are then sorted by €/m²-cooled (ascending — cheapest cooling wins) and
-    the budget is allocated greedily until exhausted.
+    backend: "live" gives measured per-site cooling (one sim per candidate — slow);
+    "mock"/"cached" give building-aware valid placement with a synthetic per-site
+    cooling estimate (no network), suitable for the citywide demo.
 
-    Runtime: ~70 s per cell with live backend (top_n=5 → ~6 min).
+    Runtime: ~70 s per cell live; sub-second per cell on mock (placement only).
     """
     from coolspend.app_pipeline import smart_evaluate  # noqa: PLC0415
 
@@ -282,7 +291,7 @@ def allocate_citywide(
         try:
             result = smart_evaluate(
                 geojson_text=geojson_text,
-                budget_eur=budget_eur,
+                budget_eur=per_site_budget_eur,  # PER-SITE cap → uncrowded site
                 backend=backend,
             )
         except Exception as exc:  # noqa: BLE001 — one cell fails, keep going
@@ -321,24 +330,49 @@ def allocate_citywide(
             "eval_polygon": ring,
         })
 
-    # Sort by €/m²-cooled (ascending — best value first).
-    # Cells with 0 cooled footprint sort last (no measurable cooling).
-    def _cooling_value(r: dict) -> float:
-        cooled = r.get("cooled_footprint_m2", 0) or 0
-        cost = r.get("cost_eur", 0) or 0
-        if cooled <= 0 or cost <= 0:
-            return float("inf")
-        return cost / cooled
+    # Funding order. With measured cooling (live), fund cheapest €/m²-cooled first.
+    # Without it (mock/cached have no per-cell grid → no real cooled m²), fall back
+    # to heat-vulnerability: fund the hottest, most-sealed cells first (the real
+    # Landsat-derived composite_score_B), which IS the strategic priority.
+    have_cooling = any((r.get("cooled_footprint_m2") or 0) > 0 for r in results)
+    if have_cooling:
+        def _key(r: dict) -> float:
+            cooled = r.get("cooled_footprint_m2", 0) or 0
+            cost = r.get("cost_eur", 0) or 0
+            return cost / cooled if (cooled > 0 and cost > 0) else float("inf")
+        results.sort(key=_key)
+    else:
+        results.sort(key=lambda r: -(r.get("composite_score_B") or 0.0))
 
-    results.sort(key=_cooling_value)
+    # Greedy budget allocation across the sorted cells, with a GEOGRAPHIC-SPREAD
+    # constraint: don't fund two sites closer than min_site_separation_m. The user
+    # wants the €1M spread across DIFFERENT places, not two adjacent grid cells —
+    # so a candidate too close to an already-funded site is skipped (held for the
+    # unallocated list), letting the budget reach a genuinely distinct next site.
+    import math as _math  # noqa: PLC0415
+    min_site_separation_m = 500.0
 
-    # Greedy budget allocation across the sorted cells.
+    def _far_enough(r: dict, funded: list[dict]) -> bool:
+        c = r.get("centroid_lonlat")
+        if not c:
+            return True
+        for f in funded:
+            fc = f.get("centroid_lonlat")
+            if not fc:
+                continue
+            mlat = _math.radians((c[1] + fc[1]) / 2.0)
+            dx = (c[0] - fc[0]) * _math.cos(mlat) * 111_320.0
+            dy = (c[1] - fc[1]) * 110_540.0
+            if (dx * dx + dy * dy) ** 0.5 < min_site_separation_m:
+                return False
+        return True
+
     remaining = budget_eur
     allocated_cells = []
     unallocated_cells = []
     for r in results:
         cost = r.get("cost_eur", 0) or 0
-        if cost <= remaining and cost > 0:
+        if cost <= remaining and cost > 0 and _far_enough(r, allocated_cells):
             r["allocation_eur"] = cost
             remaining -= cost
             allocated_cells.append(r)
