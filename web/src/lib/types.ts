@@ -72,6 +72,11 @@ export interface CityPlan {
   total_people_served: number | null
   total_canopy_m2: number
   total_person_degrees: number | null
+  total_cooled_footprint_m2?: number
+  total_cooled_m2_proxy?: number
+  // "measured_utci" | "shade_proxy_estimate" | "heat_vulnerability"
+  cooling_source?: string
+  cooling_is_measured?: boolean
   allocated_cells: CityPlanSite[]
 }
 

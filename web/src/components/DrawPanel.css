@@ -349,6 +349,9 @@
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
 }
 .city-plan__title { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+.city-plan__badge { display: inline-block; margin-top: 8px; padding: 3px 9px; border-radius: 999px; font-size: 10px; font-weight: 600; letter-spacing: 0.03em; }
+.city-plan__badge.is-measured { background: rgba(70, 240, 200, 0.16); border: 1px solid #46f0c8; color: #8ff5dd; }
+.city-plan__badge.is-estimate { background: rgba(240, 168, 104, 0.14); border: 1px solid #f0a868; color: #f0c49a; }
 .city-plan__kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
 .city-plan__kpi { background: rgba(255, 255, 255, 0.05); border-radius: 9px; padding: 8px; }
 .city-plan__kpi strong { display: block; font-size: 16px; color: #fff; }

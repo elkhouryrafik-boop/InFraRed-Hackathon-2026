@@ -405,6 +405,22 @@ export function Scene({ bundle, onBundle, appMode, setAppMode }: SceneProps) {
       {appMode === 'citywide' && cityPlan && (
         <div className="city-plan">
           <div className="city-plan__title">€{(cityPlan.budget_eur / 1e6).toFixed(1)}M across {cityPlan.allocated_count} sites</div>
+          {cityPlan.cooling_source && (
+            <div
+              className={`city-plan__badge ${cityPlan.cooling_is_measured ? 'is-measured' : 'is-estimate'}`}
+              title={
+                cityPlan.cooling_is_measured
+                  ? 'Per-site cooling from live Infrared UTCI simulations'
+                  : 'Per-site cooling estimated from sun geometry (shade proxy) — not measured UTCI'
+              }
+            >
+              {cityPlan.cooling_source === 'measured_utci'
+                ? `✓ measured UTCI${cityPlan.total_cooled_footprint_m2 ? ` · ${Math.round(cityPlan.total_cooled_footprint_m2).toLocaleString()} m² cooled` : ''}`
+                : cityPlan.cooling_source === 'shade_proxy_estimate'
+                  ? `≈ shade-proxy estimate${cityPlan.total_cooled_m2_proxy ? ` · ~${Math.round(cityPlan.total_cooled_m2_proxy).toLocaleString()} m²` : ''}`
+                  : 'heat-ranked (no cooling estimate)'}
+            </div>
+          )}
           <div className="city-plan__kpis">
             <div className="city-plan__kpi"><strong>{cityPlan.total_trees}</strong><span>trees</span></div>
             <div className="city-plan__kpi"><strong>{cityPlan.total_people_served ? cityPlan.total_people_served.toLocaleString() : '—'}</strong><span>people served</span></div>
