@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { Scene } from './components/Scene'
 import { FallbackScene } from './components/FallbackScene'
 import { loadWebBundle } from './lib/bundle'
-import type { WebBundle, AppMode } from './lib/types'
+import type { WebBundle, Phase } from './lib/types'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 const hasMapboxToken = !!MAPBOX_TOKEN && MAPBOX_TOKEN.trim().length > 0
+
+const SEEN_KEY = 'coolspend_seen'
 
 export default function App() {
   const [bundle, setBundle] = useState<WebBundle | null>(null)
@@ -13,7 +15,19 @@ export default function App() {
   // static bundle once the user evaluates a hand-drawn area.
   const [liveBundle, setLiveBundle] = useState<WebBundle | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [appMode, setAppMode] = useState<AppMode>('draw')
+
+  // ── Phase machine (Redesign Spec §3.1): the single source of truth that
+  // absorbs the old loose appMode. First run → the intro story. A returning
+  // judge boots straight into the €1M CITYWIDE plan, so you immediately see the
+  // trees placed across the 7 funded sites + all the measured data — not an
+  // empty draw canvas.
+  const [phase, setPhase] = useState<Phase>(() => {
+    try {
+      return localStorage.getItem(SEEN_KEY) === '1' ? 'citywide' : 'intro'
+    } catch {
+      return 'citywide'
+    }
+  })
 
   useEffect(() => {
     let cancelled = false
@@ -57,7 +71,13 @@ export default function App() {
   // Route on Mapbox token: full Mapbox+Cesium scene (with the drawing flow), or
   // flat deck.gl fallback (view-only; drawing needs the Mapbox map).
   return hasMapboxToken ? (
-    <Scene bundle={active} onBundle={setLiveBundle} appMode={appMode} setAppMode={setAppMode} />
+    <Scene
+      bundle={active}
+      onBundle={setLiveBundle}
+      phase={phase}
+      setPhase={setPhase}
+      seenKey={SEEN_KEY}
+    />
   ) : (
     <FallbackScene bundle={active} />
   )

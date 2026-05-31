@@ -15,8 +15,9 @@ import { Tiles3DLoader } from '@loaders.gl/3d-tiles'
 import type { Layer } from '@deck.gl/core'
 
 import type { TreesGeoJSON, TreeFeature, ImperviousAnalysis } from './types'
-import { EXISTING_TREE_COLOR } from './colorscale'
+import { EXISTING_TREE_COLOR, utciColor, alphaByIntensity } from './colorscale'
 import { crownDiameterAtAge } from './growth'
+import { speciesDims, foliageColor } from './species'
 
 const MASK_ID = 'cutout-mask'
 
@@ -37,6 +38,12 @@ export interface BuildLayersArgs {
   modelMatrix: number[] | null
   /** Credit-capture callback for legal attribution. */
   onTilesetLoad?: (tileset: unknown) => void
+  /**
+   * Enable the signature reveal choreography (Redesign Spec §5): trees pop in
+   * via a deck.gl getRadius transition, the heatmap fades. Disabled under
+   * prefers-reduced-motion (instant state).
+   */
+  animateReveal?: boolean
 }
 
 type Ring = [number, number][]
@@ -65,6 +72,7 @@ export function buildLayers(args: BuildLayersArgs): Layer[] {
     showImpervious,
     modelMatrix,
     onTilesetLoad,
+    animateReveal = false,
   } = args
 
   const out: Layer[] = []
@@ -117,6 +125,8 @@ export function buildLayers(args: BuildLayersArgs): Layer[] {
             image: raster.image,
             bounds: raster.bounds,
             opacity: rasterOpacity,
+            // Cross-fade baseline↔intervention by tweening opacity on swap (§5).
+            transitions: animateReveal ? { opacity: 420 } : undefined,
             parameters: { depthTest: true },
           },
           modelMatrix,
@@ -204,6 +214,8 @@ export function buildLayers(args: BuildLayersArgs): Layer[] {
         radiusMinPixels: 4,
         radiusMaxPixels: 140,
         updateTriggers: { getRadius: [treeScale, growthYear] },
+        // Trees pop in / grow on reveal (§5): staggered getRadius transition.
+        transitions: animateReveal ? { getRadius: { duration: 800 } } : undefined,
         stroked: true,
         filled: true,
         lineWidthUnits: 'pixels',
@@ -266,51 +278,162 @@ export function buildLayers(args: BuildLayersArgs): Layer[] {
 
 // ── Citywide (Mode 2) heatmap ────────────────────────────────────────────────
 
-/** Color-scale: composite_score_B → [r, g, b, a]. Hot=red, cold=blue. */
-function scoreColor(score: number): [number, number, number, number] {
-  // Clamp to [0, 1] then lerp blue (low) → yellow (mid) → red (high).
-  const t = Math.max(0, Math.min(1, score))
-  // Two-stop: blue(0) → yellow(0.5) → red(1)
-  let r: number, g: number, b: number
-  if (t < 0.5) {
-    const s = t * 2
-    r = Math.round(s * 255)
-    g = Math.round(s * 200)
-    b = Math.round(255 - s * 200)
-  } else {
-    const s = (t - 0.5) * 2
-    r = 255
-    g = Math.round(200 - s * 200)
-    b = Math.round(55 - s * 55)
-  }
-  return [r, g, b, 180]
+// composite_score_B in the scored grid clusters tightly (~0.45–0.80), so a raw
+// 0..1 mapping would wash every cell to the same hot colour. Stretch the live
+// range onto the CVD-safe UTCI ramp's intensity so the grid reads as a thermal
+// field rather than one flat orange blob (§4.9). Anchored, not invented:
+// cool end ≈ 22 °C-equivalent, hot end ≈ 40 °C-equivalent.
+const SCORE_LO = 0.45
+const SCORE_HI = 0.82
+const RAMP_LO_C = 22
+const RAMP_HI_C = 40
+
+function scoreToUtciC(score: number): number {
+  const t = Math.max(0, Math.min(1, (score - SCORE_LO) / (SCORE_HI - SCORE_LO)))
+  return RAMP_LO_C + t * (RAMP_HI_C - RAMP_LO_C)
 }
 
-/** €1M plan: a marker per funded site, radius ∝ trees planted there. */
+/**
+ * Color-scale: composite_score_B → luminous [r, g, b, a].
+ * Hot = bright (CVD-safe monotonic-lightness ramp), alpha ramps with intensity
+ * so danger glows and cool cells let the city through (§4.9-1/-3).
+ * `dim` (citywide focus-vs-context) desaturates + drops alpha for unfunded cells.
+ */
+function scoreColor(score: number, dim = false): [number, number, number, number] {
+  const c = scoreToUtciC(score)
+  const t = Math.max(0, Math.min(1, (score - SCORE_LO) / (SCORE_HI - SCORE_LO)))
+  let [r, g, b] = utciColor(c)
+  let a = Math.round(alphaByIntensity(t) * 255)
+  if (dim) {
+    // Pull toward a neutral slate (saturate ~0.7) and drop to α≈0.4.
+    const gray = Math.round(0.3 * r + 0.59 * g + 0.11 * b)
+    r = Math.round(r * 0.7 + gray * 0.3)
+    g = Math.round(g * 0.7 + gray * 0.3)
+    b = Math.round(b * 0.7 + gray * 0.3)
+    a = Math.round(0.4 * 255)
+  }
+  return [r, g, b, a]
+}
+
+/**
+ * €1M plan: a mint-ringed marker per funded site, radius ∝ trees planted there
+ * (§4.9-5). Funded sites stay full-saturation with a mint contour + glow; the
+ * `highlightIndex` (hover/selection) pulses one ring wider.
+ */
 export function buildCityPlanLayer(
   sites: { centroid_lonlat: [number, number]; tree_count: number; partial?: boolean }[] | null,
+  highlightIndex?: number | null,
 ): Layer | null {
   if (!sites || sites.length === 0) return null
   return new ScatterplotLayer({
     id: 'city-plan-sites',
     data: sites,
     getPosition: (s: { centroid_lonlat: [number, number] }) => s.centroid_lonlat,
-    // Radius grows with trees planted (meters → scales with zoom), clamped legible.
-    radiusUnits: 'meters',
-    getRadius: (s: { tree_count: number }) => 40 + s.tree_count * 6,
-    radiusMinPixels: 8,
-    radiusMaxPixels: 60,
+    // FIXED-PIXEL ring markers (not metre disks — those ballooned over the trees
+    // at site zoom). A small glowing ring locates each funded site at the overview
+    // and steps aside for the real canopy disks when you fly in.
+    radiusUnits: 'pixels',
+    getRadius: (s: { tree_count: number }, info?: { index: number }) => {
+      const base = 9 + s.tree_count * 0.35 // ~9–15px
+      return highlightIndex != null && info && info.index === highlightIndex ? base + 5 : base
+    },
     stroked: true,
     filled: true,
+    // Hollow-ish: faint fill so the ring reads as a locator, never a solid blob.
     getFillColor: (s: { partial?: boolean }) =>
-      (s.partial ? [255, 200, 90, 180] : [43, 200, 188, 190]) as [number, number, number, number],
-    getLineColor: [255, 255, 255, 230] as [number, number, number, number],
+      (s.partial ? [240, 185, 104, 45] : [59, 232, 192, 50]) as [number, number, number, number],
+    getLineColor: (_s: unknown, info?: { index: number }) =>
+      (highlightIndex != null && info && info.index === highlightIndex
+        ? [223, 255, 248, 255]
+        : [95, 246, 214, 235]) as [number, number, number, number],
     lineWidthUnits: 'pixels',
-    getLineWidth: 2,
+    getLineWidth: (_s: unknown, info?: { index: number }) =>
+      highlightIndex != null && info && info.index === highlightIndex ? 3.5 : 2,
     lineWidthMinPixels: 2,
+    updateTriggers: {
+      getRadius: [highlightIndex],
+      getLineColor: [highlightIndex],
+      getLineWidth: [highlightIndex],
+    },
     parameters: { depthTest: false },
     pickable: true,
   })
+}
+
+/**
+ * The €1M plan's actual placed trees, across all funded sites, drawn as real
+ * canopy disks + lighter cores (same look as the single-site trees) so the
+ * citywide view SHOWS the 99 planted trees — not just abstract pins. Reads
+ * `trees_lonlat` from each allocated cell; crown size + foliage colour from the
+ * client-side species table. `dimUnselected` fades trees of non-selected sites.
+ */
+export function buildCityTreesLayer(
+  sites:
+    | { trees_lonlat?: { lon: number; lat: number; species: string }[]; cell_id: string }[]
+    | null,
+  opts?: { selectedCellId?: string | null },
+): Layer[] {
+  if (!sites || sites.length === 0) return []
+  const selected = opts?.selectedCellId ?? null
+  type CT = { lon: number; lat: number; species: string; cell: string }
+  const flat: CT[] = []
+  for (const s of sites) {
+    for (const t of s.trees_lonlat ?? []) {
+      flat.push({ lon: t.lon, lat: t.lat, species: t.species, cell: s.cell_id })
+    }
+  }
+  if (flat.length === 0) return []
+  const radiusOf = (d: CT) => Math.max(2.5, speciesDims(d.species).crown_m / 2)
+  const focusA = (d: CT, base: number) =>
+    selected && d.cell !== selected ? Math.round(base * 0.45) : base
+  return [
+    new ScatterplotLayer({
+      id: 'city-trees',
+      data: flat,
+      getPosition: (d: CT) => [d.lon, d.lat],
+      radiusUnits: 'meters',
+      getRadius: radiusOf,
+      radiusMinPixels: 4,
+      radiusMaxPixels: 90,
+      stroked: true,
+      filled: true,
+      lineWidthUnits: 'pixels',
+      getLineWidth: 1,
+      lineWidthMinPixels: 0.5,
+      getFillColor: (d: CT) => {
+        const [r, g, b] = foliageColor(d.species)
+        return [r, g, b, focusA(d, 165)] as [number, number, number, number]
+      },
+      getLineColor: (d: CT) =>
+        [235, 255, 240, focusA(d, 200)] as [number, number, number, number],
+      updateTriggers: { getFillColor: [selected], getLineColor: [selected] },
+      parameters: { depthTest: false },
+      pickable: false,
+    }),
+    new ScatterplotLayer({
+      id: 'city-tree-cores',
+      data: flat,
+      getPosition: (d: CT) => [d.lon, d.lat],
+      radiusUnits: 'meters',
+      getRadius: (d: CT) => radiusOf(d) * 0.5,
+      radiusMinPixels: 1.5,
+      radiusMaxPixels: 45,
+      stroked: false,
+      filled: true,
+      getFillColor: (d: CT) => {
+        const [r, g, b] = foliageColor(d.species)
+        return [
+          Math.min(255, r + 55),
+          Math.min(255, g + 55),
+          Math.min(255, b + 45),
+          focusA(d, 150),
+        ] as [number, number, number, number]
+      },
+      updateTriggers: { getFillColor: [selected] },
+      parameters: { depthTest: false },
+      pickable: false,
+    }),
+  ]
 }
 
 export interface CitywideLayerArgs {
@@ -318,10 +441,15 @@ export interface CitywideLayerArgs {
   data: GeoJSON.FeatureCollection | null
   /** Opacity 0..1. */
   opacity?: number
+  /**
+   * When set, every cell NOT in this set is dimmed to whisper-faint context so
+   * the 7 funded sites read as the focus (§4.9-5). Keyed on cell_id.
+   */
+  fundedCellIds?: Set<string> | null
 }
 
 export function buildCitywideLayer(args: CitywideLayerArgs): Layer | null {
-  const { data, opacity = 0.6 } = args
+  const { data, opacity = 0.6, fundedCellIds = null } = args
   if (!data) return null
 
   return new GeoJsonLayer({
@@ -333,11 +461,16 @@ export function buildCitywideLayer(args: CitywideLayerArgs): Layer | null {
     extruded: false,
     lineWidthScale: 1,
     lineWidthMinPixels: 0.5,
-    getFillColor: (f: { properties?: { composite_score_B?: number } }) =>
-      scoreColor(f.properties?.composite_score_B ?? 0),
-    getLineColor: [30, 30, 40, 100] as [number, number, number, number],
+    getFillColor: (f: { properties?: { composite_score_B?: number; cell_id?: string } }) => {
+      const score = f.properties?.composite_score_B ?? 0
+      const dim = !!fundedCellIds && !!f.properties?.cell_id && !fundedCellIds.has(f.properties.cell_id)
+      return scoreColor(score, dim)
+    },
+    // Thin iso-contour-style cell edges (§4.9-6): faint white lattice that turns
+    // a gradient into readable thermal topography.
+    getLineColor: [255, 255, 255, 30] as [number, number, number, number],
     getLineWidth: 0.5,
     opacity,
-    updateTriggers: { getFillColor: [opacity] },
+    updateTriggers: { getFillColor: [opacity, fundedCellIds] },
   })
 }
