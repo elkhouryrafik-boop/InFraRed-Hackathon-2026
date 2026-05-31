@@ -80,6 +80,13 @@ export interface CityPlan {
   // "measured_utci" | "shade_proxy_estimate" | "heat_vulnerability"
   cooling_source?: string
   cooling_is_measured?: boolean
+  placement_audit?: {
+    trees_checked: number
+    on_building: number
+    clumps_under_min_spacing: number
+    all_on_valid_ground: boolean
+    method?: string
+  }
   allocated_cells: CityPlanSite[]
 }
 

@@ -132,6 +132,15 @@ export function CitywidePanel({
         {plan.total_cells_scanned ?? 494} blocks scanned · funded the{' '}
         {plan.allocated_count} hottest first · {formatEuro(plan.budget_eur - plan.total_allocated_eur)} left
       </div>
+      {plan.placement_audit && (
+        <div className={`cp-audit ${plan.placement_audit.all_on_valid_ground ? 'is-ok' : 'is-warn'}`}>
+          {plan.placement_audit.all_on_valid_ground ? '✓ ' : '⚠ '}
+          {plan.placement_audit.trees_checked - plan.placement_audit.on_building}/
+          {plan.placement_audit.trees_checked} trees verified on valid ground ·{' '}
+          {plan.placement_audit.on_building} on buildings · {plan.placement_audit.clumps_under_min_spacing} clumped
+          <span className="cp-audit__how"> (independent OSM re-check)</span>
+        </div>
+      )}
 
       {/* CTA (Scene 8 footer). */}
       <div className="cp-cta">

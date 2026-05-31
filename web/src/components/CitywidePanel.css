@@ -99,3 +99,13 @@
 @media (max-width: 640px) {
   .city-panel { left: var(--s-3); right: var(--s-3); width: auto; bottom: var(--s-3); }
 }
+
+.cp-audit {
+  margin-top: var(--s-2);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+.cp-audit.is-ok { color: var(--brand); }
+.cp-audit.is-warn { color: var(--warn); }
+.cp-audit__how { color: var(--ink-3); }
