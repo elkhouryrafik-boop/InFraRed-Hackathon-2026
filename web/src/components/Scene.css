@@ -60,3 +60,28 @@
 @media (max-width: 640px) {
   .legend-dock { bottom: auto; top: calc(var(--s-5) + 56px); right: var(--s-3); }
 }
+
+/* 2D/3D view toggle — top-right pill. */
+.view3d-toggle {
+  position: absolute;
+  top: var(--s-5);
+  right: var(--s-5);
+  z-index: 13;
+  padding: var(--s-2) var(--s-4);
+  border-radius: var(--r-pill);
+  background: var(--surface-1);
+  border: 1px solid var(--hairline);
+  color: var(--ink-1);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semi);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  box-shadow: var(--sh-1);
+}
+.view3d-toggle:hover { border-color: var(--hairline-strong); }
+.view3d-toggle.is-3d {
+  background: var(--measured-bg);
+  border-color: var(--measured-border);
+  color: var(--brand-bright);
+}

@@ -10,6 +10,7 @@ import './Scene.css'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Map,
+  Layer as MapLayer,
   type ViewStateChangeEvent,
   type MapRef,
   type MapLayerMouseEvent,
@@ -41,6 +42,7 @@ import type {
 import type { LngLat } from '../lib/draw'
 import { buildCitywideLayer, buildCityPlanLayer, buildCityTreesLayer } from '../lib/layers'
 import { speciesDims, foliageColor } from '../lib/species'
+import { buildTreeSpheres, type TreePoint } from '../lib/treeMesh'
 import { useReducedMotion } from '../lib/useReducedMotion'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string
@@ -72,6 +74,9 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
   const [lon, lat] = bundle.decision.site_center_lonlat
   const mapRef = useRef<MapRef | null>(null)
   const reducedMotion = useReducedMotion()
+  // 3D view toggle: false = clean 2D satellite (analysis), true = cinematic 3D
+  // (light basemap + extruded buildings + 3D tree spheres, Infrared.city style).
+  const [view3d, setView3d] = useState(false)
 
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -314,9 +319,11 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
   const tilesOpacity = tilesetOpacity(viewState.zoom)
 
   const photorealActive = tilesLoaded && tilesOpacity > 0.5
-  // Plain satellite (NO roads / POI / labels) — a clean, empty canvas so the
-  // heat field + canopies read without clutter (user request).
-  const mapStyle = photorealActive ? EMPTY_MAP_STYLE : 'mapbox://styles/mapbox/satellite-v9'
+  // 2D = clean empty satellite (analysis). 3D = light basemap (white buildings
+  // extrude cleanly on it) for the cinematic view.
+  const mapStyle = view3d
+    ? 'mapbox://styles/mapbox/light-v11'
+    : 'mapbox://styles/mapbox/satellite-v9'
 
   const boundaryRing = useMemo(() => boundaryOuterRing(bundle.boundary), [bundle.boundary])
   const rasterBounds = useMemo(() => toDeckBounds(bundle.bounds), [bundle.bounds])
@@ -406,23 +413,58 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
     [sortedSites, selectedCellId],
   )
 
+  // 3D tree-sphere points (used only in view3d).
+  const siteTreePoints = useMemo<TreePoint[]>(
+    () =>
+      (bundle.trees?.features ?? [])
+        .filter((f) => f.properties.kind === 'proposed')
+        .map((f) => ({
+          lon: f.geometry.coordinates[0],
+          lat: f.geometry.coordinates[1],
+          crown_m: f.properties.crown_diameter_m || 6,
+          species: f.properties.species,
+        })),
+    [bundle.trees],
+  )
+  const cityTreePoints = useMemo<TreePoint[]>(
+    () =>
+      sortedSites.flatMap((s) =>
+        (s.trees_lonlat ?? []).map((t) => ({
+          lon: t.lon,
+          lat: t.lat,
+          crown_m: speciesDims(t.species).crown_m,
+          species: t.species,
+          cell: s.cell_id,
+        })),
+      ),
+    [sortedSites],
+  )
+
   const allLayers = useMemo(() => {
     if (phase === 'citywide') {
-      // Citywide is its OWN scene: heat grid + funded-site pins + the 99 placed
-      // trees. The single-site showcase (raster PNG, boundary, Plaça trees) is
-      // suppressed so it never bleeds a stray heatmap/trees over the city view.
+      // Citywide is its OWN scene: heat grid + funded-site pins + the placed trees.
       const result: Layer[] = []
       if (citywideLayer) result.push(citywideLayer)
       if (cityPlanLayer) result.push(cityPlanLayer)
-      result.push(...cityTreeLayers) // trees on top — the planting is the hero
+      if (view3d) {
+        const s = buildTreeSpheres('city-trees-3d', cityTreePoints, { selectedCellId })
+        if (s) result.push(s)
+      } else {
+        result.push(...cityTreeLayers) // 2D canopy icons
+      }
       return result
     }
-    const result = [...layers]
+    // Single-site: drop the 2D icon 'trees' in 3D and add sphere trees instead.
+    const result = view3d ? layers.filter((l) => l.id !== 'trees') : [...layers]
+    if (view3d) {
+      const s = buildTreeSpheres('trees-3d', siteTreePoints)
+      if (s) result.push(s)
+    }
     if (isDrawPhase) {
       result.push(...draw.drawLayers)
     }
     return result
-  }, [layers, draw.drawLayers, phase, isDrawPhase, citywideLayer, cityPlanLayer, cityTreeLayers])
+  }, [layers, draw.drawLayers, phase, isDrawPhase, citywideLayer, cityPlanLayer, cityTreeLayers, view3d, cityTreePoints, siteTreePoints, selectedCellId])
 
   // PERF: the map is uncontrolled (initialViewState), so it pans natively on the
   // GPU. We must NOT setViewState on every frame — that re-renders the whole
@@ -547,6 +589,19 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
     setPhase('intro')
   }, [setPhase])
 
+  // 2D ↔ 3D toggle: ease the pitch up for the cinematic view, flat for analysis.
+  const toggle3d = useCallback(() => {
+    setView3d((v) => {
+      const next = !v
+      const map = mapRef.current?.getMap()
+      if (map) {
+        cameraModeRef.current = 'auto'
+        map.easeTo({ pitch: next ? 58 : 0, duration: reducedMotion ? 0 : 600 })
+      }
+      return next
+    })
+  }, [reducedMotion])
+
   const onSelectSite = useCallback(
     (site: CityPlanSite, index: number) => {
       setSelectedSiteIndex(index)
@@ -584,6 +639,21 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
         style={{ width: '100%', height: '100%' }}
         antialias
       >
+        {view3d && (
+          <MapLayer
+            id="3d-buildings"
+            type="fill-extrusion"
+            source="composite"
+            source-layer="building"
+            minzoom={13}
+            paint={{
+              'fill-extrusion-color': '#e9edf2',
+              'fill-extrusion-height': ['get', 'height'],
+              'fill-extrusion-base': ['get', 'min_height'],
+              'fill-extrusion-opacity': 0.95,
+            }}
+          />
+        )}
         <DeckOverlay layers={allLayers} onClick={onDeckClick} />
       </Map>
 
@@ -614,6 +684,18 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
             else setPhase(phase === 'citywide' ? 'design' : phase)
           }}
         />
+      )}
+
+      {phase !== 'intro' && (
+        <button
+          type="button"
+          className={`view3d-toggle ${view3d ? 'is-3d' : ''}`}
+          onClick={toggle3d}
+          aria-pressed={view3d}
+          title="Toggle 2D analysis / 3D cinematic view"
+        >
+          {view3d ? '◳ 3D' : '⬚ 2D'}
+        </button>
       )}
 
       {/* Design + Result: Action Rail (right). Result also shows the Result Card. */}
