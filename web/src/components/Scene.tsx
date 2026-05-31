@@ -245,13 +245,20 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
       if (info.layer?.id === 'trees' && info.object) {
         const f = info.object as { properties?: TreeProperties }
         if (f.properties) setSelectedTree(f.properties)
-      } else if (info.layer?.id === 'city-plan-sites' && info.object) {
-        // Click a funded pin → drill into it.
-        const s = info.object as CityPlanSite
+      } else if (
+        (info.layer?.id === 'city-plan-sites' || info.layer?.id === 'city-trees') &&
+        info.object
+      ) {
+        // Click a funded pin OR one of its canopies → drill into that site.
+        const o = info.object as { cell_id?: string; cell?: string }
+        const cellId = o.cell_id ?? o.cell
         const sorted = cityPlan ? [...cityPlan.allocated_cells].sort((a, b) => a.rank - b.rank) : []
-        const idx = sorted.findIndex((x) => x.cell_id === s.cell_id)
-        setSelectedSiteIndex(idx >= 0 ? idx : null)
-        flyToSite(s.centroid_lonlat[0], s.centroid_lonlat[1], { zoom: 16.8, pitch: 45 })
+        const idx = sorted.findIndex((x) => x.cell_id === cellId)
+        if (idx >= 0) {
+          setSelectedSiteIndex(idx)
+          const ctr = sorted[idx].centroid_lonlat
+          flyToSite(ctr[0], ctr[1], { zoom: 16.8, pitch: 45 })
+        }
       } else {
         setSelectedTree(null)
       }
@@ -266,12 +273,20 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
       setSelectedTree(null)
       onBundle?.(b)
       setPlantingYear(MAX_MATURITY_YEARS)
-      setScenario('intervention')
       setPhase('result')
       const c = b.decision.site_center_lonlat
       if (c) flyToSite(c[0], c[1])
+      // The "money moment": show the BEFORE heat, then cross-fade to the cooled
+      // field once the camera lands (deck tweens the stacked drapes). Instant
+      // under reduced-motion.
+      if (reducedMotion) {
+        setScenario('intervention')
+      } else {
+        setScenario('baseline')
+        window.setTimeout(() => setScenario('intervention'), FLYTO_DURATION + 200)
+      }
     },
-    [draw, onBundle, setPhase, flyToSite],
+    [draw, onBundle, setPhase, flyToSite, reducedMotion],
   )
 
   // Elevation lift is inactive (photoreal mesh disabled; satellite basemap —
@@ -286,14 +301,22 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
   const boundaryRing = useMemo(() => boundaryOuterRing(bundle.boundary), [bundle.boundary])
   const rasterBounds = useMemo(() => toDeckBounds(bundle.bounds), [bundle.bounds])
 
-  const rasterImage = scenario === 'baseline' ? bundle.baselineImageUrl : bundle.interventionImageUrl
+  // Cross-fade target: 0 = baseline, 1 = with-trees. Deck tweens the two stacked
+  // drapes' opacities, so the Evaluate reveal + the toggle dissolve smoothly.
+  const rasterMix = scenario === 'baseline' ? 0 : 1
 
   const layers: Layer[] = useMemo(
     () =>
       buildLayers({
         tilesetUrl: null,
         boundaryRing,
-        raster: { image: rasterImage, bounds: rasterBounds },
+        rasterBaseline: bundle.baselineImageUrl
+          ? { image: bundle.baselineImageUrl, bounds: rasterBounds }
+          : null,
+        rasterIntervention: bundle.interventionImageUrl
+          ? { image: bundle.interventionImageUrl, bounds: rasterBounds }
+          : null,
+        rasterMix,
         rasterOpacity,
         trees: bundle.trees,
         treeScale,
@@ -318,7 +341,9 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
       }),
     [
       boundaryRing,
-      rasterImage,
+      rasterMix,
+      bundle.baselineImageUrl,
+      bundle.interventionImageUrl,
       rasterBounds,
       rasterOpacity,
       bundle.trees,

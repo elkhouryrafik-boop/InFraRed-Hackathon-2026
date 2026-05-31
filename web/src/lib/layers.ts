@@ -24,7 +24,11 @@ const MASK_ID = 'cutout-mask'
 export interface BuildLayersArgs {
   tilesetUrl: string | null
   boundaryRing: [number, number][] | null
-  raster: { image: string; bounds: [number, number, number, number] } | null
+  /** Both UTCI drapes, stacked, so we can cross-fade baseline↔intervention (§5). */
+  rasterBaseline: { image: string; bounds: [number, number, number, number] } | null
+  rasterIntervention: { image: string; bounds: [number, number, number, number] } | null
+  /** 0 = show baseline, 1 = show intervention; tweened by deck for the reveal. */
+  rasterMix: number
   rasterOpacity: number
   trees: TreesGeoJSON | null
   /** Visual canopy scale (0..1) for the age slider; 1 = mature. (legacy fallback) */
@@ -63,7 +67,9 @@ export function buildLayers(args: BuildLayersArgs): Layer[] {
   const {
     tilesetUrl,
     boundaryRing,
-    raster,
+    rasterBaseline,
+    rasterIntervention,
+    rasterMix,
     rasterOpacity,
     trees,
     treeScale = 1,
@@ -115,18 +121,38 @@ export function buildLayers(args: BuildLayersArgs): Layer[] {
     )
   }
 
-  // ── UTCI heatmap drape (recipe §5.1) — under trees, over the floor.
-  if (raster) {
+  // ── UTCI heatmap drapes (recipe §5.1) — under trees, over the floor. Two
+  // stacked bitmaps (baseline + intervention) whose opacities are driven by
+  // rasterMix, so flipping the scenario / running the reveal CROSS-FADES (deck
+  // tweens each opacity) instead of a jarring image swap (§5 "money moment").
+  const mix = Math.max(0, Math.min(1, rasterMix))
+  if (rasterBaseline) {
     out.push(
       new BitmapLayer(
         withLift(
           {
-            id: 'utci-raster',
-            image: raster.image,
-            bounds: raster.bounds,
-            opacity: rasterOpacity,
-            // Cross-fade baseline↔intervention by tweening opacity on swap (§5).
-            transitions: animateReveal ? { opacity: 420 } : undefined,
+            id: 'utci-raster-baseline',
+            image: rasterBaseline.image,
+            bounds: rasterBaseline.bounds,
+            opacity: rasterOpacity * (1 - mix),
+            transitions: animateReveal ? { opacity: 600 } : undefined,
+            parameters: { depthTest: true },
+          },
+          modelMatrix,
+        ),
+      ),
+    )
+  }
+  if (rasterIntervention) {
+    out.push(
+      new BitmapLayer(
+        withLift(
+          {
+            id: 'utci-raster-intervention',
+            image: rasterIntervention.image,
+            bounds: rasterIntervention.bounds,
+            opacity: rasterOpacity * mix,
+            transitions: animateReveal ? { opacity: 600 } : undefined,
             parameters: { depthTest: true },
           },
           modelMatrix,
@@ -408,7 +434,7 @@ export function buildCityTreesLayer(
         [235, 255, 240, focusA(d, 200)] as [number, number, number, number],
       updateTriggers: { getFillColor: [selected], getLineColor: [selected] },
       parameters: { depthTest: false },
-      pickable: false,
+      pickable: true, // click a canopy → drill into its site (handled in Scene)
     }),
     new ScatterplotLayer({
       id: 'city-tree-cores',
