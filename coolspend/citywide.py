@@ -369,25 +369,29 @@ def allocate_citywide(
     # Landsat-derived composite_score_B), which IS the strategic priority.
     have_cooling = any((r.get("cooled_footprint_m2") or 0) > 0 for r in results)
     have_proxy = any((r.get("cooled_m2_proxy") or 0) > 0 for r in results)
-    if have_cooling:
-        cooling_source = "measured_utci"  # live/cached: real cooled grid
+    cooling_source = (
+        "measured_utci" if have_cooling
+        else "shade_proxy_estimate" if have_proxy
+        else "heat_vulnerability"
+    )
 
-        def _key(r: dict) -> float:
-            cooled = r.get("cooled_footprint_m2", 0) or 0
-            cost = r.get("cost_eur", 0) or 0
-            return cost / cooled if (cooled > 0 and cost > 0) else float("inf")
-        results.sort(key=_key)
-    elif have_proxy:
-        cooling_source = "shade_proxy_estimate"  # sim-free €/m² ordering (better than heat alone)
+    # PRIORITY = climate need × people need. The intervention should land where it
+    # is both HOT and where PEOPLE actually live/walk — not in an empty factory or
+    # container yard that happens to read hot on satellite (user request). Heat is
+    # the Landsat composite; people is the Padró 300 m catchment. A near-empty cell
+    # (people_norm≈0) is heavily penalised (×0.2) so it loses to a populated hot one.
+    h_max = max((r.get("composite_score_B") or 0.0) for r in results) or 1.0
+    p_vals = [(r.get("people_served") or 0) for r in results]
+    p_max = max(p_vals) or 1.0
 
-        def _key(r: dict) -> float:
-            cooled = r.get("cooled_m2_proxy", 0) or 0
-            cost = r.get("cost_eur", 0) or 0
-            return cost / cooled if (cooled > 0 and cost > 0) else float("inf")
-        results.sort(key=_key)
-    else:
-        cooling_source = "heat_vulnerability"  # composite_score_B fallback
-        results.sort(key=lambda r: -(r.get("composite_score_B") or 0.0))
+    def _priority(r: dict) -> float:
+        h = (r.get("composite_score_B") or 0.0) / h_max
+        p = (r.get("people_served") or 0) / p_max
+        r["priority_score"] = round(h * (0.2 + 0.8 * p), 4)
+        r["people_norm"] = round(p, 3)
+        return r["priority_score"]
+
+    results.sort(key=lambda r: -_priority(r))
 
     # Greedy budget allocation across the sorted cells, with a GEOGRAPHIC-SPREAD
     # constraint: don't fund two sites closer than min_site_separation_m. The user
@@ -425,9 +429,18 @@ def allocate_citywide(
     allocated_cells = []
     unallocated_cells = []
     infeasible_cells = []
+    funded_barris: set[str] = set()  # one funded site per barri (no duplicate neighbourhoods)
     for r in results:
         cost = r.get("cost_eur", 0) or 0
         trees = r.get("trees_lonlat", []) or []
+        barri = (r.get("barri") or "").strip()
+        # Spread across DISTINCT neighbourhoods — don't fund two cells in the same
+        # barri (user saw La Marina del Prat Vermell funded twice).
+        if barri and barri in funded_barris:
+            r["allocation_eur"] = 0.0
+            r["skip_reason"] = f"already funded a site in {barri}"
+            unallocated_cells.append(r)
+            continue
         if len(trees) < MIN_FEASIBLE_TREES:
             r["allocation_eur"] = 0.0
             r["skip_reason"] = (
@@ -444,6 +457,8 @@ def allocate_citywide(
             r["allocation_eur"] = cost
             remaining -= cost
             allocated_cells.append(r)
+            if barri:
+                funded_barris.add(barri)
         elif trees:
             # PARTIAL fund: the budget can't cover this whole site, but we must spend
             # all the money — so plant only the prefix of (best-value-first) trees that
@@ -458,6 +473,8 @@ def allocate_citywide(
                 r["partial"] = True
                 remaining -= r["cost_eur"]
                 allocated_cells.append(r)
+                if barri:
+                    funded_barris.add(barri)
             else:
                 r["allocation_eur"] = 0.0
                 unallocated_cells.append(r)

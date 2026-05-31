@@ -207,7 +207,7 @@ export function ActionRail({
               <span>
                 {preview.buildings_available
                   ? `~${preview.context_building_count} buildings — their shadows are in the sim`
-                  : 'No live buildings (set backend=live)'}
+                  : 'Using OpenStreetMap buildings for placement (keep trees off roofs); live backend adds Infrared shadows'}
               </span>
             )}
             {preview?.impervious?.available && (

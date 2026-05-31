@@ -314,7 +314,9 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
   const tilesOpacity = tilesetOpacity(viewState.zoom)
 
   const photorealActive = tilesLoaded && tilesOpacity > 0.5
-  const mapStyle = photorealActive ? EMPTY_MAP_STYLE : 'mapbox://styles/mapbox/satellite-streets-v12'
+  // Plain satellite (NO roads / POI / labels) — a clean, empty canvas so the
+  // heat field + canopies read without clutter (user request).
+  const mapStyle = photorealActive ? EMPTY_MAP_STYLE : 'mapbox://styles/mapbox/satellite-v9'
 
   const boundaryRing = useMemo(() => boundaryOuterRing(bundle.boundary), [bundle.boundary])
   const rasterBounds = useMemo(() => toDeckBounds(bundle.bounds), [bundle.bounds])

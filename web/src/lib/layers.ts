@@ -249,8 +249,10 @@ export function buildLayers(args: BuildLayersArgs): Layer[] {
             const [r, g, b] = EXISTING_TREE_COLOR
             return [r, g, b, 150]
           }
-          const c = f.properties.color ?? [86, 160, 86]
-          return [c[0], c[1], c[2], 235]
+          // FOLIAGE green per species (NOT f.properties.color, which is a warm
+          // cooling-rank palette — that made the canopies render red/orange).
+          const [r, g, b] = foliageColor(f.properties.species)
+          return [r, g, b, 240]
         },
         updateTriggers: { getSize: [treeScale, growthYear] },
         transitions: animateReveal ? { getSize: { duration: 800 } } : undefined,

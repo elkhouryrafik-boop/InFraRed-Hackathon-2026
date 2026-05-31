@@ -1,22 +1,137 @@
 {
   "mode": "allocate",
   "total_cells_scanned": 494,
-  "evaluated_count": 10,
-  "allocated_count": 7,
+  "evaluated_count": 20,
+  "allocated_count": 8,
   "budget_eur": 1000000.0,
-  "total_allocated_eur": 990000,
-  "remaining_eur": 10000,
-  "total_trees": 99,
-  "total_cooled_footprint_m2": 24356.0,
-  "total_cooled_m2_proxy": 4918.4,
-  "cooling_source": "measured_utci",
-  "cooling_is_measured": true,
-  "total_people_served": 22590,
-  "total_canopy_m2": 5412.1,
-  "total_canopy_m2_per_1000eur": 5.5,
-  "total_person_degrees": 6260.7,
-  "avg_cost_per_m2_cooled": 41,
+  "total_allocated_eur": 1000000,
+  "remaining_eur": 0,
+  "total_trees": 100,
+  "total_cooled_footprint_m2": 0,
+  "total_cooled_m2_proxy": 5916.8,
+  "cooling_source": "shade_proxy_estimate",
+  "cooling_is_measured": false,
+  "total_people_served": 48467,
+  "total_canopy_m2": 5570.8,
+  "total_canopy_m2_per_1000eur": 5.6,
+  "total_person_degrees": null,
+  "avg_cost_per_m2_cooled": null,
   "allocated_cells": [
+    {
+      "rank": 17,
+      "cell_id": "C025_018",
+      "district": "CIUTAT VELLA",
+      "barri": "EL BARRI GÒTIC",
+      "composite_score_B": 0.7048105145650361,
+      "mean_sealed": 0.8700007200241089,
+      "mean_lst_celsius": 38.71467741243132,
+      "tree_count": 7,
+      "cost_eur": 70000.0,
+      "trees_lonlat": [
+        {
+          "lon": 2.17430749,
+          "lat": 41.38184712,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.17427105,
+          "lat": 41.3809461,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.17422413,
+          "lat": 41.38087371,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.17378086,
+          "lat": 41.38187937,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.17403964,
+          "lat": 41.38033193,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.17394443,
+          "lat": 41.38029522,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.17417538,
+          "lat": 41.38094542,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        }
+      ],
+      "plantable_area_m2": 8582.8,
+      "delta_utci_c": 0.0,
+      "baseline_utci_c": 41.0,
+      "validated_utci_c": 41.0,
+      "heat_stress_area_m2": null,
+      "cooled_footprint_m2": 0,
+      "cost_per_m2_cooled": null,
+      "people_served": 10468,
+      "headline": "Smart placement: 7 trees, €70,000, 0.00 °C mean UTCI drop, covers 1% of hot-paved demand. Every in-ground tree requires a utility survey.",
+      "centroid_lonlat": [
+        2.174794481886534,
+        41.3811660380919
+      ],
+      "eval_polygon": [
+        [
+          2.1736100536954397,
+          41.38025678569734
+        ],
+        [
+          2.176001682742623,
+          41.38027393696784
+        ],
+        [
+          2.1759789430690786,
+          41.38207527845709
+        ],
+        [
+          2.173587248038994,
+          41.38205812610662
+        ],
+        [
+          2.1736100536954397,
+          41.38025678569734
+        ]
+      ],
+      "cooled_m2_proxy": 403.2,
+      "cooling_is_measured": false,
+      "priority_score": 0.8956,
+      "people_norm": 1.0,
+      "allocation_eur": 70000.0,
+      "design_metrics": {
+        "tree_count": 7,
+        "canopy_area_m2": 429.6,
+        "canopy_m2_per_1000eur": 6.1,
+        "canopy_cover_pct_cell": 1.1,
+        "canopy_cover_pct_plantable": 5.0,
+        "plantable_area_m2": 8582.8,
+        "canopy_cover_pct": 5.0,
+        "canopy_cover_denominator": "plantable_strip",
+        "canopy_target_pct": 30.0,
+        "canopy_gap_to_target_pct": 25.0,
+        "est_air_temp_drop_c": 0.08
+      }
+    },
     {
       "rank": 2,
       "cell_id": "C030_031",
@@ -29,120 +144,120 @@
       "cost_eur": 150000.0,
       "trees_lonlat": [
         {
-          "lon": 2.19708516,
-          "lat": 41.42794651,
+          "lon": 2.19771365,
+          "lat": 41.42744648,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19717956,
-          "lat": 41.42805526,
+          "lon": 2.19886203,
+          "lat": 41.42749051,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19708161,
-          "lat": 41.42823473,
+          "lon": 2.19857261,
+          "lat": 41.42766865,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19708693,
-          "lat": 41.42780241,
+          "lon": 2.19766135,
+          "lat": 41.42780641,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19718533,
-          "lat": 41.42758691,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.19751597,
-          "lat": 41.42794952,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.19746411,
-          "lat": 41.42827343,
+          "lon": 2.19781027,
+          "lat": 41.42737509,
           "species": "Styphnolobium japonicum",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19746322,
-          "lat": 41.42834548,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.19746233,
-          "lat": 41.42841753,
+          "lon": 2.19876762,
+          "lat": 41.42738177,
           "species": "Styphnolobium japonicum",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19707717,
-          "lat": 41.42859499,
-          "species": "Celtis australis",
+          "lon": 2.19751863,
+          "lat": 41.42773336,
+          "species": "Melia azedarach",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.1970896,
-          "lat": 41.42758625,
+          "lon": 2.19890635,
+          "lat": 41.42777906,
           "species": "Styphnolobium japonicum",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19708871,
-          "lat": 41.4276583,
+          "lon": 2.19818213,
+          "lat": 41.42827843,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19707983,
+          "lat": 41.42837883,
           "species": "Styphnolobium japonicum",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19737015,
-          "lat": 41.42812865,
+          "lon": 2.19755851,
+          "lat": 41.42838217,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19707539,
+          "lat": 41.4287391,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19765602,
+          "lat": 41.42823873,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19746899,
-          "lat": 41.42787713,
-          "species": "Celtis australis",
+          "lon": 2.1974579,
+          "lat": 41.4287778,
+          "species": "Styphnolobium japonicum",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19709137,
-          "lat": 41.42744214,
+          "lon": 2.19875123,
+          "lat": 41.42871475,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         }
       ],
       "plantable_area_m2": 26670.0,
-      "delta_utci_c": 0.26,
-      "baseline_utci_c": 30.97,
-      "validated_utci_c": 30.71,
-      "heat_stress_area_m2": 29742.0,
-      "cooled_footprint_m2": 4582.0,
-      "cost_per_m2_cooled": 32.7,
+      "delta_utci_c": 0.0,
+      "baseline_utci_c": 41.0,
+      "validated_utci_c": 41.0,
+      "heat_stress_area_m2": null,
+      "cooled_footprint_m2": 0,
+      "cost_per_m2_cooled": null,
       "people_served": 6952,
-      "headline": "Smart placement: 15 trees, €150,000, 0.26 °C mean UTCI drop, covers 3% of hot-paved demand. Every in-ground tree requires a utility survey.",
+      "headline": "Smart placement: 15 trees, €150,000, 0.00 °C mean UTCI drop, covers 2% of hot-paved demand. Every in-ground tree requires a utility survey.",
       "centroid_lonlat": [
         2.1981355914623952,
         41.42817001798641
@@ -169,8 +284,10 @@
           41.42726100260208
         ]
       ],
-      "cooled_m2_proxy": 787.2,
-      "cooling_is_measured": true,
+      "cooled_m2_proxy": 835.2,
+      "cooling_is_measured": false,
+      "priority_score": 0.7225,
+      "people_norm": 0.664,
       "allocation_eur": 150000.0,
       "design_metrics": {
         "tree_count": 15,
@@ -187,492 +304,6 @@
       }
     },
     {
-      "rank": 6,
-      "cell_id": "C032_032",
-      "district": "SANT ANDREU",
-      "barri": "EL BON PASTOR",
-      "composite_score_B": 0.7591011020788967,
-      "mean_sealed": 0.8060246706008911,
-      "mean_lst_celsius": 45.305127747665495,
-      "tree_count": 12,
-      "cost_eur": 120000.0,
-      "trees_lonlat": [
-        {
-          "lon": 2.20670755,
-          "lat": 41.43186846,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20656525,
-          "lat": 41.43175939,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20757667,
-          "lat": 41.43126194,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20767066,
-          "lat": 41.43140671,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20685204,
-          "lat": 41.43179739,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20815243,
-          "lat": 41.43115782,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20738475,
-          "lat": 41.43129665,
-          "species": "Styphnolobium japonicum",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20752617,
-          "lat": 41.43147777,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20670974,
-          "lat": 41.43168832,
-          "species": "Styphnolobium japonicum",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20703256,
-          "lat": 41.43269938,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20829692,
-          "lat": 41.43108675,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20767285,
-          "lat": 41.43122657,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        }
-      ],
-      "plantable_area_m2": 6136.8,
-      "delta_utci_c": 0.37,
-      "baseline_utci_c": 30.11,
-      "validated_utci_c": 29.74,
-      "heat_stress_area_m2": 13905.0,
-      "cooled_footprint_m2": 3058.0,
-      "cost_per_m2_cooled": 39.2,
-      "people_served": 1118,
-      "headline": "Smart placement: 12 trees, €120,000, 0.37 °C mean UTCI drop, covers 3% of hot-paved demand. Every in-ground tree requires a utility survey.",
-      "centroid_lonlat": [
-        2.2076654026685087,
-        41.43183902847631
-      ],
-      "eval_polygon": [
-        [
-          2.206479601296629,
-          41.430930110106246
-        ],
-        [
-          2.2088731085992714,
-          41.430946594602986
-        ],
-        [
-          2.208851237117373,
-          41.43274793477373
-        ],
-        [
-          2.2064576636607627,
-          41.43273144923925
-        ],
-        [
-          2.206479601296629,
-          41.430930110106246
-        ]
-      ],
-      "cooled_m2_proxy": 656.0,
-      "cooling_is_measured": true,
-      "allocation_eur": 120000.0,
-      "design_metrics": {
-        "tree_count": 12,
-        "canopy_area_m2": 702.1,
-        "canopy_m2_per_1000eur": 5.9,
-        "canopy_cover_pct_cell": 1.8,
-        "canopy_cover_pct_plantable": 11.4,
-        "plantable_area_m2": 6136.8,
-        "canopy_cover_pct": 11.4,
-        "canopy_cover_denominator": "plantable_strip",
-        "canopy_target_pct": 30.0,
-        "canopy_gap_to_target_pct": 18.6,
-        "est_air_temp_drop_c": 0.14
-      }
-    },
-    {
-      "rank": 5,
-      "cell_id": "C022_010",
-      "district": "SANTS - MONTJUÏC",
-      "barri": "LA MARINA DEL PRAT VERMELL",
-      "composite_score_B": 0.760366556121024,
-      "mean_sealed": 0.8510047197341919,
-      "mean_lst_celsius": 38.474686120388775,
-      "tree_count": 15,
-      "cost_eur": 150000.0,
-      "trees_lonlat": [
-        {
-          "lon": 2.1618084,
-          "lat": 41.35307674,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.16089996,
-          "lat": 41.35307012,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.16113948,
-          "lat": 41.35303584,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.16191095,
-          "lat": 41.35253704,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.16123603,
-          "lat": 41.35296448,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.16052255,
-          "lat": 41.35267104,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.16062928,
-          "lat": 41.35180709,
-          "species": "Styphnolobium japonicum",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.16023938,
-          "lat": 41.35238073,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.16109583,
-          "lat": 41.35271125,
-          "species": "Styphnolobium japonicum",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.16114226,
-          "lat": 41.35281968,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.16137808,
-          "lat": 41.35307361,
-          "species": "Styphnolobium japonicum",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.16063021,
-          "lat": 41.35173504,
-          "species": "Styphnolobium japonicum",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.16181671,
-          "lat": 41.35242826,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.16119099,
-          "lat": 41.35274797,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.16186776,
-          "lat": 41.35217642,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        }
-      ],
-      "plantable_area_m2": 26261.7,
-      "delta_utci_c": 0.21,
-      "baseline_utci_c": 30.2,
-      "validated_utci_c": 29.99,
-      "heat_stress_area_m2": 30368.0,
-      "cooled_footprint_m2": 3729.0,
-      "cost_per_m2_cooled": 40.2,
-      "people_served": 100,
-      "headline": "Smart placement: 15 trees, €150,000, 0.21 °C mean UTCI drop, covers 3% of hot-paved demand. Every in-ground tree requires a utility survey.",
-      "centroid_lonlat": [
-        2.160814974718433,
-        41.3522408082115
-      ],
-      "eval_polygon": [
-        [
-          2.1596312613522417,
-          41.351331414167866
-        ],
-        [
-          2.1620218229848462,
-          41.35134884606268
-        ],
-        [
-          2.1619987210275076,
-          41.3531501902473
-        ],
-        [
-          2.1596080935091377,
-          41.35313275725472
-        ],
-        [
-          2.1596312613522417,
-          41.351331414167866
-        ]
-      ],
-      "cooled_m2_proxy": 684.8,
-      "cooling_is_measured": true,
-      "allocation_eur": 150000.0,
-      "design_metrics": {
-        "tree_count": 15,
-        "canopy_area_m2": 817.6,
-        "canopy_m2_per_1000eur": 5.5,
-        "canopy_cover_pct_cell": 2.0,
-        "canopy_cover_pct_plantable": 3.1,
-        "plantable_area_m2": 26261.7,
-        "canopy_cover_pct": 3.1,
-        "canopy_cover_denominator": "plantable_strip",
-        "canopy_target_pct": 30.0,
-        "canopy_gap_to_target_pct": 26.9,
-        "est_air_temp_drop_c": 0.15
-      }
-    },
-    {
-      "rank": 4,
-      "cell_id": "C016_010",
-      "district": "SANTS - MONTJUÏC",
-      "barri": "LA MARINA DEL PRAT VERMELL",
-      "composite_score_B": 0.7617605770308881,
-      "mean_sealed": 0.8061132431030273,
-      "mean_lst_celsius": 44.57646964710845,
-      "tree_count": 15,
-      "cost_eur": 150000.0,
-      "trees_lonlat": [
-        {
-          "lon": 2.13146055,
-          "lat": 41.35187889,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.13184208,
-          "lat": 41.35195383,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.13185166,
-          "lat": 41.3512333,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.13107614,
-          "lat": 41.35202011,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.1325669,
-          "lat": 41.35138281,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.13270747,
-          "lat": 41.35160005,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.13261615,
-          "lat": 41.35127509,
-          "species": "Styphnolobium japonicum",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.13252005,
-          "lat": 41.3513104,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.13280452,
-          "lat": 41.35149269,
-          "species": "Styphnolobium japonicum",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.13270842,
-          "lat": 41.351528,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.13280357,
-          "lat": 41.35156474,
-          "species": "Styphnolobium japonicum",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.13247128,
-          "lat": 41.35138209,
-          "species": "Styphnolobium japonicum",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.13169817,
-          "lat": 41.35198877,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.13213565,
-          "lat": 41.35145162,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.13175508,
-          "lat": 41.35130463,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        }
-      ],
-      "plantable_area_m2": 22667.1,
-      "delta_utci_c": 0.23,
-      "baseline_utci_c": 30.02,
-      "validated_utci_c": 29.79,
-      "heat_stress_area_m2": 27878.0,
-      "cooled_footprint_m2": 3634.0,
-      "cost_per_m2_cooled": 41.3,
-      "people_served": 368,
-      "headline": "Smart placement: 15 trees, €150,000, 0.23 °C mean UTCI drop, covers 4% of hot-paved demand. Every in-ground tree requires a utility survey.",
-      "centroid_lonlat": [
-        2.132127992878014,
-        41.352028044089536
-      ],
-      "eval_polygon": [
-        [
-          2.1309446876445315,
-          41.35111835885631
-        ],
-        [
-          2.1333352236249445,
-          41.35113638652891
-        ],
-        [
-          2.133311331053043,
-          41.3529377173339
-        ],
-        [
-          2.1309207291895387,
-          41.352919688526
-        ],
-        [
-          2.1309446876445315,
-          41.35111835885631
-        ]
-      ],
-      "cooled_m2_proxy": 784.0,
-      "cooling_is_measured": true,
-      "allocation_eur": 150000.0,
-      "design_metrics": {
-        "tree_count": 15,
-        "canopy_area_m2": 817.6,
-        "canopy_m2_per_1000eur": 5.5,
-        "canopy_cover_pct_cell": 2.0,
-        "canopy_cover_pct_plantable": 3.6,
-        "plantable_area_m2": 22667.1,
-        "canopy_cover_pct": 3.6,
-        "canopy_cover_denominator": "plantable_strip",
-        "canopy_target_pct": 30.0,
-        "canopy_gap_to_target_pct": 26.4,
-        "est_air_temp_drop_c": 0.15
-      }
-    },
-    {
       "rank": 7,
       "cell_id": "C030_023",
       "district": "SANT MARTÍ",
@@ -680,12 +311,19 @@
       "composite_score_B": 0.7467980624168163,
       "mean_sealed": 0.8739530444145203,
       "mean_lst_celsius": 41.855481828962056,
-      "tree_count": 12,
-      "cost_eur": 120000.0,
+      "tree_count": 15,
+      "cost_eur": 150000.0,
       "trees_lonlat": [
         {
-          "lon": 2.1994447,
-          "lat": 41.39953536,
+          "lon": 2.1984377,
+          "lat": 41.39970849,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19814796,
+          "lat": 41.39992266,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
@@ -698,50 +336,36 @@
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19950051,
-          "lat": 41.3988872,
+          "lon": 2.19739393,
+          "lat": 41.39898062,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19949785,
-          "lat": 41.39910336,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.1984377,
-          "lat": 41.39970849,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.19814885,
-          "lat": 41.3998506,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.19814796,
-          "lat": 41.39992266,
+          "lon": 2.19742671,
+          "lat": 41.40020587,
           "species": "Styphnolobium japonicum",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19739393,
-          "lat": 41.39898062,
+          "lon": 2.19848378,
+          "lat": 41.39985294,
           "species": "Celtis australis",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19829062,
-          "lat": 41.39999571,
+          "lon": 2.1994447,
+          "lat": 41.39953536,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.1973319,
+          "lat": 41.40013315,
           "species": "Styphnolobium japonicum",
           "mode": "in_ground",
           "requires_utility_survey": true
@@ -754,29 +378,57 @@
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19848289,
-          "lat": 41.39992499,
+          "lon": 2.19814885,
+          "lat": 41.3998506,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19964316,
+          "lat": 41.39896026,
           "species": "Styphnolobium japonicum",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19848378,
-          "lat": 41.39985294,
+          "lon": 2.19949785,
+          "lat": 41.39910336,
           "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19848289,
+          "lat": 41.39992499,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.1973452,
+          "lat": 41.39905234,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19824587,
+          "lat": 41.39974319,
+          "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         }
       ],
       "plantable_area_m2": 8917.5,
-      "delta_utci_c": 0.25,
-      "baseline_utci_c": 28.68,
-      "validated_utci_c": 28.43,
-      "heat_stress_area_m2": 16355.0,
-      "cooled_footprint_m2": 2906.0,
-      "cost_per_m2_cooled": 41.3,
+      "delta_utci_c": 0.0,
+      "baseline_utci_c": 41.0,
+      "validated_utci_c": 41.0,
+      "heat_stress_area_m2": null,
+      "cooled_footprint_m2": 0,
+      "cost_per_m2_cooled": null,
       "people_served": 6203,
-      "headline": "Smart placement: 12 trees, €120,000, 0.25 °C mean UTCI drop, covers 2% of hot-paved demand. Every in-ground tree requires a utility survey.",
+      "headline": "Smart placement: 15 trees, €150,000, 0.00 °C mean UTCI drop, covers 2% of hot-paved demand. Every in-ground tree requires a utility survey.",
       "centroid_lonlat": [
         2.1984899759780356,
         41.39934855826517
@@ -803,21 +455,194 @@
           41.39843954667959
         ]
       ],
-      "cooled_m2_proxy": 531.2,
-      "cooling_is_measured": true,
-      "allocation_eur": 120000.0,
+      "cooled_m2_proxy": 681.6,
+      "cooling_is_measured": false,
+      "priority_score": 0.6397,
+      "people_norm": 0.593,
+      "allocation_eur": 150000.0,
       "design_metrics": {
-        "tree_count": 12,
-        "canopy_area_m2": 622.0,
-        "canopy_m2_per_1000eur": 5.2,
-        "canopy_cover_pct_cell": 1.6,
-        "canopy_cover_pct_plantable": 7.0,
+        "tree_count": 15,
+        "canopy_area_m2": 817.6,
+        "canopy_m2_per_1000eur": 5.5,
+        "canopy_cover_pct_cell": 2.0,
+        "canopy_cover_pct_plantable": 9.2,
         "plantable_area_m2": 8917.5,
-        "canopy_cover_pct": 7.0,
+        "canopy_cover_pct": 9.2,
         "canopy_cover_denominator": "plantable_strip",
         "canopy_target_pct": 30.0,
-        "canopy_gap_to_target_pct": 23.0,
-        "est_air_temp_drop_c": 0.12
+        "canopy_gap_to_target_pct": 20.8,
+        "est_air_temp_drop_c": 0.15
+      }
+    },
+    {
+      "rank": 18,
+      "cell_id": "C032_027",
+      "district": "SANT MARTÍ",
+      "barri": "PROVENÇALS DEL POBLENOU",
+      "composite_score_B": 0.7039266779764926,
+      "mean_sealed": 0.8033797740936279,
+      "mean_lst_celsius": 42.92296826708448,
+      "tree_count": 15,
+      "cost_eur": 150000.0,
+      "trees_lonlat": [
+        {
+          "lon": 2.20740183,
+          "lat": 41.41414655,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20807578,
+          "lat": 41.41382692,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20759501,
+          "lat": 41.41400376,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20722398,
+          "lat": 41.4130284,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20760684,
+          "lat": 41.41303103,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20803536,
+          "lat": 41.41321413,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20827246,
+          "lat": 41.41339592,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20807665,
+          "lat": 41.41375487,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.2072069,
+          "lat": 41.41443345,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20773333,
+          "lat": 41.41443707,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.207253,
+          "lat": 41.41457788,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.2083673,
+          "lat": 41.41346863,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20855392,
+          "lat": 41.41386624,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20783999,
+          "lat": 41.41353706,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20692106,
+          "lat": 41.41432339,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        }
+      ],
+      "plantable_area_m2": 26678.7,
+      "delta_utci_c": 0.0,
+      "baseline_utci_c": 41.0,
+      "validated_utci_c": 41.0,
+      "heat_stress_area_m2": null,
+      "cooled_footprint_m2": 0,
+      "cost_per_m2_cooled": null,
+      "people_served": 6164,
+      "headline": "Smart placement: 15 trees, €150,000, 0.00 °C mean UTCI drop, covers 3% of hot-paved demand. Every in-ground tree requires a utility survey.",
+      "centroid_lonlat": [
+        2.2078843487264996,
+        41.413825603182616
+      ],
+      "eval_polygon": [
+        [
+          2.2066988680078023,
+          41.41291668712655
+        ],
+        [
+          2.2090917141013424,
+          41.41293316124899
+        ],
+        [
+          2.209069862492134,
+          41.41473450717359
+        ],
+        [
+          2.206676950304721,
+          41.41471803201397
+        ],
+        [
+          2.2066988680078023,
+          41.41291668712655
+        ]
+      ],
+      "cooled_m2_proxy": 838.4,
+      "cooling_is_measured": false,
+      "priority_score": 0.6003,
+      "people_norm": 0.589,
+      "allocation_eur": 150000.0,
+      "design_metrics": {
+        "tree_count": 15,
+        "canopy_area_m2": 817.6,
+        "canopy_m2_per_1000eur": 5.5,
+        "canopy_cover_pct_cell": 2.0,
+        "canopy_cover_pct_plantable": 3.1,
+        "plantable_area_m2": 26678.7,
+        "canopy_cover_pct": 3.1,
+        "canopy_cover_denominator": "plantable_strip",
+        "canopy_target_pct": 30.0,
+        "canopy_gap_to_target_pct": 26.9,
+        "est_air_temp_drop_c": 0.15
       }
     },
     {
@@ -832,72 +657,51 @@
       "cost_eur": 150000.0,
       "trees_lonlat": [
         {
-          "lon": 2.1501075,
-          "lat": 41.37403254,
+          "lon": 2.15007234,
+          "lat": 41.37305947,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.15020409,
-          "lat": 41.37396119,
+          "lon": 2.15146025,
+          "lat": 41.37299765,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.15038743,
-          "lat": 41.37457506,
+          "lon": 2.15064626,
+          "lat": 41.37306371,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.15201593,
-          "lat": 41.37440692,
+          "lon": 2.15145791,
+          "lat": 41.37317779,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.15029365,
-          "lat": 41.37443025,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.15010562,
-          "lat": 41.37417665,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.15015439,
-          "lat": 41.37410495,
+          "lon": 2.15021675,
+          "lat": 41.37298848,
           "species": "Styphnolobium japonicum",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.15029272,
-          "lat": 41.3745023,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.1501211,
-          "lat": 41.37298777,
+          "lon": 2.15059468,
+          "lat": 41.37335157,
           "species": "Styphnolobium japonicum",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.15000715,
-          "lat": 41.3743921,
-          "species": "Celtis australis",
+          "lon": 2.15112078,
+          "lat": 41.37335545,
+          "species": "Melia azedarach",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
@@ -909,43 +713,64 @@
           "requires_utility_survey": true
         },
         {
-          "lon": 2.15016986,
-          "lat": 41.37291607,
+          "lon": 2.14991197,
+          "lat": 41.37435537,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.15000528,
+          "lat": 41.37453621,
           "species": "Styphnolobium japonicum",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.15007234,
-          "lat": 41.37305947,
-          "species": "Tipuana tipu",
+          "lon": 2.15159718,
+          "lat": 41.37350308,
+          "species": "Melia azedarach",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.15010844,
-          "lat": 41.37396049,
+          "lon": 2.15007046,
+          "lat": 41.37320358,
           "species": "Celtis australis",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.15010094,
-          "lat": 41.37453691,
+          "lon": 2.15049715,
+          "lat": 41.37349497,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.15049528,
+          "lat": 41.37363907,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.15054826,
+          "lat": 41.37324313,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         }
       ],
       "plantable_area_m2": 16443.9,
-      "delta_utci_c": 0.28,
-      "baseline_utci_c": 30.53,
-      "validated_utci_c": 30.25,
-      "heat_stress_area_m2": 22329.0,
-      "cooled_footprint_m2": 3360.0,
-      "cost_per_m2_cooled": 44.6,
+      "delta_utci_c": 0.0,
+      "baseline_utci_c": 41.0,
+      "validated_utci_c": 41.0,
+      "heat_stress_area_m2": null,
+      "cooled_footprint_m2": 0,
+      "cost_per_m2_cooled": null,
       "people_served": 5438,
-      "headline": "Smart placement: 15 trees, €150,000, 0.28 °C mean UTCI drop, covers 4% of hot-paved demand. Every in-ground tree requires a utility survey.",
+      "headline": "Smart placement: 15 trees, €150,000, 0.00 °C mean UTCI drop, covers 2% of hot-paved demand. Every in-ground tree requires a utility survey.",
       "centroid_lonlat": [
         2.1509716788756688,
         41.37378671035711
@@ -972,8 +797,10 @@
           41.37287721601572
         ]
       ],
-      "cooled_m2_proxy": 745.6,
-      "cooling_is_measured": true,
+      "cooled_m2_proxy": 832.0,
+      "cooling_is_measured": false,
+      "priority_score": 0.5693,
+      "people_norm": 0.519,
       "allocation_eur": 150000.0,
       "design_metrics": {
         "tree_count": 15,
@@ -990,6 +817,348 @@
       }
     },
     {
+      "rank": 13,
+      "cell_id": "C017_011",
+      "district": "SANTS - MONTJUÏC",
+      "barri": "LA MARINA DEL PORT",
+      "composite_score_B": 0.7186791563365804,
+      "mean_sealed": 0.8042258024215698,
+      "mean_lst_celsius": 43.00802666477903,
+      "tree_count": 15,
+      "cost_eur": 150000.0,
+      "trees_lonlat": [
+        {
+          "lon": 2.13753522,
+          "lat": 41.35534744,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13608985,
+          "lat": 41.3561653,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13648951,
+          "lat": 41.35487121,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13735015,
+          "lat": 41.35487766,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13729948,
+          "lat": 41.35509347,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13724977,
+          "lat": 41.35523721,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13768009,
+          "lat": 41.35524044,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13580439,
+          "lat": 41.35605506,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13599088,
+          "lat": 41.35641677,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13646903,
+          "lat": 41.35642035,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13675544,
+          "lat": 41.35645853,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.1368223,
+          "lat": 41.35501783,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13589668,
+          "lat": 41.35630797,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.1373492,
+          "lat": 41.35494972,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13644264,
+          "lat": 41.3547988,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        }
+      ],
+      "plantable_area_m2": 15662.1,
+      "delta_utci_c": 0.0,
+      "baseline_utci_c": 41.0,
+      "validated_utci_c": 41.0,
+      "heat_stress_area_m2": null,
+      "cooled_footprint_m2": 0,
+      "cost_per_m2_cooled": null,
+      "people_served": 5470,
+      "headline": "Smart placement: 15 trees, €150,000, 0.00 °C mean UTCI drop, covers 2% of hot-paved demand. Every in-ground tree requires a utility survey.",
+      "centroid_lonlat": [
+        2.1368615432429308,
+        41.35566666512213
+      ],
+      "eval_polygon": [
+        [
+          2.1356781062339487,
+          41.35475702785136
+        ],
+        [
+          2.1380687783226366,
+          41.354774958487084
+        ],
+        [
+          2.138045013199669,
+          41.356576290399374
+        ],
+        [
+          2.135654275215468,
+          41.356558358634494
+        ],
+        [
+          2.1356781062339487,
+          41.35475702785136
+        ]
+      ],
+      "cooled_m2_proxy": 774.4,
+      "cooling_is_measured": false,
+      "priority_score": 0.5644,
+      "people_norm": 0.523,
+      "allocation_eur": 150000.0,
+      "design_metrics": {
+        "tree_count": 15,
+        "canopy_area_m2": 817.6,
+        "canopy_m2_per_1000eur": 5.5,
+        "canopy_cover_pct_cell": 2.0,
+        "canopy_cover_pct_plantable": 5.2,
+        "plantable_area_m2": 15662.1,
+        "canopy_cover_pct": 5.2,
+        "canopy_cover_denominator": "plantable_strip",
+        "canopy_target_pct": 30.0,
+        "canopy_gap_to_target_pct": 24.8,
+        "est_air_temp_drop_c": 0.15
+      }
+    },
+    {
+      "rank": 19,
+      "cell_id": "C028_022",
+      "district": "SANT MARTÍ",
+      "barri": "EL PARC I LA LLACUNA DEL POBLENOU",
+      "composite_score_B": 0.7022543242561898,
+      "mean_sealed": 0.8704396486282349,
+      "mean_lst_celsius": 41.19537118765024,
+      "tree_count": 15,
+      "cost_eur": 150000.0,
+      "trees_lonlat": [
+        {
+          "lon": 2.1893978,
+          "lat": 41.39553774,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.18915634,
+          "lat": 41.39571619,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.18901102,
+          "lat": 41.39585929,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.18881606,
+          "lat": 41.39614615,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.18973808,
+          "lat": 41.39510778,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.18873022,
+          "lat": 41.39535289,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.18920508,
+          "lat": 41.39564447,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.1888648,
+          "lat": 41.39607444,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.18959275,
+          "lat": 41.39525088,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.18911118,
+          "lat": 41.39549969,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.1897716,
+          "lat": 41.39626097,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.18993124,
+          "lat": 41.39496502,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.18897616,
+          "lat": 41.39481417,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.18811094,
+          "lat": 41.39513234,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.18891443,
+          "lat": 41.39593067,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        }
+      ],
+      "plantable_area_m2": 13544.1,
+      "delta_utci_c": 0.0,
+      "baseline_utci_c": 41.0,
+      "validated_utci_c": 41.0,
+      "heat_stress_area_m2": null,
+      "cooled_footprint_m2": 0,
+      "cost_per_m2_cooled": null,
+      "people_served": 5361,
+      "headline": "Smart placement: 15 trees, €150,000, 0.00 °C mean UTCI drop, covers 2% of hot-paved demand. Every in-ground tree requires a utility survey.",
+      "centroid_lonlat": [
+        2.1889654119504303,
+        41.395678814888235
+      ],
+      "eval_polygon": [
+        [
+          2.1877805237712398,
+          41.39476970643646
+        ],
+        [
+          2.1901726931678334,
+          41.39478656799776
+        ],
+        [
+          2.190150333145702,
+          41.39658791129514
+        ],
+        [
+          2.1877580977169453,
+          41.39657104867219
+        ],
+        [
+          2.1877805237712398,
+          41.39476970643646
+        ]
+      ],
+      "cooled_m2_proxy": 806.4,
+      "cooling_is_measured": false,
+      "priority_score": 0.5441,
+      "people_norm": 0.512,
+      "allocation_eur": 150000.0,
+      "design_metrics": {
+        "tree_count": 15,
+        "canopy_area_m2": 817.6,
+        "canopy_m2_per_1000eur": 5.5,
+        "canopy_cover_pct_cell": 2.0,
+        "canopy_cover_pct_plantable": 6.0,
+        "plantable_area_m2": 13544.1,
+        "canopy_cover_pct": 6.0,
+        "canopy_cover_denominator": "plantable_strip",
+        "canopy_target_pct": 30.0,
+        "canopy_gap_to_target_pct": 24.0,
+        "est_air_temp_drop_c": 0.15
+      }
+    },
+    {
       "rank": 1,
       "cell_id": "C031_035",
       "district": "SANT ANDREU",
@@ -997,124 +1166,40 @@
       "composite_score_B": 0.7869520986611508,
       "mean_sealed": 0.8020938038825989,
       "mean_lst_celsius": 45.82456509742511,
-      "tree_count": 15,
-      "cost_eur": 150000.0,
+      "tree_count": 3,
+      "cost_eur": 30000.0,
       "trees_lonlat": [
-        {
-          "lon": 2.20298061,
-          "lat": 41.44301193,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20159036,
-          "lat": 41.4431464,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20297973,
-          "lat": 41.44308398,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20289191,
-          "lat": 41.44243484,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.2016036,
-          "lat": 41.4420656,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20317742,
-          "lat": 41.44258093,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20160449,
-          "lat": 41.44199355,
-          "species": "Styphnolobium japonicum",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20179159,
-          "lat": 41.44235515,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.2030821,
-          "lat": 41.44254424,
-          "species": "Styphnolobium japonicum",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
         {
           "lon": 2.2017907,
           "lat": 41.4424272,
-          "species": "Celtis australis",
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20304348,
+          "lat": 41.44178735,
+          "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
           "lon": 2.20269069,
           "lat": 41.4432261,
-          "species": "Styphnolobium japonicum",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20160051,
-          "lat": 41.44231779,
-          "species": "Styphnolobium japonicum",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20169936,
-          "lat": 41.44206627,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20192374,
-          "lat": 41.44329284,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20169627,
-          "lat": 41.44231846,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         }
       ],
       "plantable_area_m2": 10978.0,
-      "delta_utci_c": 0.34,
-      "baseline_utci_c": 29.65,
-      "validated_utci_c": 29.31,
-      "heat_stress_area_m2": 15935.0,
-      "cooled_footprint_m2": 3087.0,
-      "cost_per_m2_cooled": 48.6,
+      "delta_utci_c": 0.0,
+      "baseline_utci_c": 41.0,
+      "validated_utci_c": 41.0,
+      "heat_stress_area_m2": null,
+      "cooled_footprint_m2": 0,
+      "cost_per_m2_cooled": null,
       "people_served": 2411,
-      "headline": "Smart placement: 15 trees, €150,000, 0.34 °C mean UTCI drop, covers 5% of hot-paved demand. Every in-ground tree requires a utility survey.",
+      "headline": "Smart placement: 15 trees, €150,000, 0.00 °C mean UTCI drop, covers 2% of hot-paved demand. Every in-ground tree requires a utility survey.",
       "centroid_lonlat": [
         2.202746068634779,
         41.44261397392688
@@ -1141,25 +1226,823 @@
           41.441705005400685
         ]
       ],
-      "cooled_m2_proxy": 729.6,
-      "cooling_is_measured": true,
-      "allocation_eur": 150000.0,
+      "cooled_m2_proxy": 745.6,
+      "cooling_is_measured": false,
+      "priority_score": 0.3843,
+      "people_norm": 0.23,
+      "allocation_eur": 30000.0,
+      "partial": true,
       "design_metrics": {
-        "tree_count": 15,
-        "canopy_area_m2": 817.6,
-        "canopy_m2_per_1000eur": 5.5,
-        "canopy_cover_pct_cell": 2.0,
-        "canopy_cover_pct_plantable": 7.4,
+        "tree_count": 3,
+        "canopy_area_m2": 235.6,
+        "canopy_m2_per_1000eur": 7.9,
+        "canopy_cover_pct_cell": 0.6,
+        "canopy_cover_pct_plantable": 2.1,
         "plantable_area_m2": 10978.0,
-        "canopy_cover_pct": 7.4,
+        "canopy_cover_pct": 2.1,
         "canopy_cover_denominator": "plantable_strip",
         "canopy_target_pct": 30.0,
-        "canopy_gap_to_target_pct": 22.6,
-        "est_air_temp_drop_c": 0.15
+        "canopy_gap_to_target_pct": 27.9,
+        "est_air_temp_drop_c": 0.04
       }
     }
   ],
   "unallocated_cells": [
+    {
+      "rank": 12,
+      "cell_id": "C031_031",
+      "district": "SANT MARTÍ",
+      "barri": "LA VERNEDA I LA PAU",
+      "composite_score_B": 0.7217157727365963,
+      "mean_sealed": 0.7934097647666931,
+      "mean_lst_celsius": 44.89109811274963,
+      "tree_count": 15,
+      "cost_eur": 150000.0,
+      "trees_lonlat": [
+        {
+          "lon": 2.20358815,
+          "lat": 41.42856819,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20197165,
+          "lat": 41.42765624,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20258996,
+          "lat": 41.4279848,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20196106,
+          "lat": 41.42852089,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20220261,
+          "lat": 41.42834241,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20283635,
+          "lat": 41.42741003,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20355437,
+          "lat": 41.427415,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.2035021,
+          "lat": 41.42777494,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20297114,
+          "lat": 41.42813156,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20320828,
+          "lat": 41.42831335,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20330182,
+          "lat": 41.42849415,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20363249,
+          "lat": 41.42885674,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20268923,
+          "lat": 41.42769725,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20360135,
+          "lat": 41.42748739,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20288334,
+          "lat": 41.42748242,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        }
+      ],
+      "plantable_area_m2": 21576.1,
+      "delta_utci_c": 0.0,
+      "baseline_utci_c": 41.0,
+      "validated_utci_c": 41.0,
+      "heat_stress_area_m2": null,
+      "cooled_footprint_m2": 0,
+      "cost_per_m2_cooled": null,
+      "people_served": 6363,
+      "headline": "Smart placement: 15 trees, €150,000, 0.00 °C mean UTCI drop, covers 3% of hot-paved demand. Every in-ground tree requires a utility survey.",
+      "centroid_lonlat": [
+        2.202922395627338,
+        41.428203282571886
+      ],
+      "eval_polygon": [
+        [
+          2.201736726547841,
+          41.42729431592295
+        ],
+        [
+          2.204130097566977,
+          41.42731089790971
+        ],
+        [
+          2.204108097777598,
+          41.42911223715287
+        ],
+        [
+          2.2017146606169353,
+          41.429095654122214
+        ],
+        [
+          2.201736726547841,
+          41.42729431592295
+        ]
+      ],
+      "cooled_m2_proxy": 854.4,
+      "cooling_is_measured": false,
+      "priority_score": 0.6294,
+      "people_norm": 0.608,
+      "allocation_eur": 0.0,
+      "skip_reason": "already funded a site in LA VERNEDA I LA PAU"
+    },
+    {
+      "rank": 15,
+      "cell_id": "C031_023",
+      "district": "SANT MARTÍ",
+      "barri": "EL POBLENOU",
+      "composite_score_B": 0.7081358263751277,
+      "mean_sealed": 0.8606128096580505,
+      "mean_lst_celsius": 40.78318181686853,
+      "tree_count": 15,
+      "cost_eur": 150000.0,
+      "trees_lonlat": [
+        {
+          "lon": 2.2028006,
+          "lat": 41.39901821,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20389008,
+          "lat": 41.3999265,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20280236,
+          "lat": 41.3988741,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20270314,
+          "lat": 41.39916165,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20299551,
+          "lat": 41.39873132,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20299463,
+          "lat": 41.39880337,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20260833,
+          "lat": 41.39908893,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20412624,
+          "lat": 41.40018034,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20270579,
+          "lat": 41.39894549,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20374786,
+          "lat": 41.39981743,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20318469,
+          "lat": 41.39891278,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20379483,
+          "lat": 41.39988981,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20379395,
+          "lat": 41.39996186,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20402967,
+          "lat": 41.40025173,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20289893,
+          "lat": 41.39880271,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        }
+      ],
+      "plantable_area_m2": 10238.3,
+      "delta_utci_c": 0.0,
+      "baseline_utci_c": 41.0,
+      "validated_utci_c": 41.0,
+      "heat_stress_area_m2": null,
+      "cooled_footprint_m2": 0,
+      "cost_per_m2_cooled": null,
+      "people_served": 6265,
+      "headline": "Smart placement: 15 trees, €150,000, 0.00 °C mean UTCI drop, covers 3% of hot-paved demand. Every in-ground tree requires a utility survey.",
+      "centroid_lonlat": [
+        2.2032746651588546,
+        41.39938178936037
+      ],
+      "eval_polygon": [
+        [
+          2.2020895087930543,
+          41.39847282646098
+        ],
+        [
+          2.204481822364829,
+          41.398489391753166
+        ],
+        [
+          2.2044598545473675,
+          41.40029074020388
+        ],
+        [
+          2.2020674749301663,
+          41.40027417386871
+        ],
+        [
+          2.2020895087930543,
+          41.39847282646098
+        ]
+      ],
+      "cooled_m2_proxy": 841.6,
+      "cooling_is_measured": false,
+      "priority_score": 0.6108,
+      "people_norm": 0.598,
+      "allocation_eur": 0.0,
+      "skip_reason": "already funded a site in EL POBLENOU"
+    },
+    {
+      "rank": 16,
+      "cell_id": "C030_024",
+      "district": "SANT MARTÍ",
+      "barri": "EL POBLENOU",
+      "composite_score_B": 0.7052933282711498,
+      "mean_sealed": 0.8851317167282104,
+      "mean_lst_celsius": 40.62934673075773,
+      "tree_count": 15,
+      "cost_eur": 150000.0,
+      "trees_lonlat": [
+        {
+          "lon": 2.1983119,
+          "lat": 41.40215766,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19835886,
+          "lat": 41.40223004,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19810412,
+          "lat": 41.40348932,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19836063,
+          "lat": 41.40208594,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19738814,
+          "lat": 41.40334021,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19738725,
+          "lat": 41.40341226,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19939297,
+          "lat": 41.4037505,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19729067,
+          "lat": 41.40348365,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19929638,
+          "lat": 41.40382189,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19729333,
+          "lat": 41.40326748,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19958614,
+          "lat": 41.40360773,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19948955,
+          "lat": 41.40367912,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19883912,
+          "lat": 41.40208927,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19855159,
+          "lat": 41.4021233,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19729155,
+          "lat": 41.40341159,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        }
+      ],
+      "plantable_area_m2": 8772.2,
+      "delta_utci_c": 0.0,
+      "baseline_utci_c": 41.0,
+      "validated_utci_c": 41.0,
+      "heat_stress_area_m2": null,
+      "cooled_footprint_m2": 0,
+      "cost_per_m2_cooled": null,
+      "people_served": 6019,
+      "headline": "Smart placement: 15 trees, €150,000, 0.00 °C mean UTCI drop, covers 2% of hot-paved demand. Every in-ground tree requires a utility survey.",
+      "centroid_lonlat": [
+        2.1984457060933407,
+        41.402951248788774
+      ],
+      "eval_polygon": [
+        [
+          2.197260553742014,
+          41.40204223672871
+        ],
+        [
+          2.1996529953988575,
+          41.40205890358409
+        ],
+        [
+          2.199630891473174,
+          41.4038602487946
+        ],
+        [
+          2.197238383759318,
+          41.40384358088988
+        ],
+        [
+          2.197260553742014,
+          41.40204223672871
+        ]
+      ],
+      "cooled_m2_proxy": 672.0,
+      "cooling_is_measured": false,
+      "priority_score": 0.5915,
+      "people_norm": 0.575,
+      "allocation_eur": 0.0,
+      "skip_reason": "already funded a site in EL POBLENOU"
+    },
+    {
+      "rank": 14,
+      "cell_id": "C030_022",
+      "district": "SANT MARTÍ",
+      "barri": "EL POBLENOU",
+      "composite_score_B": 0.7127285079461918,
+      "mean_sealed": 0.8429214358329773,
+      "mean_lst_celsius": 41.45118042662904,
+      "tree_count": 15,
+      "cost_eur": 150000.0,
+      "trees_lonlat": [
+        {
+          "lon": 2.1983433,
+          "lat": 41.39570851,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19838761,
+          "lat": 41.39599705,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19819092,
+          "lat": 41.39642804,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19838052,
+          "lat": 41.39657349,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19935643,
+          "lat": 41.39503099,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19824806,
+          "lat": 41.39567181,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19954957,
+          "lat": 41.39488821,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.199453,
+          "lat": 41.3949596,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19945124,
+          "lat": 41.39510371,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19930196,
+          "lat": 41.39557106,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19945212,
+          "lat": 41.39503165,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19964526,
+          "lat": 41.39488888,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19954692,
+          "lat": 41.39510437,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19954869,
+          "lat": 41.39496027,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19848684,
+          "lat": 41.39570951,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        }
+      ],
+      "plantable_area_m2": 9534.6,
+      "delta_utci_c": 0.0,
+      "baseline_utci_c": 41.0,
+      "validated_utci_c": 41.0,
+      "heat_stress_area_m2": null,
+      "cooled_footprint_m2": 0,
+      "cost_per_m2_cooled": null,
+      "people_served": 5160,
+      "headline": "Smart placement: 15 trees, €150,000, 0.00 °C mean UTCI drop, covers 2% of hot-paved demand. Every in-ground tree requires a utility survey.",
+      "centroid_lonlat": [
+        2.1985342378164106,
+        41.39574586543926
+      ],
+      "eval_polygon": [
+        [
+          2.1973492135259396,
+          41.39483685432807
+        ],
+        [
+          2.199741391014751,
+          41.39485351698657
+        ],
+        [
+          2.1997192951233853,
+          41.396654864499254
+        ],
+        [
+          2.197327051601566,
+          41.39663820079163
+        ],
+        [
+          2.1973492135259396,
+          41.39483685432807
+        ]
+      ],
+      "cooled_m2_proxy": 736.0,
+      "cooling_is_measured": false,
+      "priority_score": 0.5383,
+      "people_norm": 0.493,
+      "allocation_eur": 0.0,
+      "skip_reason": "already funded a site in EL POBLENOU"
+    },
+    {
+      "rank": 11,
+      "cell_id": "C029_023",
+      "district": "SANT MARTÍ",
+      "barri": "EL PARC I LA LLACUNA DEL POBLENOU",
+      "composite_score_B": 0.7219231352084468,
+      "mean_sealed": 0.8547450304031372,
+      "mean_lst_celsius": 41.78490976186899,
+      "tree_count": 15,
+      "cost_eur": 150000.0,
+      "trees_lonlat": [
+        {
+          "lon": 2.19370752,
+          "lat": 41.39913499,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19380945,
+          "lat": 41.39863129,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.1934723,
+          "lat": 41.39880908,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19395076,
+          "lat": 41.39881243,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19366146,
+          "lat": 41.39899055,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19447351,
+          "lat": 41.39910433,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19394542,
+          "lat": 41.39924475,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19347408,
+          "lat": 41.39866497,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19394987,
+          "lat": 41.39888448,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19375804,
+          "lat": 41.39891917,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19303678,
+          "lat": 41.39920235,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19379609,
+          "lat": 41.39971209,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19298982,
+          "lat": 41.39912996,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19375715,
+          "lat": 41.39899122,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19357155,
+          "lat": 41.39852153,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        }
+      ],
+      "plantable_area_m2": 15338.6,
+      "delta_utci_c": 0.0,
+      "baseline_utci_c": 41.0,
+      "validated_utci_c": 41.0,
+      "heat_stress_area_m2": null,
+      "cooled_footprint_m2": 0,
+      "cost_per_m2_cooled": null,
+      "people_served": 4912,
+      "headline": "Smart placement: 15 trees, €150,000, 0.00 °C mean UTCI drop, covers 2% of hot-paved demand. Every in-ground tree requires a utility survey.",
+      "centroid_lonlat": [
+        2.1937052948435367,
+        41.39931512823491
+      ],
+      "eval_polygon": [
+        [
+          2.192520274590702,
+          41.398406067969646
+        ],
+        [
+          2.1949125801165765,
+          41.39842283219063
+        ],
+        [
+          2.194890348118665,
+          41.40022417645062
+        ],
+        [
+          2.192497976548203,
+          41.40020741117413
+        ],
+        [
+          2.192520274590702,
+          41.398406067969646
+        ]
+      ],
+      "cooled_m2_proxy": 803.2,
+      "cooling_is_measured": false,
+      "priority_score": 0.5278,
+      "people_norm": 0.469,
+      "allocation_eur": 0.0,
+      "skip_reason": "already funded a site in EL PARC I LA LLACUNA DEL POBLENOU"
+    },
     {
       "rank": 10,
       "cell_id": "C030_032",
@@ -1172,120 +2055,120 @@
       "cost_eur": 150000.0,
       "trees_lonlat": [
         {
-          "lon": 2.19790244,
-          "lat": 41.43155519,
+          "lon": 2.19742994,
+          "lat": 41.43104748,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19789844,
-          "lat": 41.43187944,
+          "lon": 2.19809347,
+          "lat": 41.43159256,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19823753,
-          "lat": 41.43155753,
+          "lon": 2.1985283,
+          "lat": 41.43127132,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19828407,
-          "lat": 41.43166594,
+          "lon": 2.19713828,
+          "lat": 41.43140575,
           "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.19742373,
-          "lat": 41.43155186,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.19751947,
-          "lat": 41.43155252,
-          "species": "Celtis australis",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
           "lon": 2.19737142,
           "lat": 41.43191179,
-          "species": "Styphnolobium japonicum",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.19746716,
-          "lat": 41.43191246,
           "species": "Celtis australis",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19741841,
-          "lat": 41.43198418,
+          "lon": 2.19704787,
+          "lat": 41.43097276,
           "species": "Styphnolobium japonicum",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19703322,
-          "lat": 41.43216164,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.19736432,
-          "lat": 41.43248822,
+          "lon": 2.19733509,
+          "lat": 41.43097476,
           "species": "Styphnolobium japonicum",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19774995,
-          "lat": 41.43227473,
+          "lon": 2.19881862,
+          "lat": 41.43102113,
           "species": "Styphnolobium japonicum",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19809436,
-          "lat": 41.4315205,
+          "lon": 2.19752036,
+          "lat": 41.43148047,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19799862,
+          "lat": 41.43151984,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19837937,
+          "lat": 41.43170264,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19890594,
+          "lat": 41.43170631,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.19755847,
+          "lat": 41.43227339,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19779871,
-          "lat": 41.43220301,
-          "species": "Celtis australis",
+          "lon": 2.19751592,
+          "lat": 41.43184074,
+          "species": "Styphnolobium japonicum",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.19771007,
-          "lat": 41.43162591,
+          "lon": 2.19790864,
+          "lat": 41.43105082,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         }
       ],
       "plantable_area_m2": 29263.2,
-      "delta_utci_c": 0.23,
-      "baseline_utci_c": 31.07,
-      "validated_utci_c": 30.84,
-      "heat_stress_area_m2": 33665.0,
-      "cooled_footprint_m2": 3908.0,
-      "cost_per_m2_cooled": 38.4,
+      "delta_utci_c": 0.0,
+      "baseline_utci_c": 41.0,
+      "validated_utci_c": 41.0,
+      "heat_stress_area_m2": null,
+      "cooled_footprint_m2": 0,
+      "cost_per_m2_cooled": null,
       "people_served": 3664,
-      "headline": "Smart placement: 15 trees, €150,000, 0.23 °C mean UTCI drop, covers 3% of hot-paved demand. Every in-ground tree requires a utility survey.",
+      "headline": "Smart placement: 15 trees, €150,000, 0.00 °C mean UTCI drop, covers 2% of hot-paved demand. Every in-ground tree requires a utility survey.",
       "centroid_lonlat": [
         2.1980912571466438,
         41.431772690090185
@@ -1312,8 +2195,10 @@
           41.43086367423054
         ]
       ],
-      "cooled_m2_proxy": 864.0,
-      "cooling_is_measured": true,
+      "cooled_m2_proxy": 835.2,
+      "cooling_is_measured": false,
+      "priority_score": 0.4432,
+      "people_norm": 0.35,
       "allocation_eur": 0.0
     },
     {
@@ -1324,12 +2209,96 @@
       "composite_score_B": 0.7671734694428725,
       "mean_sealed": 0.8021686673164368,
       "mean_lst_celsius": 47.6970288880478,
-      "tree_count": 3,
-      "cost_eur": 30000.0,
+      "tree_count": 15,
+      "cost_eur": 150000.0,
       "trees_lonlat": [
         {
-          "lon": 2.13193717,
-          "lat": 41.35559359,
+          "lon": 2.1325688,
+          "lat": 41.35484172,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13203472,
+          "lat": 41.35545021,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13130793,
+          "lat": 41.35616533,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13135431,
+          "lat": 41.35627377,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.1314485,
+          "lat": 41.35638257,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13231729,
+          "lat": 41.35577661,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13250759,
+          "lat": 41.35585011,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.1313567,
+          "lat": 41.35609364,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13302781,
+          "lat": 41.35628639,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13237659,
+          "lat": 41.35491233,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13184442,
+          "lat": 41.35537671,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13168996,
+          "lat": 41.35620424,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13233069,
+          "lat": 41.35476787,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
@@ -1337,27 +2306,27 @@
         {
           "lon": 2.13198595,
           "lat": 41.3555219,
-          "species": "Tipuana tipu",
+          "species": "Celtis australis",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.13184202,
-          "lat": 41.35555685,
+          "lon": 2.13193717,
+          "lat": 41.35559359,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         }
       ],
       "plantable_area_m2": 6691.4,
-      "delta_utci_c": 0.21,
-      "baseline_utci_c": 29.27,
-      "validated_utci_c": 29.06,
-      "heat_stress_area_m2": 6757.0,
-      "cooled_footprint_m2": 656.0,
-      "cost_per_m2_cooled": 45.7,
+      "delta_utci_c": 0.0,
+      "baseline_utci_c": 41.0,
+      "validated_utci_c": 41.0,
+      "heat_stress_area_m2": null,
+      "cooled_footprint_m2": 0,
+      "cost_per_m2_cooled": null,
       "people_served": 2390,
-      "headline": "Smart placement: 3 trees, €30,000, 0.21 °C mean UTCI drop, covers 2% of hot-paved demand. Every in-ground tree requires a utility survey.",
+      "headline": "Smart placement: 15 trees, €150,000, 0.00 °C mean UTCI drop, covers 2% of hot-paved demand. Every in-ground tree requires a utility survey.",
       "centroid_lonlat": [
         2.132080137503382,
         41.355630703410796
@@ -1384,9 +2353,12 @@
           41.354721017618566
         ]
       ],
-      "cooled_m2_proxy": 243.2,
-      "cooling_is_measured": true,
-      "allocation_eur": 0.0
+      "cooled_m2_proxy": 800.0,
+      "cooling_is_measured": false,
+      "priority_score": 0.373,
+      "people_norm": 0.228,
+      "allocation_eur": 0.0,
+      "skip_reason": "already funded a site in LA MARINA DEL PORT"
     },
     {
       "rank": 8,
@@ -1400,120 +2372,120 @@
       "cost_eur": 150000.0,
       "trees_lonlat": [
         {
-          "lon": 2.20660692,
-          "lat": 41.42833684,
+          "lon": 2.20757393,
+          "lat": 41.42755085,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.20694814,
-          "lat": 41.42783478,
+          "lon": 2.20684977,
+          "lat": 41.42805028,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.20675448,
-          "lat": 41.42801359,
+          "lon": 2.20829369,
+          "lat": 41.42741169,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.20656125,
-          "lat": 41.42815638,
+          "lon": 2.207476,
+          "lat": 41.42773032,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.2070935,
-          "lat": 41.42769166,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20704475,
-          "lat": 41.42776338,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.2068994,
-          "lat": 41.4279065,
+          "lon": 2.2069534,
+          "lat": 41.42740245,
           "species": "Styphnolobium japonicum",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.2067536,
-          "lat": 41.42808564,
-          "species": "Celtis australis",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20685065,
-          "lat": 41.42797822,
+          "lon": 2.20690466,
+          "lat": 41.42747418,
           "species": "Styphnolobium japonicum",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20665786,
-          "lat": 41.42808498,
-          "species": "Celtis australis",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
           "lon": 2.20694902,
           "lat": 41.42776272,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20665962,
+          "lat": 41.42794088,
           "species": "Styphnolobium japonicum",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.20819752,
-          "lat": 41.42744705,
-          "species": "Styphnolobium japonicum",
+          "lon": 2.20665874,
+          "lat": 41.42801293,
+          "species": "Melia azedarach",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.20675535,
-          "lat": 41.42794154,
-          "species": "Tipuana tipu",
-          "mode": "in_ground",
-          "requires_utility_survey": true
-        },
-        {
-          "lon": 2.20656213,
-          "lat": 41.42808432,
+          "lon": 2.20805217,
+          "lat": 41.42759017,
           "species": "Celtis australis",
           "mode": "in_ground",
           "requires_utility_survey": true
         },
         {
-          "lon": 2.2068041,
-          "lat": 41.42786981,
+          "lon": 2.20704388,
+          "lat": 41.42783544,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20771884,
+          "lat": 41.42744376,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20814878,
+          "lat": 41.42751878,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20690378,
+          "lat": 41.42754623,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20699513,
+          "lat": 41.42790716,
           "species": "Tipuana tipu",
           "mode": "in_ground",
           "requires_utility_survey": true
         }
       ],
       "plantable_area_m2": 9332.1,
-      "delta_utci_c": 0.43,
-      "baseline_utci_c": 30.2,
-      "validated_utci_c": 29.77,
-      "heat_stress_area_m2": 15141.0,
-      "cooled_footprint_m2": 2916.0,
-      "cost_per_m2_cooled": 51.4,
+      "delta_utci_c": 0.0,
+      "baseline_utci_c": 41.0,
+      "validated_utci_c": 41.0,
+      "heat_stress_area_m2": null,
+      "cooled_footprint_m2": 0,
+      "cost_per_m2_cooled": null,
       "people_served": 1794,
-      "headline": "Smart placement: 15 trees, €150,000, 0.43 °C mean UTCI drop, covers 5% of hot-paved demand. Every in-ground tree requires a utility survey.",
+      "headline": "Smart placement: 15 trees, €150,000, 0.00 °C mean UTCI drop, covers 2% of hot-paved demand. Every in-ground tree requires a utility survey.",
       "centroid_lonlat": [
         2.2077092078039593,
         41.42823634802092
@@ -1540,54 +2512,706 @@
           41.42732743011386
         ]
       ],
-      "cooled_m2_proxy": 726.4,
-      "cooling_is_measured": true,
+      "cooled_m2_proxy": 822.4,
+      "cooling_is_measured": false,
+      "priority_score": 0.3143,
+      "people_norm": 0.171,
+      "allocation_eur": 0.0,
+      "skip_reason": "already funded a site in LA VERNEDA I LA PAU"
+    },
+    {
+      "rank": 6,
+      "cell_id": "C032_032",
+      "district": "SANT ANDREU",
+      "barri": "EL BON PASTOR",
+      "composite_score_B": 0.7591011020788967,
+      "mean_sealed": 0.8060246706008911,
+      "mean_lst_celsius": 45.305127747665495,
+      "tree_count": 15,
+      "cost_eur": 150000.0,
+      "trees_lonlat": [
+        {
+          "lon": 2.20815243,
+          "lat": 41.43115782,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20738388,
+          "lat": 41.4313687,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20699872,
+          "lat": 41.4315462,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20815462,
+          "lat": 41.43097768,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20829692,
+          "lat": 41.43108675,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20670974,
+          "lat": 41.43168832,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20670755,
+          "lat": 41.43186846,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20767066,
+          "lat": 41.43140671,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20714102,
+          "lat": 41.43165527,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20685204,
+          "lat": 41.43179739,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20738475,
+          "lat": 41.43129665,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20703256,
+          "lat": 41.43269938,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20801013,
+          "lat": 41.43104875,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20699653,
+          "lat": 41.43172633,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.20767285,
+          "lat": 41.43122657,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        }
+      ],
+      "plantable_area_m2": 6136.8,
+      "delta_utci_c": 0.0,
+      "baseline_utci_c": 41.0,
+      "validated_utci_c": 41.0,
+      "heat_stress_area_m2": null,
+      "cooled_footprint_m2": 0,
+      "cost_per_m2_cooled": null,
+      "people_served": 1118,
+      "headline": "Smart placement: 15 trees, €150,000, 0.00 °C mean UTCI drop, covers 2% of hot-paved demand. Every in-ground tree requires a utility survey.",
+      "centroid_lonlat": [
+        2.2076654026685087,
+        41.43183902847631
+      ],
+      "eval_polygon": [
+        [
+          2.206479601296629,
+          41.430930110106246
+        ],
+        [
+          2.2088731085992714,
+          41.430946594602986
+        ],
+        [
+          2.208851237117373,
+          41.43274793477373
+        ],
+        [
+          2.2064576636607627,
+          41.43273144923925
+        ],
+        [
+          2.206479601296629,
+          41.430930110106246
+        ]
+      ],
+      "cooled_m2_proxy": 806.4,
+      "cooling_is_measured": false,
+      "priority_score": 0.2753,
+      "people_norm": 0.107,
+      "allocation_eur": 0.0,
+      "skip_reason": "already funded a site in EL BON PASTOR"
+    },
+    {
+      "rank": 4,
+      "cell_id": "C016_010",
+      "district": "SANTS - MONTJUÏC",
+      "barri": "LA MARINA DEL PRAT VERMELL",
+      "composite_score_B": 0.7617605770308881,
+      "mean_sealed": 0.8061132431030273,
+      "mean_lst_celsius": 44.57646964710845,
+      "tree_count": 15,
+      "cost_eur": 150000.0,
+      "trees_lonlat": [
+        {
+          "lon": 2.13165227,
+          "lat": 41.3518443,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13164557,
+          "lat": 41.35234868,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13261711,
+          "lat": 41.35120304,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13279257,
+          "lat": 41.35239336,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13108668,
+          "lat": 41.35122752,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13185166,
+          "lat": 41.3512333,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13270747,
+          "lat": 41.35160005,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13107327,
+          "lat": 41.35223627,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13155138,
+          "lat": 41.35223988,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13250666,
+          "lat": 41.35231914,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13178518,
+          "lat": 41.35263797,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13202184,
+          "lat": 41.35281991,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13135631,
+          "lat": 41.35252664,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13242443,
+          "lat": 41.35130967,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13159201,
+          "lat": 41.35278064,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        }
+      ],
+      "plantable_area_m2": 22667.1,
+      "delta_utci_c": 0.0,
+      "baseline_utci_c": 41.0,
+      "validated_utci_c": 41.0,
+      "heat_stress_area_m2": null,
+      "cooled_footprint_m2": 0,
+      "cost_per_m2_cooled": null,
+      "people_served": 368,
+      "headline": "Smart placement: 15 trees, €150,000, 0.00 °C mean UTCI drop, covers 2% of hot-paved demand. Every in-ground tree requires a utility survey.",
+      "centroid_lonlat": [
+        2.132127992878014,
+        41.352028044089536
+      ],
+      "eval_polygon": [
+        [
+          2.1309446876445315,
+          41.35111835885631
+        ],
+        [
+          2.1333352236249445,
+          41.35113638652891
+        ],
+        [
+          2.133311331053043,
+          41.3529377173339
+        ],
+        [
+          2.1309207291895387,
+          41.352919688526
+        ],
+        [
+          2.1309446876445315,
+          41.35111835885631
+        ]
+      ],
+      "cooled_m2_proxy": 809.6,
+      "cooling_is_measured": false,
+      "priority_score": 0.2208,
+      "people_norm": 0.035,
+      "allocation_eur": 0.0
+    },
+    {
+      "rank": 20,
+      "cell_id": "C017_010",
+      "district": "SANTS - MONTJUÏC",
+      "barri": "LA MARINA DEL PRAT VERMELL",
+      "composite_score_B": 0.6985633364355026,
+      "mean_sealed": 0.80552738904953,
+      "mean_lst_celsius": 43.07877616205159,
+      "tree_count": 15,
+      "cost_eur": 150000.0,
+      "trees_lonlat": [
+        {
+          "lon": 2.13642674,
+          "lat": 41.35238465,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13685228,
+          "lat": 41.35274815,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13648931,
+          "lat": 41.35126819,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13685466,
+          "lat": 41.35256802,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13687179,
+          "lat": 41.35127106,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13639178,
+          "lat": 41.35141158,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13681494,
+          "lat": 41.3519552,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13724049,
+          "lat": 41.3523187,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13752688,
+          "lat": 41.35235687,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13647312,
+          "lat": 41.35249309,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.1375245,
+          "lat": 41.35253701,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13699667,
+          "lat": 41.35267717,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13629425,
+          "lat": 41.35155497,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13708991,
+          "lat": 41.35285802,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.13738915,
+          "lat": 41.35192348,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        }
+      ],
+      "plantable_area_m2": 25390.3,
+      "delta_utci_c": 0.0,
+      "baseline_utci_c": 41.0,
+      "validated_utci_c": 41.0,
+      "heat_stress_area_m2": null,
+      "cooled_footprint_m2": 0,
+      "cost_per_m2_cooled": null,
+      "people_served": 577,
+      "headline": "Smart placement: 15 trees, €150,000, 0.00 °C mean UTCI drop, covers 3% of hot-paved demand. Every in-ground tree requires a utility survey.",
+      "centroid_lonlat": [
+        2.136909135060355,
+        41.35206400127197
+      ],
+      "eval_polygon": [
+        [
+          2.135725761775952,
+          41.35115436455407
+        ],
+        [
+          2.138116302091569,
+          41.35117229293168
+        ],
+        [
+          2.1380925412865284,
+          41.352973625997855
+        ],
+        [
+          2.135701935087368,
+          41.352955696491236
+        ],
+        [
+          2.135725761775952,
+          41.35115436455407
+        ]
+      ],
+      "cooled_m2_proxy": 825.6,
+      "cooling_is_measured": false,
+      "priority_score": 0.2167,
+      "people_norm": 0.055,
+      "allocation_eur": 0.0
+    },
+    {
+      "rank": 5,
+      "cell_id": "C022_010",
+      "district": "SANTS - MONTJUÏC",
+      "barri": "LA MARINA DEL PRAT VERMELL",
+      "composite_score_B": 0.760366556121024,
+      "mean_sealed": 0.8510047197341919,
+      "mean_lst_celsius": 38.474686120388775,
+      "tree_count": 15,
+      "cost_eur": 150000.0,
+      "trees_lonlat": [
+        {
+          "lon": 2.16082145,
+          "lat": 41.35173643,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.1600978,
+          "lat": 41.35223558,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.1611455,
+          "lat": 41.35256749,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.16027932,
+          "lat": 41.35299354,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.1614467,
+          "lat": 41.35145275,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.1597696,
+          "lat": 41.35172876,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.16019898,
+          "lat": 41.35180395,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.16120302,
+          "lat": 41.35181127,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.16024494,
+          "lat": 41.35194841,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.1616287,
+          "lat": 41.35217468,
+          "species": "Styphnolobium japonicum",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.16114642,
+          "lat": 41.35249544,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.1608048,
+          "lat": 41.3530334,
+          "species": "Melia azedarach",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.16039485,
+          "lat": 41.35144508,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.1615414,
+          "lat": 41.3515255,
+          "species": "Celtis australis",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        },
+        {
+          "lon": 2.16134507,
+          "lat": 41.3519204,
+          "species": "Tipuana tipu",
+          "mode": "in_ground",
+          "requires_utility_survey": true
+        }
+      ],
+      "plantable_area_m2": 26261.7,
+      "delta_utci_c": 0.0,
+      "baseline_utci_c": 41.0,
+      "validated_utci_c": 41.0,
+      "heat_stress_area_m2": null,
+      "cooled_footprint_m2": 0,
+      "cost_per_m2_cooled": null,
+      "people_served": 100,
+      "headline": "Smart placement: 15 trees, €150,000, 0.00 °C mean UTCI drop, covers 2% of hot-paved demand. Every in-ground tree requires a utility survey.",
+      "centroid_lonlat": [
+        2.160814974718433,
+        41.3522408082115
+      ],
+      "eval_polygon": [
+        [
+          2.1596312613522417,
+          41.351331414167866
+        ],
+        [
+          2.1620218229848462,
+          41.35134884606268
+        ],
+        [
+          2.1619987210275076,
+          41.3531501902473
+        ],
+        [
+          2.1596080935091377,
+          41.35313275725472
+        ],
+        [
+          2.1596312613522417,
+          41.351331414167866
+        ]
+      ],
+      "cooled_m2_proxy": 809.6,
+      "cooling_is_measured": false,
+      "priority_score": 0.2006,
+      "people_norm": 0.01,
       "allocation_eur": 0.0
     }
   ],
-  "headline": "7 sites, 99 trees, 24,356 m² cooled, €990,000 of €1,000,000 allocated",
-  "disclaimer": "Per-cell evaluation uses a 200 m × 200 m sample polygon centred on each cell's centroid. Funding order driven by MEASURED Infrared UTCI €/m²-cooled. All in-ground trees tagged requires_utility_survey=True.",
+  "infeasible_count": 0,
+  "infeasible_cells": [],
+  "headline": "8 sites, 100 trees, 0 m² cooled, €1,000,000 of €1,000,000 allocated",
+  "disclaimer": "Per-cell evaluation uses a 200 m × 200 m sample polygon centred on each cell's centroid. Funding order driven by an ESTIMATED €/m²-cooled from the sim-free shade proxy (real sun geometry; NOT measured UTCI). All in-ground trees tagged requires_utility_survey=True.",
   "placement_audit": {
-    "trees_checked": 99,
+    "trees_checked": 100,
     "on_building": 0,
     "clumps_under_min_spacing": 0,
     "all_on_valid_ground": true,
-    "method": "independent OSM-building re-check + haversine spacing (coolspend.placement_audit)",
+    "sites_unverified_osm": 0,
+    "method": "independent OSM re-check",
     "per_site": {
+      "C025_018": {
+        "trees": 7,
+        "on_building": 0,
+        "clumps": 0,
+        "buildings_checked": 150
+      },
       "C030_031": {
         "trees": 15,
         "on_building": 0,
-        "clumps": 0
-      },
-      "C032_032": {
-        "trees": 12,
-        "on_building": 0,
-        "clumps": 0
-      },
-      "C022_010": {
-        "trees": 15,
-        "on_building": 0,
-        "clumps": 0
-      },
-      "C016_010": {
-        "trees": 15,
-        "on_building": 0,
-        "clumps": 0
+        "clumps": 0,
+        "buildings_checked": 20
       },
       "C030_023": {
-        "trees": 12,
+        "trees": 15,
         "on_building": 0,
-        "clumps": 0
+        "clumps": 0,
+        "buildings_checked": 188
+      },
+      "C032_027": {
+        "trees": 15,
+        "on_building": 0,
+        "clumps": 0,
+        "buildings_checked": 35
       },
       "C020_016": {
         "trees": 15,
         "on_building": 0,
-        "clumps": 0
+        "clumps": 0,
+        "buildings_checked": 9
       },
-      "C031_035": {
+      "C017_011": {
         "trees": 15,
         "on_building": 0,
-        "clumps": 0
+        "clumps": 0,
+        "buildings_checked": 11
+      },
+      "C028_022": {
+        "trees": 15,
+        "on_building": 0,
+        "clumps": 0,
+        "buildings_checked": 76
+      },
+      "C031_035": {
+        "trees": 3,
+        "on_building": 0,
+        "clumps": 0,
+        "buildings_checked": 40
       }
     }
   }
