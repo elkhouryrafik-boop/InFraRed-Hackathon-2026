@@ -98,9 +98,25 @@ DEFAULT_BUDGET_EUR: float = 1_000_000.0
 """Default planting budget in euros ("one million euros for canopy")."""
 
 from coolspend.bcn_species import SPECIES_TABLE as _BCN_SPECIES  # noqa: E402
-SPECIES: tuple[str, ...] = tuple(s.scientific for s in _BCN_SPECIES)
-"""Real Barcelona street-tree palette (scientific names from arbrat-viari top species,
-see coolspend.bcn_species). Cycled round-robin per slot index."""
+from coolspend.ecology import get_ecology as _get_ecology  # noqa: E402
+
+
+def _is_plantable(scientific: str) -> bool:
+    """Barcelona will not plant species flagged exotic-invasive in Catalonia
+    (Robinia, Ligustrum lucidum, Ulmus pumila — see coolspend/docs/
+    bcn_planting_strategy.md). Exclude them from the optimizer's palette so a
+    recommended plan never proposes an invasive. Species without an ecology row
+    default to plantable."""
+    eco = _get_ecology(scientific)
+    return not (eco and eco.invasive)
+
+
+SPECIES: tuple[str, ...] = tuple(
+    s.scientific for s in _BCN_SPECIES if _is_plantable(s.scientific)
+)
+"""Plantable Barcelona street-tree palette (arbrat-viari top species, MINUS the
+exotic-invasive ones Barcelona excludes). The optimizer's species gene chooses
+only from this set — see coolspend.bcn_species + coolspend.ecology."""
 
 SEED: int = 42
 """Deterministic seed — pins the Pareto front across runs with identical problem."""

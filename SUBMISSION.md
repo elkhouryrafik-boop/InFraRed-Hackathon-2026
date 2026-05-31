@@ -2,56 +2,122 @@
 
 ## One-line pitch
 
-A budget-to-decision tool that tells a city Chief Heat Officer where to plant trees for the most degrees of UTCI thermal relief per euro — optimised with NSGA-II on an analytical surrogate, with the Top-3 picks re-simulated with Infrared UTCI when run live (live wiring implemented; confirmation pending May 27 API key).
+A budget-to-decision tool for city heat officers: draw any area in Barcelona, set a
+budget, and CoolSpend places trees for the most **square-metres of ground cooled per
+euro** — optimised, then **validated with real Infrared UTCI**, and scored as a whole
+**ecosystem** (not just shade).
 
 ---
 
 ## What it is
 
-CoolSpend takes a city site polygon and a fixed planting budget, and returns a ranked tree-planting allocation with a before/after UTCI comfort map — a defensible decision, not just a heatmap. The user provides a GeoJSON polygon and adjusts a budget slider; CoolSpend runs a multi-objective NSGA-II optimizer, selects the three best Pareto candidates by distinct strategy (max thermal relief, max ecological coherence, and balanced), re-simulates each with Infrared UTCI when run live, and ranks them by the headline KPI: euros per degree Celsius of street-level comfort improvement. It is built on the infrared.city SDK (Tree Budget track) with a clean mock | cached | live boundary so it runs fully offline for demos and switches to real measured data with a single environment variable. The default site is Plaça dels Àngels, Barcelona.
+CoolSpend turns "where is it hot?" into "where does each euro buy the most cooling — and
+the healthiest urban ecosystem?" Two modes:
+
+- **Design (site):** draw a polygon anywhere in Barcelona, set a budget. CoolSpend runs a
+  multi-objective NSGA-II optimiser over real building/ground context, places species-
+  specific trees, and **re-simulates the result on the live Infrared UTCI engine**. The
+  headline KPI is **€ per m² of ground cooled ≥0.5 °C** — a footprint metric that does
+  not saturate on already-hot sites.
+- **Citywide (€1M):** ranks all **494 Barcelona grid cells** by heat × sealed-surface
+  priority (Landsat LST + Sentinel sealing) and allocates a budget to the hottest cells
+  first — district-scale triage for a multi-year canopy programme.
+
+Every proposed tree is clickable: species, crown, **the actual m² of ground it shades**,
+its cooling score, and a full **ecosystem profile**.
+
+---
+
+## Live result (Plaça dels Àngels, Barcelona — real Infrared UTCI)
+
+Validated end-to-end on the **live** infrared.city engine (`backend=live`), with **615
+real buildings** fetched for building-aware shade/heat:
+
+- **28 trees** cool **4,268 m²** of ground by ≥0.5 °C at **€30 / m²** (€128,800 total).
+- Sun-exposed peak felt temperature **31.0 °C → 29.8 °C**.
+- Cooling depth: **3,260 m² cooled ≥1 °C · 1,716 m² ≥2 °C · 664 m² lifted out of heat
+  stress** (≥26 °C UTCI).
+- Species chosen: Celtis australis (native), Cercis siliquastrum (native), Tipuana tipu,
+  Brachychiton populneus, Jacaranda, Melia, Platanus — **zero invasive species**.
 
 ---
 
 ## Technical depth
 
-The optimizer (`optimizer.py`) uses NSGA-II from pymoo 0.6.1, a 24-float chromosome (x, y coordinates for 12 tree slots), two objectives — thermal relief and ecological coherence — and one budget inequality constraint. An analytical thermal surrogate (`delta_tmrt_surrogate` in `spatial_engine.py`) runs inside the NSGA-II hot path: zero SDK calls during the ~3,600 per-generation evaluations. The Pareto front (60 candidates at full settings) is computed in under half a second offline.
-
-Top-3 Pareto representatives (MAX_THERMAL_RELIEF, MAX_ECOLOGICAL, BALANCED) are re-simulated with three Infrared UTCI SDK calls (guarded by `SimBudget(max_live_calls=3)`) when `INFRARED_BACKEND=live`. The live wiring is implemented; the exact SDK enum member requires confirmation at May 27 API key issuance (see MOCKS.md). TOPSIS (Hwang & Yoon 1981) with weights 0.6 thermal / 0.4 ecological provides a tie-break; primary ranking is ascending EUR/°C.
-
-The SDK boundary (`sdk_client.py`) is a clean env-driven dispatch (mock | cached | live) with `UTCIResult`, `SimBudget`, geometry hashing, and lazy import of `infrared_sdk` — the module is importable and fully testable with no API key. The offline test suite covers 134 tests across all modules (deterministic, seed-42, no network).
-
-Decision output is a deterministic JSON artifact (`outputs/top3_configurations.json`) with full run metadata, TOPSIS scores, per-config disclaimers, and a before/after UTCI record for the rank-1 configuration.
+- **Optimise → validate.** NSGA-II (pymoo) runs on an analytical thermal surrogate inside
+  the hot path (zero SDK calls during the thousands of per-generation evaluations); only
+  the Top-3 Pareto picks are re-simulated on real Infrared UTCI (`SimBudget`-guarded). The
+  headline number is the **measured** grid difference, not the surrogate.
+- **Species-aware placement.** The chromosome carries a species gene per slot; the
+  optimiser chooses each tree's species from the **plantable palette** weighted by a
+  cooling proxy and ecological diversity.
+- **Ecosystem-aware, Barcelona-aligned.** The palette is the 12 most-planted street species
+  **minus the three Barcelona excludes as exotic-invasive** (Robinia pseudoacacia,
+  Ligustrum lucidum, Ulmus pumila) — per the *Pla Director de l'Arbrat de Barcelona*.
+  Each species carries an **ecosystem-health composite** (drought/heat tolerance,
+  biodiversity, pollinator value, allergenicity, pest/disease risk, longevity, water,
+  maintenance, native status, mycorrhizae) — benefits minus penalties minus an invasive
+  veto, reported **alongside** the €/m² KPI, never blended into it.
+- **Real measured grids.** Cooled-footprint, multi-threshold bands, and the on-site UTCI
+  heatmap are all derived from the live 512×512 UTCI grid (cropped to the site polygon).
+- **Clean backend boundary.** `mock | cached | live` via one env var; the live path is
+  proven working (this submission's headline ran live). Cached replays real results
+  offline for demos.
 
 ---
 
 ## Creativity
 
-CoolSpend reframes "where is it hot?" as "where does each euro buy the most cooling?" — turning a heatmap into a budget allocation decision. The surrogate-optimize-then-validate pattern is the key creative contribution: by using an analytical proxy in the NSGA-II loop and reserving real SDK calls for Top-3 validation only, the tool stays within the SimBudget constraint while grounding its final recommendations in Infrared UTCI data when run live. The single headline KPI — euros per degree Celsius of UTCI relief — is designed to be defensible to a budget committee, not just technically accurate. The Gradio UI exposes TOPSIS weight sliders so the decision-maker can explore the trade-off between thermal and ecological objectives interactively.
+The creative core is **optimise-then-validate** plus **"you don't plant a tree, you
+install an ecosystem."** CoolSpend reserves expensive real UTCI calls for the final picks,
+keeps a single defensible KPI a budget committee understands (€/m² cooled), and refuses to
+recommend a species the city itself is phasing out — so the plan is credible to an
+arborist, not just a data scientist. Click any canopy disk to see exactly how much ground
+it shades and what ecosystem it brings.
 
 ---
 
 ## Real-world impact
 
-The primary user persona is Maria, a city Chief Heat Officer with a fixed annual tree-planting budget and a heatwave forecast. CoolSpend gives her a ranked allocation she can hand to a budget committee with a defensible cost figure attached. On the mock backend the optimizer finds a genuinely differentiated ranking: EUR 1,700/degC (rank-1 MAX_THERMAL_RELIEF) vs EUR 2,084/degC (BALANCED) vs EUR 3,194/degC (MAX_ECOLOGICAL) — illustrative mock values; when run live, the final picks are re-simulated with Infrared UTCI and the real EUR/°C numbers replace these. The framework generalises to any city polygon: swap the GeoJSON polygon text box and re-run. District-scale triage — prioritising which blocks get trees first during a multi-year canopy expansion programme — is a direct application. The tool respects the constraints of real municipal procurement: cost constants are declared assumptions that require verification against local data, and all outputs carry explicit confidence levels and data-source tags.
+The persona is a city Chief Heat Officer with a fixed budget and a heatwave forecast.
+CoolSpend hands her a ranked, costed, **live-validated** allocation she can defend — at the
+site scale (Design mode) and across the whole city (Citywide €1M). It runs on the real
+Barcelona street-tree inventory and the city's own planting strategy, and every number
+carries a provenance tag (VERIFIED / DECLARED / REQUIRES_VERIFICATION).
 
 ---
 
 ## Presentation
 
-CoolSpend runs as a live Gradio Blocks web app on Hugging Face Spaces. The UI shows the site polygon text box, budget slider, TOPSIS weight sliders, and a backend selector. On submit, it renders a before/after UTCI map panel, a ranked three-row allocation table with a per-row provenance column, and an expandable SDK call-log panel showing the three SimBudget-guarded Infrared API calls. The app defaults to mock mode (no key required) with a prominent "NOT MEASURED DATA" banner; switching to live mode replaces all values with real measured Infrared UTCI outputs (requires API key and live backend confirmation). The ~3-minute narrated demo follows the DEMO_SCRIPT.md shot list: hook (the decision problem), app run with visible call log, before/after map, ranked table, and the EUR/°C headline close.
+A deck.gl + Mapbox web app on real Barcelona **satellite imagery**: the live UTCI heatmap
+drapes the site, trees render as **per-species canopy-footprint disks**, and clicking one
+opens a full species + ecosystem inspect panel. An age slider grows the canopy over the
+establishment horizon. Citywide mode zooms out to the 494-cell priority heatmap. The
+~3-minute demo: the decision problem → draw + evaluate → live UTCI before/after → click a
+tree's ecosystem → the €/m² headline and the citywide €1M map.
 
 ---
 
 ## Honesty note
 
-The thermal surrogate (`delta_tmrt_surrogate`) has approximately ±4°C uncertainty and its 12°C cap (`MAX_TMRT_REDUCTION_C`) is unsourced — no validated citation was found for this constant. All mock numbers are NOT MEASURED DATA (synthetic values for integration testing only). The cost constants (CAPEX_PER_TREE_EUR=350, OPEX_PER_TREE_YEAR_EUR=35, OPEX_HORIZON_YEARS=10) are DECLARED assumptions that REQUIRE_VERIFICATION against municipal procurement data; the EUR/°C headline figure should be treated as illustrative until confirmed. When run with `INFRARED_BACKEND=live`, the Top-3 configurations are re-simulated with Infrared UTCI SDK calls, replacing surrogate values with measured data for the final ranking. The live SDK wiring is implemented; confirmation against the real API is pending May 27 API key issuance (see MOCKS.md live row).
-
-Full details, data-source tags (VERIFIED / MOCK / DECLARED), and citation-mismatch disclosures are in [MOCKS.md](MOCKS.md).
+- The headline (28 trees, 4,268 m², €30/m², 31.0→29.8 °C) is a **real live Infrared UTCI**
+  result at Plaça dels Àngels with 615 buildings; cached replay reproduces it offline.
+- Per-species cooling and the **ecosystem-health composite are labelled heuristics for
+  selection/ranking**, literature-anchored and cited (`coolspend/docs/`); the cooling
+  magnitude itself is the Infrared sim's, not the heuristic's.
+- Cost constants are itemised and Barcelona-anchored where verified (OpEx from BCN IMPJ
+  Arbrat Viari; planting/guarding from Diputació de Barcelona); stock/excavation/soil are
+  DECLARED pending direct tender extraction. The analytical surrogate's 12 °C ΔTmrt cap is
+  unsourced (REQUIRES_VERIFICATION) and is used only to rank candidates, which are then
+  re-simulated on real UTCI.
+- Full data-source tags and disclosures: [MOCKS.md](MOCKS.md),
+  [coolspend/docs/bcn_planting_strategy.md](coolspend/docs/bcn_planting_strategy.md),
+  [coolspend/docs/species_ecology_traits.md](coolspend/docs/species_ecology_traits.md).
 
 ---
 
 ## Links
 
 - GitHub repo: `<FILL IN>`
-- Hugging Face Space: `<FILL IN — created at kickoff>`
+- Hugging Face Space / deployed app: `<FILL IN>`
 - Demo video: `<FILL IN after recording>`

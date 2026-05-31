@@ -44,12 +44,13 @@ from coolspend.spatial_engine import is_valid_location, load_site
 def small_result():
     """Run a small optimisation once for the whole module (shared, fast).
 
-    pop_size=40: the real 12-species Barcelona palette (bcn_species) gives a more
-    granular ecological-diversity landscape than the old 4-name palette, so a
-    slightly larger population is needed to reliably surface >=10 distinct Pareto
-    configs. Still well under the suite time budget.
+    pop_size=56: the plantable palette is 9 species (the 12 most-planted MINUS the
+    3 exotic-invasives Barcelona excludes — see coolspend.optimizer.SPECIES /
+    coolspend.ecology). The smaller palette gives a slightly coarser diversity
+    landscape, so a larger population is needed to reliably surface >=10 distinct
+    Pareto configs. Still well under the suite time budget.
     """
-    return run_optimisation(n_gen=20, pop_size=40, seed=42)
+    return run_optimisation(n_gen=20, pop_size=56, seed=42)
 
 
 @pytest.fixture(scope="module")

@@ -1,13 +1,13 @@
 {
-  "headline": "Spend EUR 161,000 -> cools the plaza 6.73 degC -- plant these 35 locations.",
+  "headline": "Spend EUR 455,400 -> cools the plaza 6.67 degC -- plant these 99 locations.",
   "backend": "mock",
   "disclaimer": "NOT MEASURED DATA \u2014 results are synthetic mock values for UI integration only. SURROGATE-DERIVED delta_tmrt with \u00b14\u00b0C uncertainty. Use INFRARED_BACKEND=live with a real API key for measured UTCI.",
   "site_center_lonlat": [
-    2.166480019647079,
-    41.3827782618646
+    2.166800027802927,
+    41.38259710444321
   ],
-  "site_width_m": 101.0842986011412,
-  "site_depth_m": 78.67777409218252,
+  "site_width_m": 168.82918542914558,
+  "site_depth_m": 168.1349771702662,
   "utci_scale_c": [
     20.0,
     40.0
@@ -16,69 +16,18 @@
     {
       "rank": 1,
       "label": "BALANCED",
-      "tree_count": 35,
-      "cost_eur": 161000.0,
+      "tree_count": 99,
+      "cost_eur": 455400.0,
       "cooled_footprint_m2": null,
       "eur_per_m2": null,
-      "delta_utci_c": 6.73,
+      "delta_utci_c": 6.67,
       "utci_baseline_mean": 41.0,
-      "utci_intervention_mean": 34.27,
+      "utci_intervention_mean": 34.33,
       "utci_baseline_peak": null,
       "utci_intervention_peak": null,
-      "cost_per_utci_degree": 28865.51,
+      "cost_per_utci_degree": 82382.62,
       "cooled_profile": null,
       "species": [
-        "Black locust",
-        "Chinaberry",
-        "European hackberry",
-        "Jacaranda",
-        "Japanese pagoda tree",
-        "Judas tree",
-        "London plane",
-        "Tipa"
-      ]
-    },
-    {
-      "rank": 2,
-      "label": "MAX_THERMAL_RELIEF",
-      "tree_count": 35,
-      "cost_eur": 161000.0,
-      "cooled_footprint_m2": null,
-      "eur_per_m2": null,
-      "delta_utci_c": 6.72,
-      "utci_baseline_mean": 41.0,
-      "utci_intervention_mean": 34.28,
-      "utci_baseline_peak": null,
-      "utci_intervention_peak": null,
-      "cost_per_utci_degree": 28908.46,
-      "cooled_profile": null,
-      "species": [
-        "Black locust",
-        "Chinaberry",
-        "European hackberry",
-        "Jacaranda",
-        "Japanese pagoda tree",
-        "Judas tree",
-        "London plane",
-        "Tipa"
-      ]
-    },
-    {
-      "rank": 3,
-      "label": "MAX_ECOLOGICAL",
-      "tree_count": 35,
-      "cost_eur": 161000.0,
-      "cooled_footprint_m2": null,
-      "eur_per_m2": null,
-      "delta_utci_c": 2.35,
-      "utci_baseline_mean": 41.0,
-      "utci_intervention_mean": 38.65,
-      "utci_baseline_peak": null,
-      "utci_intervention_peak": null,
-      "cost_per_utci_degree": 82665.9,
-      "cooled_profile": null,
-      "species": [
-        "Black locust",
         "Chinaberry",
         "European hackberry",
         "Jacaranda",
@@ -86,7 +35,58 @@
         "Judas tree",
         "Kurrajong",
         "London plane",
-        "Siberian elm",
+        "Southern magnolia",
+        "Tipa"
+      ]
+    },
+    {
+      "rank": 2,
+      "label": "MAX_THERMAL_RELIEF",
+      "tree_count": 99,
+      "cost_eur": 455400.0,
+      "cooled_footprint_m2": null,
+      "eur_per_m2": null,
+      "delta_utci_c": 6.65,
+      "utci_baseline_mean": 41.0,
+      "utci_intervention_mean": 34.35,
+      "utci_baseline_peak": null,
+      "utci_intervention_peak": null,
+      "cost_per_utci_degree": 82630.39,
+      "cooled_profile": null,
+      "species": [
+        "Chinaberry",
+        "European hackberry",
+        "Jacaranda",
+        "Japanese pagoda tree",
+        "Judas tree",
+        "Kurrajong",
+        "London plane",
+        "Southern magnolia",
+        "Tipa"
+      ]
+    },
+    {
+      "rank": 3,
+      "label": "MAX_ECOLOGICAL",
+      "tree_count": 99,
+      "cost_eur": 455400.0,
+      "cooled_footprint_m2": null,
+      "eur_per_m2": null,
+      "delta_utci_c": 0.68,
+      "utci_baseline_mean": 41.0,
+      "utci_intervention_mean": 40.32,
+      "utci_baseline_peak": null,
+      "utci_intervention_peak": null,
+      "cost_per_utci_degree": 808076.58,
+      "cooled_profile": null,
+      "species": [
+        "Chinaberry",
+        "European hackberry",
+        "Jacaranda",
+        "Japanese pagoda tree",
+        "Judas tree",
+        "Kurrajong",
+        "London plane",
         "Southern magnolia",
         "Tipa"
       ]
@@ -103,7 +103,7 @@
     "primary_key_invariance": {
       "rank1_by_primary": "BALANCED",
       "weight_invariant": true,
-      "min_kpi_gap": 42.95
+      "min_kpi_gap": 247.77
     },
     "verdict": "rank-1 invariant to TOPSIS weights (decided by \u20ac/\u00b0C primary key)"
   }
