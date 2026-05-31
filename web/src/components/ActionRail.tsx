@@ -237,7 +237,7 @@ export function ActionRail({
             disabled={!canEvaluate}
             onClick={onEvaluate}
           >
-            {evaluating ? 'Evaluating… (live sim ~30s)' : '▸ Evaluate cooling'}
+            {evaluating ? 'Evaluating… live Infrared UTCI (~60–90s)' : '▸ Evaluate cooling'}
           </button>
 
           {error && (
