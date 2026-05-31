@@ -1,13 +1,13 @@
 {
-  "headline": "Spend EUR 455,400 -> cools the plaza 6.67 degC -- plant these 99 locations.",
-  "backend": "mock",
-  "disclaimer": "NOT MEASURED DATA \u2014 results are synthetic mock values for UI integration only. SURROGATE-DERIVED delta_tmrt with \u00b14\u00b0C uncertainty. Use INFRARED_BACKEND=live with a real API key for measured UTCI.",
+  "headline": "Spend EUR 128,800 -> 28 trees cool 4,268 m2 of ground by >=0.5C (EUR 30/m2), validated by real Infrared UTCI. At sun-exposed spots the felt temperature drops 31.0C -> 29.8C.",
+  "backend": "live",
+  "disclaimer": "LIVE Infrared SDK result (thermal-comfort-index, July 09-17 window).",
   "site_center_lonlat": [
-    2.166800027802927,
-    41.38259710444321
+    2.1666047387876732,
+    41.382668705451046
   ],
-  "site_width_m": 168.82918542914558,
-  "site_depth_m": 168.1349771702662,
+  "site_width_m": 143.9136445505428,
+  "site_depth_m": 90.31776529178023,
   "utci_scale_c": [
     20.0,
     40.0
@@ -15,70 +15,131 @@
   "configurations": [
     {
       "rank": 1,
-      "label": "BALANCED",
-      "tree_count": 99,
-      "cost_eur": 455400.0,
-      "cooled_footprint_m2": null,
-      "eur_per_m2": null,
-      "delta_utci_c": 6.67,
-      "utci_baseline_mean": 41.0,
-      "utci_intervention_mean": 34.33,
-      "utci_baseline_peak": null,
-      "utci_intervention_peak": null,
-      "cost_per_utci_degree": 82382.62,
-      "cooled_profile": null,
+      "label": "MAX_THERMAL_RELIEF",
+      "tree_count": 28,
+      "cost_eur": 128800.0,
+      "cooled_footprint_m2": 4268.0,
+      "eur_per_m2": 30.2,
+      "delta_utci_c": 1.09,
+      "utci_baseline_mean": 28.56,
+      "utci_intervention_mean": 27.47,
+      "utci_baseline_peak": 30.98,
+      "utci_intervention_peak": 29.84,
+      "cost_per_utci_degree": 142579.72,
+      "cooled_profile": {
+        "cooled_m2_by_band": {
+          "0.5": 4268,
+          "1": 3260,
+          "2": 1716
+        },
+        "mean_drop_c": 1.986,
+        "std_drop_c": 1.208,
+        "p10_drop_c": 0.71,
+        "p90_drop_c": 3.72,
+        "peak_drop_c": 6.89,
+        "cooled_fraction": 0.5226,
+        "heat_stress_relieved_m2": 684.0,
+        "heat_stress_threshold_c": 26.0,
+        "largest_cooled_patch_m2": 4256.0,
+        "n_cooled_patches": 4,
+        "valid_cells_m2": 8167.0,
+        "bands_c": [
+          0.5,
+          1.0,
+          2.0
+        ]
+      },
       "species": [
         "Chinaberry",
         "European hackberry",
         "Jacaranda",
-        "Japanese pagoda tree",
         "Judas tree",
         "Kurrajong",
         "London plane",
-        "Southern magnolia",
         "Tipa"
       ]
     },
     {
       "rank": 2,
-      "label": "MAX_THERMAL_RELIEF",
-      "tree_count": 99,
-      "cost_eur": 455400.0,
-      "cooled_footprint_m2": null,
-      "eur_per_m2": null,
-      "delta_utci_c": 6.65,
-      "utci_baseline_mean": 41.0,
-      "utci_intervention_mean": 34.35,
-      "utci_baseline_peak": null,
-      "utci_intervention_peak": null,
-      "cost_per_utci_degree": 82630.39,
-      "cooled_profile": null,
+      "label": "BALANCED",
+      "tree_count": 29,
+      "cost_eur": 133400.0,
+      "cooled_footprint_m2": 4104.0,
+      "eur_per_m2": 32.5,
+      "delta_utci_c": 1.07,
+      "utci_baseline_mean": 28.56,
+      "utci_intervention_mean": 27.49,
+      "utci_baseline_peak": 30.98,
+      "utci_intervention_peak": 29.77,
+      "cost_per_utci_degree": 150432.08,
+      "cooled_profile": {
+        "cooled_m2_by_band": {
+          "0.5": 4104,
+          "1": 3200,
+          "2": 1808
+        },
+        "mean_drop_c": 2.043,
+        "std_drop_c": 1.206,
+        "p10_drop_c": 0.72,
+        "p90_drop_c": 3.69,
+        "peak_drop_c": 7.2,
+        "cooled_fraction": 0.5025,
+        "heat_stress_relieved_m2": 576.0,
+        "heat_stress_threshold_c": 26.0,
+        "largest_cooled_patch_m2": 4096.0,
+        "n_cooled_patches": 3,
+        "valid_cells_m2": 8167.0,
+        "bands_c": [
+          0.5,
+          1.0,
+          2.0
+        ]
+      },
       "species": [
-        "Chinaberry",
         "European hackberry",
         "Jacaranda",
-        "Japanese pagoda tree",
         "Judas tree",
         "Kurrajong",
         "London plane",
-        "Southern magnolia",
         "Tipa"
       ]
     },
     {
       "rank": 3,
       "label": "MAX_ECOLOGICAL",
-      "tree_count": 99,
-      "cost_eur": 455400.0,
-      "cooled_footprint_m2": null,
-      "eur_per_m2": null,
-      "delta_utci_c": 0.68,
-      "utci_baseline_mean": 41.0,
-      "utci_intervention_mean": 40.32,
-      "utci_baseline_peak": null,
-      "utci_intervention_peak": null,
-      "cost_per_utci_degree": 808076.58,
-      "cooled_profile": null,
+      "tree_count": 16,
+      "cost_eur": 73600.0,
+      "cooled_footprint_m2": 1948.0,
+      "eur_per_m2": 37.8,
+      "delta_utci_c": 0.45,
+      "utci_baseline_mean": 28.56,
+      "utci_intervention_mean": 28.11,
+      "utci_baseline_peak": 30.98,
+      "utci_intervention_peak": 30.88,
+      "cost_per_utci_degree": 197348.44,
+      "cooled_profile": {
+        "cooled_m2_by_band": {
+          "0.5": 1948,
+          "1": 1308,
+          "2": 628
+        },
+        "mean_drop_c": 1.672,
+        "std_drop_c": 1.016,
+        "p10_drop_c": 0.61,
+        "p90_drop_c": 3.08,
+        "peak_drop_c": 7.02,
+        "cooled_fraction": 0.2385,
+        "heat_stress_relieved_m2": 252.0,
+        "heat_stress_threshold_c": 26.0,
+        "largest_cooled_patch_m2": 816.0,
+        "n_cooled_patches": 6,
+        "valid_cells_m2": 8167.0,
+        "bands_c": [
+          0.5,
+          1.0,
+          2.0
+        ]
+      },
       "species": [
         "Chinaberry",
         "European hackberry",
@@ -87,8 +148,7 @@
         "Judas tree",
         "Kurrajong",
         "London plane",
-        "Southern magnolia",
-        "Tipa"
+        "Southern magnolia"
       ]
     }
   ],
@@ -97,13 +157,13 @@
     "closeness_weight_sweep": {
       "n_steps": 21,
       "modal_winner": "BALANCED",
-      "modal_winner_share": 0.9524,
+      "modal_winner_share": 0.7143,
       "flips": true
     },
     "primary_key_invariance": {
-      "rank1_by_primary": "BALANCED",
+      "rank1_by_primary": "MAX_THERMAL_RELIEF",
       "weight_invariant": true,
-      "min_kpi_gap": 247.77
+      "min_kpi_gap": 7852.36
     },
     "verdict": "rank-1 invariant to TOPSIS weights (decided by \u20ac/\u00b0C primary key)"
   }

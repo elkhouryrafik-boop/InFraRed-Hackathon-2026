@@ -25,3 +25,4 @@ angels_trees_final.png
 app-*.jpeg
 .playwright-mcp/
 web/.playwright-mcp/
+web/public/eval_bundle/

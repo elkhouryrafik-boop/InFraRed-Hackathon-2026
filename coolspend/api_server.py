@@ -51,7 +51,11 @@ logger = logging.getLogger("coolspend.api_server")
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _WEB_PUBLIC = _REPO_ROOT / "web" / "public"
 _WEB_DIST = _REPO_ROOT / "web" / "dist"
-_BUNDLE_DIR = _WEB_PUBLIC / "web_bundle"   # frontend loads from /web_bundle/*
+_BUNDLE_DIR = _WEB_PUBLIC / "web_bundle"   # CURATED default showcase (served at /web_bundle/*)
+# Live /api/evaluate output goes here, NOT into the curated showcase — otherwise a
+# user drawing+evaluating an area would overwrite the demo's default plaza result on
+# disk (it reloads from there). Served at /eval_bundle/*.
+_EVAL_DIR = _WEB_PUBLIC / "eval_bundle"
 
 # Defensive server-side selection cap. 250 m x 250 m = 62 500 m^2 is already a
 # large urban block; beyond this a live run fans out to many tiles and stalls a
@@ -215,10 +219,10 @@ def create_app() -> FastAPI:
                 detail=f"Pipeline failed: {result.get('error') or 'no configurations'}",
             )
 
-        _BUNDLE_DIR.mkdir(parents=True, exist_ok=True)
-        export_web_bundle(result, out_dir=_BUNDLE_DIR, boundary_override_lonlat=ring)
+        _EVAL_DIR.mkdir(parents=True, exist_ok=True)
+        export_web_bundle(result, out_dir=_EVAL_DIR, boundary_override_lonlat=ring)
 
-        payload = _read_bundle_payload()
+        payload = _read_bundle_payload(_EVAL_DIR, "/eval_bundle")
 
         # Depave targeting: real impervious pavement + how much of it the proposed
         # rank-1 canopy would shade ("depaved & cooled").
@@ -295,10 +299,13 @@ def create_app() -> FastAPI:
     return app
 
 
-def _read_bundle_payload() -> dict[str, Any]:
-    """Read the just-written bundle dir into a single JSON payload for the client."""
+def _read_bundle_payload(bundle_dir: Path, url_base: str) -> dict[str, Any]:
+    """Read a written bundle dir into a single JSON payload for the client.
+
+    url_base is the path the static server exposes that dir at (e.g. /eval_bundle).
+    """
     def _load(name: str) -> Any:
-        p = _BUNDLE_DIR / name
+        p = bundle_dir / name
         return json.loads(p.read_text(encoding="utf-8")) if p.is_file() else None
 
     bundle: dict[str, Any] = {
@@ -308,10 +315,9 @@ def _read_bundle_payload() -> dict[str, Any]:
         "bounds": _load("bounds.json"),
     }
     # PNGs are served statically by vite/StaticFiles from the public dir.
-    base = "/web_bundle"
     for key, fname in (("baselineImageUrl", "utci_baseline.png"),
                        ("interventionImageUrl", "utci_intervention.png")):
-        bundle[key] = f"{base}/{fname}" if (_BUNDLE_DIR / fname).is_file() else None
+        bundle[key] = f"{url_base}/{fname}" if (bundle_dir / fname).is_file() else None
     return bundle
 
 
