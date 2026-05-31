@@ -158,11 +158,7 @@ def build_species_options() -> list[SpeciesOption]:
     """
     from coolspend.bcn_species import SPECIES_TABLE, cooling_score  # noqa: PLC0415
     from coolspend.cost_model import DEFAULT_COST_TABLE, DEFAULT_GROWTH_DISCOUNT  # noqa: PLC0415
-    from coolspend.ecology import get_ecology  # noqa: PLC0415
-
-    def _plantable(scientific: str) -> bool:
-        eco = get_ecology(scientific)
-        return not (eco and eco.invasive)
+    from coolspend.ecology import is_plantable  # noqa: PLC0415
 
     tree_cost = DEFAULT_COST_TABLE.per_tree_cost(DEFAULT_GROWTH_DISCOUNT.horizon_years)
     return [
@@ -173,7 +169,7 @@ def build_species_options() -> list[SpeciesOption]:
             cooling_score=cooling_score(s),
         )
         for s in SPECIES_TABLE
-        if _plantable(s.scientific)
+        if is_plantable(s.scientific)
     ]
 
 

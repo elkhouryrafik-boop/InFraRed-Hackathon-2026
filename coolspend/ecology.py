@@ -142,8 +142,29 @@ def ecosystem_score(e: Ecology) -> float:
     return round(max(0.0, min(1.0, benefits - penalties)), 4)
 
 
+# Species Barcelona is actively PHASING DOWN (do not plant more), distinct from
+# exotic-invasive. Platanus × acerifolia (London plane) is ~27% of the street-tree
+# population — far above the Pla Director de l'Arbrat's 15%-per-species cap, and
+# targeted down to ~12% by 2037 — plus high pollen-allergen + the worst pest/disease
+# load (Corythucha ciliata, Ceratocystis platani). So new plantings exclude it.
+_PHASE_DOWN: frozenset[str] = frozenset({_norm_key("Platanus x acerifolia")})
+
+
 def get_ecology(scientific: str) -> Ecology | None:
     return _BY_NAME.get(_norm_key(scientific))
+
+
+def is_plantable(scientific: str) -> bool:
+    """Whether a species may be used for NEW plantings in Barcelona.
+
+    Excludes (a) exotic-invasive species (Robinia, Ligustrum lucidum, Ulmus pumila)
+    and (b) over-represented phase-down species (Platanus × acerifolia, ~27% of the
+    city's trees). Single source of truth for the optimizer and the greedy placer.
+    """
+    if _norm_key(scientific) in _PHASE_DOWN:
+        return False
+    eco = get_ecology(scientific)
+    return not (eco and eco.invasive)
 
 
 def ecology_public(scientific: str) -> dict | None:
