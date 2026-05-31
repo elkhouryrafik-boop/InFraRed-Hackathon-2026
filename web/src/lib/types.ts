@@ -48,6 +48,33 @@ export interface Decision {
   configurations: Configuration[]
 }
 
+// ── Citywide €1M multi-site plan (web/public/citywide_plan.json) ──────────────
+export interface CityPlanSite {
+  cell_id: string
+  district: string
+  barri: string
+  tree_count: number
+  cost_eur: number
+  people_served: number | null
+  composite_score_B: number
+  mean_lst_celsius: number
+  centroid_lonlat: [number, number]
+  partial?: boolean
+  trees_lonlat?: { lon: number; lat: number; species: string }[]
+  design_metrics?: { canopy_area_m2?: number; canopy_cover_pct?: number; est_air_temp_drop_c?: number }
+}
+
+export interface CityPlan {
+  allocated_count: number
+  total_trees: number
+  total_allocated_eur: number
+  budget_eur: number
+  total_people_served: number | null
+  total_canopy_m2: number
+  total_person_degrees: number | null
+  allocated_cells: CityPlanSite[]
+}
+
 export interface BoundaryProperties {
   kind: 'site_boundary'
   [k: string]: unknown

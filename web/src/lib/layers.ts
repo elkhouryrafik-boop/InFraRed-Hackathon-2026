@@ -239,6 +239,33 @@ function scoreColor(score: number): [number, number, number, number] {
   return [r, g, b, 180]
 }
 
+/** €1M plan: a marker per funded site, radius ∝ trees planted there. */
+export function buildCityPlanLayer(
+  sites: { centroid_lonlat: [number, number]; tree_count: number; partial?: boolean }[] | null,
+): Layer | null {
+  if (!sites || sites.length === 0) return null
+  return new ScatterplotLayer({
+    id: 'city-plan-sites',
+    data: sites,
+    getPosition: (s: { centroid_lonlat: [number, number] }) => s.centroid_lonlat,
+    // Radius grows with trees planted (meters → scales with zoom), clamped legible.
+    radiusUnits: 'meters',
+    getRadius: (s: { tree_count: number }) => 40 + s.tree_count * 6,
+    radiusMinPixels: 8,
+    radiusMaxPixels: 60,
+    stroked: true,
+    filled: true,
+    getFillColor: (s: { partial?: boolean }) =>
+      (s.partial ? [255, 200, 90, 180] : [43, 200, 188, 190]) as [number, number, number, number],
+    getLineColor: [255, 255, 255, 230] as [number, number, number, number],
+    lineWidthUnits: 'pixels',
+    getLineWidth: 2,
+    lineWidthMinPixels: 2,
+    parameters: { depthTest: false },
+    pickable: true,
+  })
+}
+
 export interface CitywideLayerArgs {
   /** GeoJSON FeatureCollection (the scored_grid cells). */
   data: GeoJSON.FeatureCollection | null

@@ -27,10 +27,10 @@ import {
   fetchDemElevation,
   liftMatrix,
 } from '../lib/elevation'
-import type { WebBundle, UtciScenario, AppMode, CitywideScan, TreeProperties } from '../lib/types'
+import type { WebBundle, UtciScenario, AppMode, CitywideScan, TreeProperties, CityPlan } from '../lib/types'
 import type { LngLat } from '../lib/draw'
 import { fetchCitywideScan } from '../lib/api'
-import { buildCitywideLayer } from '../lib/layers'
+import { buildCitywideLayer, buildCityPlanLayer } from '../lib/layers'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string
 
@@ -100,22 +100,24 @@ export function Scene({ bundle, onBundle, appMode, setAppMode }: SceneProps) {
   // ── Citywide (Mode 2) state.
   const [citywideScan, setCitywideScan] = useState<CitywideScan | null>(null)
   const [citywideGeojson, setCitywideGeojson] = useState<GeoJSON.FeatureCollection | null>(null)
+  const [cityPlan, setCityPlan] = useState<CityPlan | null>(null)
   const [citywideLoading, setCitywideLoading] = useState(false)
 
   useEffect(() => {
     if (appMode !== 'citywide') return
     let cancelled = false
     setCitywideLoading(true)
-    Promise.all([
-      fetchCitywideScan(50, 1_000_000),
-      fetch('/scored_grid.geojson').then(r => r.json()),
-    ])
-      .then(([scan, geojson]) => {
-        if (!cancelled) {
-          setCitywideScan(scan)
-          setCitywideGeojson(geojson as GeoJSON.FeatureCollection)
-        }
-      })
+    // Each source is independent — the static plan + heatmap (just files) must render
+    // even when the scan API is down, so a backend hiccup never blanks Mode 2.
+    fetch('/scored_grid.geojson').then(r => r.json())
+      .then(g => { if (!cancelled) setCitywideGeojson(g as GeoJSON.FeatureCollection) })
+      .catch(() => {})
+    fetch('/citywide_plan.json').then(r => (r.ok ? r.json() : null))
+      .then(p => { if (!cancelled) setCityPlan((p as CityPlan) ?? null) })
+      .catch(() => {})
+    fetchCitywideScan(50, 1_000_000)
+      .then(s => { if (!cancelled) setCitywideScan(s) })
+      .catch(() => {})
       .finally(() => { if (!cancelled) setCitywideLoading(false) })
     return () => { cancelled = true }
   }, [appMode])
@@ -276,6 +278,11 @@ export function Scene({ bundle, onBundle, appMode, setAppMode }: SceneProps) {
     () => buildCitywideLayer({ data: citywideGeojson, opacity: 0.55 }),
     [citywideGeojson],
   )
+  // €1M plan: funded-site markers on top of the heatmap.
+  const cityPlanLayer = useMemo(
+    () => buildCityPlanLayer(cityPlan?.allocated_cells ?? null),
+    [cityPlan],
+  )
 
   // Site layers + live draw-preview layers on top.
   const allLayers = useMemo(
@@ -284,12 +291,15 @@ export function Scene({ bundle, onBundle, appMode, setAppMode }: SceneProps) {
       if (appMode === 'citywide' && citywideLayer) {
         result.unshift(citywideLayer)
       }
+      if (appMode === 'citywide' && cityPlanLayer) {
+        result.push(cityPlanLayer)
+      }
       if (appMode === 'draw') {
         result.push(...draw.drawLayers)
       }
       return result
     },
-    [layers, draw.drawLayers, appMode, citywideLayer],
+    [layers, draw.drawLayers, appMode, citywideLayer, cityPlanLayer],
   )
 
   const onMove = useCallback((e: ViewStateChangeEvent) => {
@@ -341,13 +351,15 @@ export function Scene({ bundle, onBundle, appMode, setAppMode }: SceneProps) {
 
       <TreeInspect tree={selectedTree} onClose={() => setSelectedTree(null)} />
 
-      <Hud
-        decision={bundle.decision}
-        scenario={scenario}
-        onScenarioChange={setScenario}
-        rasterOpacity={rasterOpacity}
-        onRasterOpacityChange={setRasterOpacity}
-      />
+      {appMode !== 'citywide' && (
+        <Hud
+          decision={bundle.decision}
+          scenario={scenario}
+          onScenarioChange={setScenario}
+          rasterOpacity={rasterOpacity}
+          onRasterOpacityChange={setRasterOpacity}
+        />
+      )}
 
       <DrawPanel
         mode={draw.mode}
@@ -382,6 +394,29 @@ export function Scene({ bundle, onBundle, appMode, setAppMode }: SceneProps) {
               </span>
             ))}
           </div>
+        </div>
+      )}
+
+      {appMode === 'citywide' && cityPlan && (
+        <div className="city-plan">
+          <div className="city-plan__title">€{(cityPlan.budget_eur / 1e6).toFixed(1)}M across {cityPlan.allocated_count} sites</div>
+          <div className="city-plan__kpis">
+            <div className="city-plan__kpi"><strong>{cityPlan.total_trees}</strong><span>trees</span></div>
+            <div className="city-plan__kpi"><strong>{cityPlan.total_people_served ? cityPlan.total_people_served.toLocaleString() : '—'}</strong><span>people served</span></div>
+            <div className="city-plan__kpi"><strong>{Math.round(cityPlan.total_canopy_m2).toLocaleString()} m²</strong><span>new canopy</span></div>
+            <div className="city-plan__kpi"><strong>€{Math.round(cityPlan.total_allocated_eur / 1000)}k</strong><span>allocated</span></div>
+          </div>
+          <div className="city-plan__sites">
+            {cityPlan.allocated_cells.map((s) => (
+              <div className="city-plan__site" key={s.cell_id}>
+                <span className="city-plan__site-name">{s.district}{s.partial ? ' ·partial' : ''}</span>
+                <span className="city-plan__site-stat">
+                  {s.tree_count} trees · {s.people_served ? s.people_served.toLocaleString() : '—'} ppl · {Math.round(s.mean_lst_celsius)}°C
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="city-plan__note">Hottest, most-sealed cells (Landsat × Sentinel); ≥500 m apart; ≥0.5 ha cooled within a 300 m walk = people served (Padró).</div>
         </div>
       )}
 
