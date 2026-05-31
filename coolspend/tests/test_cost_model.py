@@ -191,13 +191,18 @@ def test_interval_lo_lt_value_lt_hi() -> None:
             )
 
 
-def test_pre_calibration_band_label_default() -> None:
-    """When band_c is None, band_source must equal 'pre-calibration, assumed ±4°C'."""
+def test_default_band_uses_empirical_calibration_when_available() -> None:
+    """When band_c is None, the default is the empirical calibration band (live
+    UTCI study) if the committed summary exists, else the assumed ±4°C."""
+    from coolspend.cost_model import calibrated_band_c
     config = {"tree_count": 10, "coverage_fraction": 0.20}
     result = cost_per_utci_degree(config)
     assert "band_source" in result
     if result["value"] is not None:
-        assert result["band_source"] == "pre-calibration, assumed ±4°C"
+        if calibrated_band_c() is not None:
+            assert "empirical calibration RMSE" in result["band_source"]
+        else:
+            assert result["band_source"] == "pre-calibration, assumed ±4°C"
 
 
 def test_empirical_band_label_when_band_c_supplied() -> None:
@@ -213,9 +218,11 @@ def test_empirical_band_label_when_band_c_supplied() -> None:
 def test_band_c_stored_in_result() -> None:
     """band_c value is echoed back in the result dict."""
     config = {"tree_count": 10, "coverage_fraction": 0.20}
+    from coolspend.cost_model import calibrated_band_c
     result_default = cost_per_utci_degree(config)
     assert "band_c" in result_default
-    assert result_default["band_c"] == PRE_CALIBRATION_BAND_C
+    expected = calibrated_band_c() if calibrated_band_c() is not None else PRE_CALIBRATION_BAND_C
+    assert result_default["band_c"] == expected
 
     result_custom = cost_per_utci_degree(config, band_c=3.0)
     assert result_custom["band_c"] == 3.0

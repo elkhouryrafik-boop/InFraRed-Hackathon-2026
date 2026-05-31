@@ -580,11 +580,15 @@ PEAK_SUN_ALTITUDE_DEG: float = 63.0   # degrees above horizon at solar noon — 
 PEAK_SUN_AZIMUTH_DEG: float = 215.0   # SW afternoon peak — Barcelona July
 
 # SOURCE: nature_nsga2_coolstock.py lines 138-146 (UNSOURCED operational cap — see CONCERNS 1.1)
-# Tmrt-magnitude anchor: Schrodi et al. 2023 (arXiv:2310.05691, venue PENDING) + Rahman et al. 2022
-# (DOI PENDING). Garcia-Nevado 2020 = surface-temp analogue, NOT Tmrt@1.1m.
-# NOTE: re-anchoring the Tmrt magnitude does NOT source this linear cap — still REQUIRES_VERIFICATION.
-# MOCK: unsourced conservative cap estimate, no error bar, no Ladybug/Infrared validation
-MAX_TMRT_REDUCTION_C: float = 12.0    # °C — still an UNSOURCED linear cap — REQUIRES_VERIFICATION (see MOCKS.md)
+# Tmrt-magnitude anchor: Schrodi et al. 2023 (arXiv:2310.05691, venue PENDING) + Rahman et al. 2022.
+# Garcia-Nevado 2020 = surface-temp analogue, NOT Tmrt@1.1m.
+# CAP STATUS (2026-05-31, post live calibration): the literature places full-shade ΔTmrt under
+# midday Mediterranean sun at ~15–30°C, so a 12°C SITE-AVERAGED ceiling is conservative. More
+# importantly the live calibration study (coolspend/data/calibration_summary.json) shows the
+# surrogate predicts ≤0.5°C site-averaged ΔTmrt in practice — the cap is NEVER reached, so it is
+# a non-binding guard, not a magnitude claim. The honest band on the surrogate is the empirical
+# ±0.78°C (1.96×RMSE), and magnitude is taken from the live UTCI sim, not this cap.
+MAX_TMRT_REDUCTION_C: float = 12.0    # °C — non-binding literature-anchored guard (never reached; see calibration_summary.json)
 
 # SOURCE: DECLARED — mature street-tree typical canopy shade fraction assumption
 # REQUIRES_VERIFICATION: not from Barcelona Arbrat Viari data

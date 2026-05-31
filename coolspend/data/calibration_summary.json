@@ -1,0 +1,13 @@
+{
+  "source": "live Infrared UTCI calibration study (coolspend.calibration.run_calibration_study)",
+  "n_configs": 10,
+  "backend": "live",
+  "baseline_utci_c": 28.98,
+  "rmse_c": 0.398,
+  "band_c_95": 0.78,
+  "r2": -0.946,
+  "spearman_rho": 0.687,
+  "kendall_tau": 0.584,
+  "set_overlap_top3": 2,
+  "interpretation": "Surrogate is a WEAK magnitude predictor (R2<0, biased low) but a MODERATE ranker (Spearman 0.69, 2/3 top-3 retained). Use the surrogate for NSGA-II ordering only; magnitude comes from the live UTCI validation. Empirical 95% band = 1.96*RMSE = 0.78 C, replacing the assumed +/-4 C."
+}

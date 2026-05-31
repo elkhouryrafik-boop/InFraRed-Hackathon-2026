@@ -388,11 +388,21 @@ def select_top3(result) -> list[dict]:
             cfg["label"] = labels[rank_zero]
             cfg["padded_duplicate"] = False
         cfg["delta_tmrt_c"] = round(thermal, 3)
-        cfg["delta_tmrt_uncertainty_c"] = 4.0
+        # Empirical band from the live calibration study (coolspend.cost_model.
+        # calibrated_band_c → 0.78°C, 1.96×RMSE vs measured UTCI) when available,
+        # else the pre-calibration assumed ±4°C.
+        from coolspend.cost_model import calibrated_band_c as _cal_band  # noqa: PLC0415
+        _band = _cal_band()
+        cfg["delta_tmrt_uncertainty_c"] = _band if _band is not None else 4.0
         cfg["delta_tmrt_source"] = (
             "analytical surrogate ΔTmrt; magnitude anchored to Schrodi 2023 "
             "(arXiv:2310.05691, PENDING) + Rahman 2022; Garcia-Nevado 2020 = "
-            "surface-temp analogue. NOT measured/simulated. ±4°C."
+            "surface-temp analogue. NOT measured/simulated. "
+            + (
+                f"Empirical band ±{_band:.2f}°C (live UTCI calibration, R²<0 — surrogate "
+                "is a moderate RANKER not a magnitude predictor; magnitude from live sim)."
+                if _band is not None else "±4°C (assumed, pre-calibration)."
+            )
         )
         cfg["ecological_score"] = round(eco, 4)
         cfg["surrogate_note"] = (

@@ -354,6 +354,33 @@ def hours_per_degc(threshold_c: float = 32.0) -> float:
 # When band_c=None in cost_per_utci_degree(), this value is used.
 
 PRE_CALIBRATION_BAND_C: float = 4.0
+
+_CALIBRATED_BAND_CACHE: dict[str, float | None] = {}
+
+
+def calibrated_band_c() -> float | None:
+    """Empirical ±°C band from the live calibration study, if available.
+
+    Reads coolspend/data/calibration_summary.json (committed output of
+    coolspend.calibration.run_calibration_study on the live Infrared backend):
+    band_c_95 = 1.96 × RMSE of surrogate-vs-measured UTCI deltas. Returns None
+    if the summary is absent, so callers fall back to PRE_CALIBRATION_BAND_C.
+    The measured value (≈0.78 °C) is ~5× tighter than the assumed ±4 °C.
+    """
+    if "band" in _CALIBRATED_BAND_CACHE:
+        return _CALIBRATED_BAND_CACHE["band"]
+    band: float | None = None
+    try:
+        import json as _json  # noqa: PLC0415
+        import os as _os  # noqa: PLC0415
+
+        path = _os.path.join(_os.path.dirname(__file__), "data", "calibration_summary.json")
+        with open(path, encoding="utf-8") as fh:
+            band = float(_json.load(fh).get("band_c_95"))
+    except Exception:  # noqa: BLE001 — summary optional; fall back to assumed band
+        band = None
+    _CALIBRATED_BAND_CACHE["band"] = band
+    return band
 # UNIT: °C   SOURCE: pre-calibration assumed band (not empirically grounded)
 # Label used in output: "pre-calibration, assumed ±4°C"
 # Replaced by Plan 05-03 calibration RMSE when available.
@@ -825,8 +852,13 @@ def cost_per_utci_degree(  # noqa: C901 (complexity OK — linear decision tree)
 
     # ── Band setup ─────────────────────────────────────────────────────────────
     if band_c is None:
-        band = PRE_CALIBRATION_BAND_C
-        band_source = "pre-calibration, assumed ±4°C"
+        _cal = calibrated_band_c()
+        if _cal is not None:
+            band = _cal
+            band_source = f"empirical calibration RMSE ±{band:.2f}°C (live UTCI study)"
+        else:
+            band = PRE_CALIBRATION_BAND_C
+            band_source = "pre-calibration, assumed ±4°C"
     else:
         band = float(band_c)
         band_source = f"empirical calibration RMSE ±{band:.2f}°C"

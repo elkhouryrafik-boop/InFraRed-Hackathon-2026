@@ -150,7 +150,10 @@ def test_select_top3_distinct(top3_configs):
     # Each config must carry the required honesty fields
     for cfg in top3_configs:
         assert "delta_tmrt_c" in cfg
-        assert cfg["delta_tmrt_uncertainty_c"] == 4.0
+        # Empirical calibration band (live UTCI study) when available, else ±4°C.
+        from coolspend.cost_model import calibrated_band_c
+        _expected_band = calibrated_band_c() if calibrated_band_c() is not None else 4.0
+        assert cfg["delta_tmrt_uncertainty_c"] == _expected_band
         assert "surrogate_note" in cfg
         assert cfg["topsis_score"] is None   # filled later by Plan 02-05
 
