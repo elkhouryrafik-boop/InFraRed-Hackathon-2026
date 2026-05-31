@@ -148,3 +148,19 @@
   line-height: 1.5;
   color: #9fb8b1;
 }
+.tin__sources {
+  margin-top: 12px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(120, 200, 190, 0.14);
+  font-size: 9.5px;
+  line-height: 1.5;
+  color: #7e978f;
+}
+.tin__sources strong { color: #9fc3bb; }
+.tin__sources code {
+  font-size: 9px;
+  color: #8fb3ab;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0 3px;
+  border-radius: 3px;
+}

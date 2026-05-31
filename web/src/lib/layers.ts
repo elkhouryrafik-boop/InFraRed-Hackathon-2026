@@ -181,24 +181,26 @@ export function buildLayers(args: BuildLayersArgs): Layer[] {
   // fill lets the UTCI heatmap read through. Proposed canopies grow with the age
   // slider; existing trees are mature context.
   if (trees && trees.features.length > 0) {
+    // Shared canopy radius (m) — used by both the canopy disk and its inner core.
+    const treeRadius = (f: TreeFeature): number => {
+      const crown = f.properties.crown_diameter_m ?? 6
+      // Existing trees are mature context. Proposed trees grow on their own
+      // species allometric curve when a growthYear (age slider) is given;
+      // otherwise fall back to the legacy global treeScale.
+      if (f.properties.kind === 'existing') return Math.max(1.5, crown / 2)
+      if (growthYear != null) {
+        const maturity = f.properties.ecology?.maturity_years ?? 30
+        return Math.max(1.5, crownDiameterAtAge(crown, maturity, growthYear) / 2)
+      }
+      return Math.max(1.5, (crown / 2) * treeScale)
+    }
     out.push(
       new ScatterplotLayer({
         id: 'trees',
         data: trees.features,
         getPosition: (f: TreeFeature) => f.geometry.coordinates,
         radiusUnits: 'meters',
-        getRadius: (f: TreeFeature) => {
-          const crown = f.properties.crown_diameter_m ?? 6
-          // Existing trees are mature context. Proposed trees grow on their own
-          // species allometric curve when a growthYear (age slider) is given;
-          // otherwise fall back to the legacy global treeScale.
-          if (f.properties.kind === 'existing') return Math.max(1.5, crown / 2)
-          if (growthYear != null) {
-            const maturity = f.properties.ecology?.maturity_years ?? 30
-            return Math.max(1.5, crownDiameterAtAge(crown, maturity, growthYear) / 2)
-          }
-          return Math.max(1.5, (crown / 2) * treeScale)
-        },
+        getRadius: treeRadius,
         radiusMinPixels: 4,
         radiusMaxPixels: 140,
         updateTriggers: { getRadius: [treeScale, growthYear] },
@@ -221,6 +223,40 @@ export function buildLayers(args: BuildLayersArgs): Layer[] {
             : [240, 255, 245, 220],
         parameters: { depthTest: false },
         pickable: true,
+      }),
+    )
+    // Inner canopy core — a smaller, lighter, more opaque concentric disk that
+    // reads as canopy density/volume from top-down (more tree-like than a flat
+    // disk), and gives the foliage a soft highlighted centre. Non-pickable so it
+    // never steals clicks from the main canopy.
+    out.push(
+      new ScatterplotLayer({
+        id: 'tree-cores',
+        data: trees.features,
+        getPosition: (f: TreeFeature) => f.geometry.coordinates,
+        radiusUnits: 'meters',
+        getRadius: (f: TreeFeature) => treeRadius(f) * 0.5,
+        radiusMinPixels: 2,
+        radiusMaxPixels: 70,
+        updateTriggers: { getRadius: [treeScale, growthYear] },
+        stroked: false,
+        filled: true,
+        getFillColor: (f: TreeFeature): [number, number, number, number] => {
+          if (f.properties.kind === 'existing') {
+            const [r, g, b] = EXISTING_TREE_COLOR
+            return [r, g, b, 70]
+          }
+          const c = f.properties.color ?? [60, 160, 90]
+          // Lighter, denser centre: lift toward white, higher alpha.
+          return [
+            Math.min(255, c[0] + 50),
+            Math.min(255, c[1] + 55),
+            Math.min(255, c[2] + 40),
+            120,
+          ]
+        },
+        parameters: { depthTest: false },
+        pickable: false,
       }),
     )
   }

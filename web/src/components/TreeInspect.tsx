@@ -109,6 +109,16 @@ function EcologyBlock({ eco }: { eco: TreeEcology }) {
       </div>
 
       {eco.notes && <div className="tin__notes">{eco.notes}</div>}
+
+      <div className="tin__sources">
+        <strong>Sources.</strong> Crown &amp; height: Barcelona <em>arbrat&nbsp;viari</em>
+        municipal street-tree inventory (size bands). Native status, drought/heat,
+        biodiversity, pollinator, allergenicity (OPALS), pest/disease, longevity:
+        arboricultural literature (see <code>docs/species_ecology_traits.md</code>).
+        Time-to-mature-canopy: i-Tree growth-rate bands. Ecosystem &amp; cooling
+        scores are transparent composites for ranking — measured cooling is the
+        Infrared UTCI simulation.
+      </div>
     </div>
   )
 }

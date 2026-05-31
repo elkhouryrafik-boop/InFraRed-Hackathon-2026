@@ -31,7 +31,21 @@ export function Hud({
       </div>
 
       <h1 className="hud__headline">{decision.headline}</h1>
-      <div className="hud__backend">{decision.backend}</div>
+      {(() => {
+        const measured = decision.backend === 'live' || decision.backend === 'cached'
+        return (
+          <div
+            className={`hud__backend ${measured ? 'is-measured' : 'is-preview'}`}
+            title={
+              measured
+                ? 'Cooling measured on Infrared UTCI simulation'
+                : 'Synthetic preview — placement real, cooling estimated until run live'
+            }
+          >
+            {measured ? `✓ measured UTCI (${decision.backend})` : '≈ preview (synthetic cooling)'}
+          </div>
+        )
+      })()}
 
       {kpi && (
         <>
