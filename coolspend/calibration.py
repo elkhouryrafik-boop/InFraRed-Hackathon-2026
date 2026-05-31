@@ -248,7 +248,9 @@ def run_calibration_study(
     # ── 5. Per-config real UTCI + surrogate prediction ────────────────────────
     # Local imports inside function (SDK isolation convention + D-08 contract)
     from nature_metrics import utci_hours_above  # noqa: PLC0415
-    from coolspend.cost_model import HOURS_PER_DEGC_REF  # noqa: PLC0415
+    from coolspend.cost_model import hours_per_degc  # noqa: PLC0415
+
+    hpd = hours_per_degc()  # EPW-derived; same conversion the KPI uses (D-08 contract)
 
     # Baseline UTCI-hours (coverage_fraction=0) for computing hours_reduced
     baseline_utci_hours_dict = utci_hours_above(32.0, 0.0)
@@ -276,7 +278,7 @@ def run_calibration_study(
         if hours_reduced < 0:
             hours_reduced = 0.0  # guard: should not happen, be safe
 
-        cfg["surrogate_pred_utci_delta_c"] = round(hours_reduced / HOURS_PER_DEGC_REF, 3)
+        cfg["surrogate_pred_utci_delta_c"] = round(hours_reduced / hpd, 3)
 
     # ── 6. Compute fit and rank stability ──────────────────────────────────────
     fit = compute_fit(configs)

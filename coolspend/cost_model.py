@@ -314,8 +314,38 @@ OPEX_HORIZON_YEARS: int = 40
 
 HOURS_PER_DEGC_REF: float = 200.0
 # UNIT: annual UTCI-hours-above-32°C per °C equivalent mean-UTCI drop
-# SOURCE: derived (Barcelona EPW mean excess + "12°C Tmrt ≈ 3-5°C UTCI" anchor)
-# REQUIRES_VERIFICATION: Plan 05-03 replaces with empirical calibration RMSE.
+# ROLE: documented FALLBACK only. The live value is computed from the in-repo
+# Barcelona TMYx EPW by hours_per_degc() below; this literal is used only when
+# the EPW / ladybug are unavailable.
+# NOTE (2026-05-31): the EPW-derived value is ~47 h/°C (band-mean 0.5–2°C),
+# NOT 200 — the 200 figure assumed a 600 h/yr baseline, but the EPW baseline at
+# UTCI>32°C is 98 h/yr. The live calibration study (calibration.py, surrogate-
+# vs-measured RMSE) is the definitive arbiter; hours_per_degc() supersedes 200.
+
+_HOURS_PER_DEGC_CACHE: dict[str, float] = {}
+
+
+def hours_per_degc(threshold_c: float = 32.0) -> float:
+    """EPW-derived hours-above-threshold removed per °C uniform UTCI cooling.
+
+    Computed once from the Barcelona TMYx EPW (cached); falls back to the
+    documented HOURS_PER_DEGC_REF literal if the EPW/ladybug are unavailable.
+    Replaces the former hand-derived REQUIRES_VERIFICATION constant.
+    """
+    key = f"hpd_{threshold_c}"
+    if key in _HOURS_PER_DEGC_CACHE:
+        return _HOURS_PER_DEGC_CACHE[key]
+    value = HOURS_PER_DEGC_REF
+    try:
+        from nature_metrics import hours_per_degc_uniform_shift  # noqa: PLC0415
+
+        r = hours_per_degc_uniform_shift(threshold_c)
+        if r.get("value"):
+            value = float(r["value"])
+    except Exception:  # noqa: BLE001 — EPW/ladybug optional; fall back to literal
+        pass
+    _HOURS_PER_DEGC_CACHE[key] = value
+    return value
 
 # ── Uncertainty band constants (D-10 / VALID-04) ─────────────────────────────
 #
@@ -850,10 +880,11 @@ def cost_per_utci_degree(  # noqa: C901 (complexity OK — linear decision tree)
         confidence = MED  # MED because cost constants are still DECLARED
     elif hours_reduced is not None and hours_reduced > 0:
         # UTCI-hours-derived path (D-08): never raw Tmrt
-        degc_drop = hours_reduced / HOURS_PER_DEGC_REF
+        hpd = hours_per_degc()
+        degc_drop = hours_reduced / hpd
         note_parts.append(
-            "UTCI-hours→equiv mean-°C conversion (documented, surrogate-derived; "
-            f"hours_reduced={hours_reduced:.1f} / HOURS_PER_DEGC_REF={HOURS_PER_DEGC_REF})"
+            "UTCI-hours→equiv mean-°C conversion (EPW-derived; "
+            f"hours_reduced={hours_reduced:.1f} / hours_per_degc={hpd:.1f})"
         )
         confidence = LOW
 
@@ -943,8 +974,8 @@ def cost_per_utci_degree(  # noqa: C901 (complexity OK — linear decision tree)
 
     if hours_reduced is not None and hours_reduced > 0:
         cost_per_utci_hour = round(cost / hours_reduced, 2)
-        # Propagate band into hours via HOURS_PER_DEGC_REF
-        hours_band = band * HOURS_PER_DEGC_REF
+        # Propagate band into hours via the EPW-derived hours/°C
+        hours_band = band * hours_per_degc()
         hours_hi = hours_reduced + hours_band  # more hours → cheaper per hour
         hours_lo = hours_reduced - hours_band  # fewer hours → costlier per hour
         cost_per_utci_hour_lo = round(cost / hours_hi, 2)

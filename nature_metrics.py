@@ -214,6 +214,64 @@ def utci_hours_above(threshold_c: float = 32.0,
     }
 
 
+def _baseline_utci_series() -> "list[float] | None":
+    """Hourly baseline (no-canopy) plaza UTCI for the whole EPW year. Cached."""
+    if "utci_series_baseline" in _EPW_CACHE:
+        return _EPW_CACHE["utci_series_baseline"]
+    epw = _load_epw()
+    if "error" in epw:
+        return None
+    tmrt = _derive_hourly_tmrt(epw["dry_bulb"], epw["ghi"], 0.0)
+    series = [
+        universal_thermal_climate_index(db, tm, max(ws, 0.5), rh)
+        for db, rh, ws, tm in zip(
+            epw["dry_bulb"], epw["rel_humid"], epw["wind_speed"], tmrt
+        )
+    ]
+    _EPW_CACHE["utci_series_baseline"] = series
+    return series
+
+
+def hours_per_degc_uniform_shift(threshold_c: float = 32.0) -> dict[str, Any]:
+    """Empirical hours-above-threshold removed per °C of uniform UTCI cooling.
+
+    Replaces the hand-derived ``HOURS_PER_DEGC_REF = 200`` (cost_model) with a
+    value computed directly from the Barcelona TMYx EPW already in the repo.
+    Method: take the baseline hourly UTCI series, count hours above
+    ``threshold_c`` at the baseline and at uniform downward shifts Δ, and report
+    the marginal first-degree slope plus the mean slope over the realistic
+    intervention band (0.5–2 °C, which brackets the live result of ΔUTCI≈1.86).
+
+    The relationship is convex (each further degree removes fewer hours), so a
+    single constant is an approximation; we therefore return both the marginal
+    and band-mean values and let the caller pick.
+    """
+    series = _baseline_utci_series()
+    if series is None:
+        return {"value": None, "error": "EPW unavailable"}
+
+    def hours_above(shift: float) -> int:
+        return sum(1 for u in series if (u - shift) > threshold_c)
+
+    h0 = hours_above(0.0)
+    marginal = float(h0 - hours_above(1.0))  # first-degree slope, h/°C
+    band = (0.5, 1.0, 1.5, 2.0)
+    band_mean = sum((h0 - hours_above(d)) / d for d in band) / len(band)
+    return {
+        "value": round(band_mean, 1),       # recommended: mean over intervention band
+        "marginal_first_degree": marginal,  # h/°C removed by the first 1 °C
+        "baseline_hours": h0,
+        "unit": f"hours/yr UTCI>{threshold_c}°C removed per °C uniform cooling",
+        "threshold_c": threshold_c,
+        "note": (
+            f"EPW-derived (Barcelona TMYx). Baseline {h0} h/yr UTCI>{threshold_c}°C; "
+            f"first 1°C removes {marginal:.0f} h; mean over 0.5–2°C band "
+            f"{band_mean:.1f} h/°C. Convex curve — value is band-dependent."
+        ),
+        "source": "epw_barcelona_tmyx_2011_2025 + ladybug-comfort UTCI",
+    }
+
+
 # ── UTCI hourly histogram (richer than M1/M2 single-number) ─────────────────
 # UTCI bins per ISO 17772:
 #     UTCI < 9       : no heat stress / cold

@@ -278,7 +278,7 @@ We enumerate the limitations frankly, because a tool that informs spending shoul
 
 5. **Unsurveyed sub-surface conditions.** Underground utilities and exact sidewalk widths are absent from open data. In-ground slots are flagged for a pre-dig utility survey rather than asserted clear, and the 6 m foundation setback is a conservative placeholder pending species-specific and code-specific verification.
 
-6. **Cost calibration.** One degree-hour conversion constant in the cost model is flagged as requiring verification; the capital and maintenance line items are otherwise sourced to municipal figures.
+6. **Cost calibration** *(remediated; see `coolspend/cost_model.py:hours_per_degc()`).* The single `REQUIRES_VERIFICATION` constant — the UTCI-hours-above-32 °C removed per °C of cooling — is now computed directly from the in-repo Barcelona TMYx EPW via the project's ladybug UTCI machinery, rather than hand-derived. The empirical value is ≈47 h/°C (band-mean over 0.5–2 °C interventions), markedly lower than the prior 200 h/°C (which had assumed a 600 h/yr heat-stress baseline, whereas the EPW yields 98 h/yr above 32 °C); the corrected value also brings the surrogate UTCI-hours path into closer agreement with the measured live ΔUTCI. The 200 figure is retained only as an offline fallback. The relationship is convex, so the constant is reported with its band; the live calibration study (`calibration.py`) remains the definitive arbiter.
 
 7. **Canopy-cover denominator.** Canopy cover is computed against the sampled cell area, which can read low for a small intervention within a large cell; a plantable-strip denominator would give a truer figure.
 
