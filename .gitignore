@@ -20,3 +20,8 @@ angels_final.png
 angels_v2.png
 angels_zoom_trees.png
 angels_trees_final.png
+
+# debug screenshots / playwright
+app-*.jpeg
+.playwright-mcp/
+web/.playwright-mcp/

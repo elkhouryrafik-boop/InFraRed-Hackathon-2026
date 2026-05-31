@@ -349,6 +349,24 @@ def cooled_footprint_profile(
     now_relieved = was_stressed & (i < heat_stress_c)
     heat_stress_relieved = int(np.count_nonzero(now_relieved))
 
+    # Spatial contiguity: a connected shade corridor is worth more than the same
+    # area scattered across the site. Largest connected cooled patch (4-conn) and
+    # the patch count. Optional — needs scipy; omitted (None) if unavailable.
+    largest_patch = None
+    n_patches = None
+    try:
+        from scipy import ndimage  # noqa: PLC0415
+        labelled, n_patches_int = ndimage.label(headline_mask)
+        n_patches = int(n_patches_int)
+        if n_patches:
+            # bincount index 0 is the background (non-cooled); ignore it.
+            sizes = np.bincount(labelled.ravel())[1:]
+            largest_patch = float(int(sizes.max())) if sizes.size else 0.0
+        else:
+            largest_patch = 0.0
+    except Exception:  # noqa: BLE001 — contiguity is a bonus metric
+        pass
+
     return {
         "cooled_m2_by_band": cooled_by_band,
         "mean_drop_c": round(mean_drop, 3),
@@ -359,6 +377,8 @@ def cooled_footprint_profile(
         "cooled_fraction": round(headline_count / valid_count, 4),
         "heat_stress_relieved_m2": float(heat_stress_relieved),
         "heat_stress_threshold_c": heat_stress_c,
+        "largest_cooled_patch_m2": largest_patch,
+        "n_cooled_patches": n_patches,
         "valid_cells_m2": float(valid_count),
         "bands_c": list(bands_c),
     }

@@ -11,9 +11,10 @@ import {
   type MapLayerMouseEvent,
 } from 'react-map-gl'
 
-import type { Layer } from '@deck.gl/core'
+import type { Layer, PickingInfo } from '@deck.gl/core'
 import { DeckOverlay } from './DeckOverlay'
 import { Hud } from './Hud'
+import { TreeInspect } from './TreeInspect'
 import { DrawPanel } from './DrawPanel'
 import { GrowthSlider } from './GrowthSlider'
 import { useAreaDraw } from './useAreaDraw'
@@ -26,7 +27,7 @@ import {
   fetchDemElevation,
   liftMatrix,
 } from '../lib/elevation'
-import type { WebBundle, UtciScenario, AppMode, CitywideScan } from '../lib/types'
+import type { WebBundle, UtciScenario, AppMode, CitywideScan, TreeProperties } from '../lib/types'
 import type { LngLat } from '../lib/draw'
 import { fetchCitywideScan } from '../lib/api'
 import { buildCitywideLayer } from '../lib/layers'
@@ -63,6 +64,13 @@ export function Scene({ bundle, onBundle, appMode, setAppMode }: SceneProps) {
   const [lon, lat] = bundle.decision.site_center_lonlat
   const mapRef = useRef<MapRef | null>(null)
 
+  // Dev-only: expose the Mapbox map for debugging / automated verification.
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      ;(window as unknown as { __map?: unknown }).__map = mapRef.current?.getMap?.() ?? null
+    }
+  })
+
   const [viewState, setViewState] = useState({
     longitude: lon,
     latitude: lat,
@@ -72,6 +80,12 @@ export function Scene({ bundle, onBundle, appMode, setAppMode }: SceneProps) {
   })
 
   const [scenario, setScenario] = useState<UtciScenario>('intervention')
+  const [selectedTree, setSelectedTree] = useState<TreeProperties | null>(null)
+  // True only once the photoreal 3D tiles have ACTUALLY loaded. We must not blank
+  // the Mapbox basemap merely because a tileset URL resolved — if the Google tiles
+  // then fail to fetch (Ion asset / CORS / quota), the user is left with a black
+  // void. Gate the empty-style swap on a real load so the basemap stays visible.
+  const [tilesLoaded, setTilesLoaded] = useState(false)
   const [rasterOpacity, setRasterOpacity] = useState(0.7)
   const [credits, setCredits] = useState<string | null>(null)
   const [budgetEur, setBudgetEur] = useState(500_000)
@@ -139,10 +153,21 @@ export function Scene({ bundle, onBundle, appMode, setAppMode }: SceneProps) {
     [draw],
   )
 
+  // Click a tree (deck.gl picking) → open the inspect panel for it.
+  const onDeckClick = useCallback((info: PickingInfo) => {
+    if (info.layer?.id === 'trees' && info.object) {
+      const f = info.object as { properties?: TreeProperties }
+      if (f.properties) setSelectedTree(f.properties)
+    } else {
+      setSelectedTree(null)
+    }
+  }, [])
+
   // When the user evaluates, recenter the camera on the new site.
   const handleEvaluated = useCallback(
     (b: WebBundle) => {
       draw.clear()
+      setSelectedTree(null)
       onBundle?.(b)
       setPlantingYear((b.growth ?? DEFAULT_GROWTH).ramp_years) // reset to mature
       const c = b.decision.site_center_lonlat
@@ -177,10 +202,16 @@ export function Scene({ bundle, onBundle, appMode, setAppMode }: SceneProps) {
   // the photoreal city is the only "map" the user perceives. Until then (no
   // token, or zoomed out before tiles fade in) we keep the readable streets
   // basemap so the app never looks broken.
-  const photorealActive = !!cesium.url && tilesOpacity > 0.5
+  // Swap to the empty style only once the photoreal tiles have ACTUALLY loaded;
+  // until then keep a readable basemap so a Google-tile failure never leaves a void.
+  // Satellite imagery is the reliable hero basemap: real Barcelona aerial with no
+  // 3D mesh to occlude the UTCI heatmap or the tree canopy disks. (Photoreal mesh
+  // plumbing is retained but inactive — see tilesetUrl below — and can return as a
+  // separately-composited toggle once the mask/occlusion is solved.)
+  const photorealActive = tilesLoaded && tilesOpacity > 0.5
   const mapStyle = photorealActive
     ? EMPTY_MAP_STYLE
-    : 'mapbox://styles/mapbox/standard'
+    : 'mapbox://styles/mapbox/satellite-streets-v12'
 
   const boundaryRing = useMemo(
     () => boundaryOuterRing(bundle.boundary),
@@ -198,7 +229,8 @@ export function Scene({ bundle, onBundle, appMode, setAppMode }: SceneProps) {
       buildLayers({
         // Only feed the tileset URL once it's resolved AND we're zoomed enough
         // to want it; opacity ramp keeps the fade smooth.
-        tilesetUrl: cesium.url && tilesOpacity > 0 ? cesium.url : null,
+        // Photoreal mesh disabled (occludes the analysis); satellite basemap instead.
+        tilesetUrl: null,
         boundaryRing,
         raster: { image: rasterImage, bounds: rasterBounds },
         rasterOpacity,
@@ -206,8 +238,10 @@ export function Scene({ bundle, onBundle, appMode, setAppMode }: SceneProps) {
         treeScale,
         impervious: bundle.impervious,
         showImpervious,
-        modelMatrix,
+        // No elevation lift without the ellipsoidal mesh — overlays sit flat.
+        modelMatrix: null,
         onTilesetLoad: (tileset) => {
+          setTilesLoaded(true)
           const t = tileset as {
             credits?: { attributions?: { html?: string }[] }
           }
@@ -302,8 +336,10 @@ export function Scene({ bundle, onBundle, appMode, setAppMode }: SceneProps) {
         style={{ width: '100%', height: '100%' }}
         antialias
       >
-        <DeckOverlay layers={allLayers} />
+        <DeckOverlay layers={allLayers} onClick={onDeckClick} />
       </Map>
+
+      <TreeInspect tree={selectedTree} onClose={() => setSelectedTree(null)} />
 
       <Hud
         decision={bundle.decision}

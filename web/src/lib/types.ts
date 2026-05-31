@@ -5,10 +5,15 @@
 export interface CooledProfile {
   cooled_m2_by_band: Record<string, number> // e.g. { "0.5": 3940, "1": 2928, "2": 1628 }
   mean_drop_c: number
+  std_drop_c: number
+  p10_drop_c: number
+  p90_drop_c: number
   peak_drop_c: number
   cooled_fraction: number
   heat_stress_relieved_m2: number
   heat_stress_threshold_c: number
+  largest_cooled_patch_m2: number | null
+  n_cooled_patches: number | null
   valid_cells_m2: number
   bands_c: number[]
 }
@@ -64,11 +69,38 @@ export interface BoundaryGeoJSON {
 
 export type TreeKind = 'proposed' | 'existing'
 
+// Per-species ecological profile (added by the Python ecology layer; optional
+// until that layer is wired). Scores are 0–1 unless noted.
+export interface TreeEcology {
+  native_status?: string
+  drought_heat_tolerance?: number
+  biodiversity_value?: number
+  pollinator_value?: number
+  allergenicity?: number // higher = worse pollen burden
+  pest_disease_risk?: number // higher = worse
+  longevity_years?: number
+  growth_rate?: string
+  water_demand?: string
+  maintenance_burden?: string
+  carbon_sequestration?: number
+  mycorrhizal_type?: string
+  ecosystem_score?: number // composite ecosystem-health score 0–1
+  notes?: string
+}
+
 export interface TreeProperties {
   kind: TreeKind
-  species: string
+  species: string // scientific name
+  common?: string
   crown_diameter_m: number
   height_m: number
+  leaf_cycle?: string
+  shade_density?: string
+  crown_area_m2?: number // ground footprint the canopy shades
+  cooling_score?: number // 0–1 species cooling proxy (ranking only)
+  species_index?: number // stable per-site species index (drives visual variant)
+  known?: boolean // false = species not in the BCN palette
+  ecology?: TreeEcology
   color: [number, number, number] // 0-255 rgb
 }
 

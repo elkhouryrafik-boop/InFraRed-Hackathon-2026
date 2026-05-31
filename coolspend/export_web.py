@@ -80,6 +80,17 @@ def _colorize_utci_png(grid: list | None, out_path: Path) -> bool:
     rgba = (rgba * 255).astype(np.uint8)
     # Transparent where the grid is NaN (outside the polygon).
     rgba[np.isnan(a), 3] = 0
+
+    # CROP to the valid (non-NaN) bounding box. The SDK returns a 512×512 grid
+    # spanning a square much larger than the site polygon, with the polygon's
+    # cells occupying only a corner. Draping the full array over the site bounds
+    # would scatter the heatmap into that corner. The valid cells ARE the site
+    # polygon, so their bbox == the site's geographic bbox (the raster bounds) —
+    # cropping to it registers the heatmap onto the site correctly.
+    valid = ~np.isnan(a)
+    if valid.any():
+        ys, xs = np.where(valid)
+        rgba = rgba[ys.min(): ys.max() + 1, xs.min(): xs.max() + 1]
     Image.fromarray(rgba, mode="RGBA").save(out_path)
     return True
 
@@ -127,7 +138,9 @@ def export_web_bundle(
         p.write_text(json.dumps(boundary), encoding="utf-8")
         written["boundary"] = str(p)
 
-        bounds = _bounds_from_ring(ring)
+        # The UTCI grid is masked to the active-site polygon (= boundary_ring), so
+        # the cropped heatmap's geographic extent is that polygon's bbox.
+        bounds = _bounds_from_ring(boundary_ring)
         pb = out / "bounds.json"
         pb.write_text(json.dumps(bounds, indent=2), encoding="utf-8")
         written["bounds"] = str(pb)
@@ -135,20 +148,21 @@ def export_web_bundle(
     # ── trees.geojson (proposed rank-1 + existing context) ───────────────────
     features: list[dict] = []
     species_order: list[str] = []
+    from coolspend.bcn_species import species_public  # noqa: PLC0415
     for t in rank1.get("trees_lonlat", []):
         sp = t.get("species", "")
         if sp not in species_order:
             species_order.append(sp)
         color = _SPECIES_RGB[species_order.index(sp) % len(_SPECIES_RGB)]
-        from coolspend.bcn_species import get_species  # noqa: PLC0415
-        spx = get_species(sp)
+        pub = species_public(sp)
         features.append({
             "type": "Feature",
             "properties": {
-                "kind": "proposed", "species": sp,
-                "crown_diameter_m": spx.crown_diameter_m if spx else 6.0,
-                "height_m": spx.height_m if spx else 10.0,
+                "kind": "proposed",
+                "species": sp,
                 "color": color,
+                "species_index": species_order.index(sp),
+                **pub,
             },
             "geometry": {"type": "Point", "coordinates": [t["lon"], t["lat"]]},
         })
@@ -156,17 +170,17 @@ def export_web_bundle(
     if ring:
         try:
             from coolspend.bcn_data import load_trees  # noqa: PLC0415
-            from coolspend.bcn_species import get_species  # noqa: PLC0415
             b = _bounds_from_ring(ring)
             for tr in load_trees(bbox=(b["west"], b["south"], b["east"], b["north"])):
-                spx = get_species(tr.get("species") or "")
+                sp = tr.get("species") or ""
+                pub = species_public(sp)
                 features.append({
                     "type": "Feature",
                     "properties": {
-                        "kind": "existing", "species": tr.get("species") or "",
-                        "crown_diameter_m": spx.crown_diameter_m if spx else 5.0,
-                        "height_m": spx.height_m if spx else 8.0,
+                        "kind": "existing",
+                        "species": sp,
                         "color": _EXISTING_RGB,
+                        **pub,
                     },
                     "geometry": {"type": "Point", "coordinates": [tr["lon"], tr["lat"]]},
                 })

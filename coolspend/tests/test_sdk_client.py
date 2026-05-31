@@ -267,6 +267,20 @@ def test_cooled_footprint_profile_bands_and_relief():
     assert prof["heat_stress_relieved_m2"] == 0.0
 
 
+def test_cooled_footprint_profile_contiguity():
+    pytest.importorskip("scipy")
+    from coolspend.sdk_client import cooled_footprint_profile
+    # Two separate cooled patches: a 2-cell run and a single isolated cell.
+    b = [[31.0, 31.0, 30.0, 31.0],
+         [30.0, 30.0, 30.0, 30.0]]
+    i = [[30.0, 30.0, 30.0, 30.0],
+         [30.0, 30.0, 30.0, 30.0]]
+    # drops: row0 = [1,1,0,1] → cells (0,0),(0,1) adjacent = patch of 2; (0,3) = patch of 1
+    prof = cooled_footprint_profile(b, i)
+    assert prof["n_cooled_patches"] == 2
+    assert prof["largest_cooled_patch_m2"] == 2.0
+
+
 def test_cooled_footprint_profile_heat_stress_relief():
     from coolspend.sdk_client import cooled_footprint_profile
     # baseline above 26 °C threshold, intervention below it → relieved

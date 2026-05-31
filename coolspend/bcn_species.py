@@ -128,6 +128,54 @@ def cooling_score_by_name(scientific: str) -> float:
     return cooling_score(sp) if sp is not None else _DEFAULT_COOLING_WEIGHT
 
 
+_DEFAULT_CROWN_M: float = 6.0
+_DEFAULT_HEIGHT_M: float = 10.0
+
+
+def species_public(scientific: str) -> dict:
+    """Per-species display payload for the web (tree props + inspect panel).
+
+    SINGLE SOURCE OF TRUTH so the exporter and the UI never drift. The ecology
+    layer extends this dict with its EcologyProfile fields (biodiversity,
+    drought tolerance, etc.) via the same function — this is the join point.
+    """
+    sp = get_species(scientific)
+    if sp is None:
+        crown = _DEFAULT_CROWN_M
+        payload = {
+            "scientific": scientific or "",
+            "common": scientific or "Unknown species",
+            "crown_diameter_m": crown,
+            "height_m": _DEFAULT_HEIGHT_M,
+            "leaf_cycle": "deciduous",
+            "shade_density": "medium",
+            "crown_area_m2": round(math.pi * (crown / 2.0) ** 2, 1),
+            "cooling_score": _DEFAULT_COOLING_WEIGHT,
+            "known": False,
+        }
+    else:
+        payload = {
+            "scientific": sp.scientific,
+            "common": sp.common,
+            "crown_diameter_m": sp.crown_diameter_m,
+            "height_m": sp.height_m,
+            "leaf_cycle": sp.leaf_cycle,
+            "shade_density": sp.shade_density,
+            "crown_area_m2": round(crown_projected_area_m2(sp), 1),
+            "cooling_score": cooling_score(sp),
+            "known": True,
+        }
+    # Ecology layer (optional; absent until the ecology module is wired).
+    try:
+        from coolspend.ecology import ecology_public  # noqa: PLC0415
+        eco = ecology_public(payload["scientific"])
+        if eco:
+            payload["ecology"] = eco
+    except Exception:  # noqa: BLE001 — ecology is additive, never block tree export
+        pass
+    return payload
+
+
 def palette(top_n: int | None = None) -> tuple[Species, ...]:
     """Return the species palette (optionally the top-N by cooling_score)."""
     if top_n is None:

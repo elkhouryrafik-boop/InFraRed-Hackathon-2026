@@ -1,1 +1,1 @@
-{"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {"kind": "site_boundary"}, "geometry": {"type": "Polygon", "coordinates": [[[2.166, 41.382], [2.168, 41.382], [2.168, 41.3835], [2.166, 41.3835], [2.166, 41.382]]]}}]}
+{"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {"kind": "site_boundary"}, "geometry": {"type": "Polygon", "coordinates": [[[2.166, 41.3825], [2.1672, 41.3825], [2.1672, 41.3832], [2.166, 41.3832], [2.166, 41.3825]]]}}]}
