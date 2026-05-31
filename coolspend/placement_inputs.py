@@ -167,6 +167,7 @@ def build_species_options() -> list[SpeciesOption]:
             crown_m=s.crown_diameter_m,
             tree_cost_eur=float(tree_cost),
             cooling_score=cooling_score(s),
+            height_m=s.height_m,
         )
         for s in SPECIES_TABLE
         if is_plantable(s.scientific)

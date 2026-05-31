@@ -26,14 +26,29 @@ the building-aware candidate slots until the budget is spent. The result is
 deterministic, interpretable ("this tree was placed because it shades the hottest
 unshaded paved cells per euro"), and bounded-optimal.
 
+SHADE-GAIN WEIGHTING (PAPER limitation #2)
+------------------------------------------
+A tree's value for a hot cell is NOT "is the cell under the crown disk" — it is
+"does this crown's SHADOW actually fall on the cell, across the day's sun
+positions". We therefore weight each (slot, species)→cell pair by the
+`shade_proxy` sun-blockage fraction (fraction of sampled July suns whose crown
+shadow lands on the cell), not by binary crown overlap. Marginal gain is
+Σ weight(cell) × (shade_gain − already_captured), capped per cell — so trees are
+placed to cast shadow ONTO the hottest unshaded ground (e.g. south of a midday
+hotspot), double-shading yields no extra gain, and returns diminish physically.
+The objective stays monotone + submodular (shade-ray sets union), so the greedy
+keeps its (1 − 1/e) guarantee. Set `use_shade_gain=False` for the legacy binary
+crown-coverage proxy (fallback).
+
 HONESTY BOUNDARY
 ----------------
-The demand weights use the *baseline* (pre-planting) UTCI field. True cooling is
-nonlinear — a planted tree changes the field — so the greedy "gain" is a coverage
-proxy for marginal cooling, NOT measured cooling. The CHOSEN layout is then handed
-to the live Infrared UTCI run for the ground-truth ΔUTCI (see sdk_client). This
-module never calls the network; it is pure geometry + arithmetic, fully testable
-offline.
+The demand weights use the *baseline* (pre-planting) UTCI field, and the
+shade-gain is a first-order radiative proxy (direct-beam interception). True
+cooling is nonlinear — a planted tree changes the field — so the greedy "gain"
+is a physical proxy for marginal cooling, NOT measured cooling. The CHOSEN layout
+is handed to the live Infrared UTCI run for the ground-truth ΔUTCI (see
+sdk_client). This module never calls the network; it is pure geometry +
+arithmetic, fully testable offline.
 
 Coordinates: site-local metres throughout (same frame as spatial_engine /
 candidate_slots). The caller projects WGS84 ↔ local metres at the boundary.
@@ -63,6 +78,7 @@ class SpeciesOption:
     crown_m: float          # mature crown diameter (shade radius = crown_m / 2)
     tree_cost_eur: float     # lifecycle cost of the tree itself (capex + opex)
     cooling_score: float     # 0..1 species cooling proxy (tie-break, diversity-neutral)
+    height_m: float = 10.0   # mature height — drives shadow length in the shade-gain model
 
 
 @dataclass(frozen=True)
@@ -125,6 +141,8 @@ def place_trees_greedy(
     min_spacing_m: float = 8.0,
     max_species_share: float = 0.40,
     diversity_grace: int = 4,
+    use_shade_gain: bool = True,
+    lat_deg: float = 41.39,
 ) -> PlacementResult:
     """Budgeted greedy weighted-max-coverage tree placement (see module docstring).
 
@@ -153,17 +171,34 @@ def place_trees_greedy(
         result.stop_reason = "empty demand, candidates, species, or budget"
         return result
 
-    # Precompute coverage sets once (geometry is static): per (candidate, species)
-    # → the demand cells it would shade. This makes each greedy marginal-gain
-    # evaluation an O(|covered|) set operation rather than an O(|demand|) scan.
-    coverage: dict[tuple[int, int], set[int]] = {}
+    # Precompute coverage once (geometry is static): per (candidate, species) →
+    # {demand-cell index: shade_gain in 0..1}. shade_gain is the fraction of the
+    # sampled July suns whose crown shadow lands on the cell (shade_proxy); the
+    # legacy fallback is binary crown overlap (gain = 1.0 inside the radius).
+    coverage: dict[tuple[int, int], dict[int, float]] = {}
+    suns = None
+    if use_shade_gain:
+        try:
+            from coolspend import shade_proxy as _sp  # noqa: PLC0415
+            suns = _sp.solar_positions_july(lat_deg)
+            proxy_cells = [_sp.ProxyCell(c.x_m, c.y_m, c.weight, 1.0) for c in demand]
+        except Exception:  # noqa: BLE001 — fall back to binary coverage
+            suns = None
     for ci, slot in enumerate(candidates):
         for si, sp in enumerate(species):
-            coverage[(ci, si)] = _covered_cell_indices(
-                (slot.x_m, slot.y_m), sp.crown_m / 2.0, demand
-            )
+            r = sp.crown_m / 2.0
+            if suns is not None:
+                tree = _sp.ProxyTree(slot.x_m, slot.y_m, r, sp.height_m)
+                gains = _sp.shade_gain_per_cell(proxy_cells, [tree], suns)
+                coverage[(ci, si)] = {i: g for i, g in gains.items() if g > 0.0}
+            else:
+                coverage[(ci, si)] = {
+                    i: 1.0 for i in _covered_cell_indices((slot.x_m, slot.y_m), r, demand)
+                }
 
-    covered: set[int] = set()          # demand-cell indices already shaded
+    # Per-cell captured shade-gain so far (0..1). A cell can be partially shaded by
+    # one tree and topped up by another, but never credited beyond 1.0 (its weight).
+    captured: dict[int, float] = {}
     used_candidates: set[int] = set()  # slots already planted
     placed_xy: list[tuple[float, float]] = []
     species_count: dict[str, int] = {}
@@ -198,15 +233,21 @@ def place_trees_greedy(
                 cost = sp.tree_cost_eur + slot.depave_cost_eur
                 if cost <= 0 or spent + cost > budget_eur:
                     continue
-                new_cells = coverage[(ci, si)] - covered
-                marginal = sum(demand[i].weight for i in new_cells)
+                # Marginal = Σ weight × (shade_gain − already-captured), per cell,
+                # so a cell already shaded contributes only the NEW blockage.
+                gains = coverage[(ci, si)]
+                marginal = 0.0
+                for i, g in gains.items():
+                    rem = g - captured.get(i, 0.0)
+                    if rem > 0.0:
+                        marginal += demand[i].weight * rem
                 if marginal <= 0:
                     continue
                 # Cost-benefit greedy: maximise marginal gain per euro. Tie-break by
                 # species cooling_score then absolute marginal weight (determinism).
                 gpc = marginal / cost
                 key = (gpc, sp.cooling_score, marginal)
-                cand = (key, marginal, ci, si, cost, new_cells)
+                cand = (key, marginal, ci, si, cost, gains)
                 if best_any is None or key > best_any[0]:
                     best_any = cand
                 # Anti-monoculture: once past the grace period, prefer not to let any
@@ -223,17 +264,23 @@ def place_trees_greedy(
             result.stop_reason = "no positive-gain affordable slot remains"
             break
 
-        _, marginal, ci, si, cost, new_cells = best
+        _, marginal, ci, si, cost, gains = best
         slot, sp = candidates[ci], species[si]
         result.placed.append(
             PlacedTree(slot.x_m, slot.y_m, sp.name, slot.mode, cost, round(marginal, 4))
         )
-        covered |= new_cells
+        # Top up each cell's captured shade-gain, capped at 1.0 (= fully shaded).
+        for i, g in gains.items():
+            captured[i] = min(1.0, captured.get(i, 0.0) + g)
         used_candidates.add(ci)
         placed_xy.append((slot.x_m, slot.y_m))
         species_count[sp.name] = species_count.get(sp.name, 0) + 1
         spent += cost
 
     result.total_cost_eur = round(spent, 2)
-    result.covered_weight = round(sum(demand[i].weight for i in covered), 4)
+    # Covered weight = Σ weight × captured-shade-gain (fractional), the demand
+    # actually shaded by the final layout.
+    result.covered_weight = round(
+        sum(demand[i].weight * frac for i, frac in captured.items()), 4
+    )
     return result
