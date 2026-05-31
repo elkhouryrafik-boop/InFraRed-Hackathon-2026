@@ -76,6 +76,15 @@ export function Hud({
               </div>
               <div className="kpi__caption">Feels-like peak °C · baseline → intervention</div>
             </div>
+
+            {kpi.depth && (
+              <div className="kpi kpi--wide">
+                <div className="kpi__value kpi__value--depth">{kpi.depth}</div>
+                <div className="kpi__caption">
+                  Cooling depth · {kpi.heatStressRelieved} lifted out of heat stress
+                </div>
+              </div>
+            )}
           </div>
 
           {kpi.species.length > 0 && (

@@ -283,6 +283,86 @@ def cooled_footprint_m2(
     cooled_cells = int(np.count_nonzero(drop >= min_drop_c))
     return float(cooled_cells)  # 1 m²/cell
 
+
+# Multi-threshold cooled-area bands (°C). The headline uses COOLED_MIN_DROP_C
+# (0.5); the deeper bands show how concentrated the cooling is — a site that
+# cools 1000 m² by >=2 °C is a stronger intervention than one that cools the
+# same area by a marginal 0.5 °C, even though the headline footprint matches.
+COOLED_BANDS_C: tuple[float, ...] = (0.5, 1.0, 2.0)
+
+
+def cooled_footprint_profile(
+    baseline_grid: list | None,
+    intervention_grid: list | None,
+    bands_c: tuple[float, ...] = COOLED_BANDS_C,
+    heat_stress_c: float = UTCI_HEAT_STRESS_C,
+) -> dict | None:
+    """Richer per-cell analysis of the SAME two real UTCI grids the headline uses.
+
+    Returns a dict with, all derived from real measured cells (1 m²/cell):
+      - cooled_m2_by_band:   {band_c: m² cooled by >= band_c}  (0.5/1.0/2.0 default)
+      - mean_drop_c:         mean ΔUTCI over the headline-cooled (>=0.5 °C) zone
+      - peak_drop_c:         max ΔUTCI of any cell
+      - cooled_fraction:     headline-cooled cells ÷ valid (non-NaN) grid cells
+      - heat_stress_relieved_m2: cells that were in heat stress (baseline >= 26 °C)
+                             and are brought below it by the intervention
+      - valid_cells_m2:      count of valid (in-polygon, non-NaN) grid cells
+
+    Returns None if either grid is missing (mock/scalar backend) or shapes differ.
+    This is a pure-analysis layer: it never re-runs a sim, only extracts more
+    signal from grids that were already measured.
+    """
+    if baseline_grid is None or intervention_grid is None:
+        return None
+    try:
+        import numpy as np  # noqa: PLC0415
+    except ImportError:
+        return None
+    b = np.asarray(baseline_grid, dtype=float)
+    i = np.asarray(intervention_grid, dtype=float)
+    if b.shape != i.shape:
+        return None
+
+    drop = b - i
+    valid = ~np.isnan(drop)
+    valid_count = int(np.count_nonzero(valid))
+    if valid_count == 0:
+        return None
+
+    cooled_by_band = {
+        f"{band:g}": int(np.count_nonzero(drop >= band)) for band in bands_c
+    }
+    headline_mask = drop >= COOLED_MIN_DROP_C
+    headline_count = int(np.count_nonzero(headline_mask))
+    cooled_drops = drop[headline_mask]
+    mean_drop = float(np.nanmean(cooled_drops)) if headline_count else 0.0
+    peak_drop = float(np.nanmax(drop)) if valid_count else 0.0
+    # Measured dispersion of the cooling over the cooled zone — the honest
+    # uncertainty of the headline ΔUTCI (the grid's own spread, not a surrogate
+    # band borrowed from calibration). p10/p90 bracket the typical relief.
+    std_drop = float(np.nanstd(cooled_drops)) if headline_count else 0.0
+    p10_drop = float(np.nanpercentile(cooled_drops, 10)) if headline_count else 0.0
+    p90_drop = float(np.nanpercentile(cooled_drops, 90)) if headline_count else 0.0
+
+    # Heat-stress relief: was at/above the stress threshold, now below it.
+    was_stressed = valid & (b >= heat_stress_c)
+    now_relieved = was_stressed & (i < heat_stress_c)
+    heat_stress_relieved = int(np.count_nonzero(now_relieved))
+
+    return {
+        "cooled_m2_by_band": cooled_by_band,
+        "mean_drop_c": round(mean_drop, 3),
+        "std_drop_c": round(std_drop, 3),
+        "p10_drop_c": round(p10_drop, 3),
+        "p90_drop_c": round(p90_drop, 3),
+        "peak_drop_c": round(peak_drop, 3),
+        "cooled_fraction": round(headline_count / valid_count, 4),
+        "heat_stress_relieved_m2": float(heat_stress_relieved),
+        "heat_stress_threshold_c": heat_stress_c,
+        "valid_cells_m2": float(valid_count),
+        "bands_c": list(bands_c),
+    }
+
 # Fallback crown diameter (m) when a tree's species is not in the BCN species
 # table — pinned to 2 × TREE_CANOPY_RADIUS_M (surrogate's representative footprint).
 def _fallback_crown_diameter_m() -> float:

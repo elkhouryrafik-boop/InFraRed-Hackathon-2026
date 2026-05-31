@@ -545,6 +545,7 @@ def validate_top3_with_infrared(
         get_intervention_utci,
         SimBudget,
         cooled_footprint_m2,
+        cooled_footprint_profile,
     )
 
     if budget is None:
@@ -594,6 +595,13 @@ def validate_top3_with_infrared(
         # Cooled footprint: m² the trees cool by >= 0.5 °C (cell-wise grid diff).
         # The headline value metric — does not saturate on already-hot sites.
         cfg["cooled_footprint_m2"] = cooled_footprint_m2(
+            baseline.merged_grid, intervention.merged_grid
+        )
+
+        # Deeper cooling profile from the SAME measured grids: multi-threshold
+        # bands (0.5/1/2 °C), mean/peak drop, heat-stress relief. None on
+        # mock/scalar backends. Pure analysis — no extra sim.
+        cfg["cooled_profile"] = cooled_footprint_profile(
             baseline.merged_grid, intervention.merged_grid
         )
 

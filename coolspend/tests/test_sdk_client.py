@@ -209,3 +209,76 @@ def test_cached_live_result_no_not_measured_data(
         assert "replayed from cache" in result.disclaimer
     finally:
         cache_file.unlink(missing_ok=True)
+
+
+# ── Cooled-footprint grid reducers (pure analysis of measured UTCI grids) ──────
+
+def _two_grids():
+    """3×3 baseline/intervention pair with a known drop pattern + one NaN cell.
+
+    drop = baseline − intervention per cell:
+      row0: 0.0, 0.6, 1.2
+      row1: 2.5, 0.4, NaN  (NaN = outside polygon)
+      row2: 0.5, 3.0, 0.0
+    """
+    import numpy as np
+    baseline = np.array([
+        [30.0, 30.6, 31.2],
+        [32.5, 30.4, 30.0],
+        [30.5, 33.0, 30.0],
+    ])
+    intervention = np.array([
+        [30.0, 30.0, 30.0],
+        [30.0, 30.0, np.nan],
+        [30.0, 30.0, 30.0],
+    ])
+    return baseline.tolist(), intervention.tolist()
+
+
+def test_cooled_footprint_m2_counts_cells_at_threshold():
+    from coolspend.sdk_client import cooled_footprint_m2
+    b, i = _two_grids()
+    # drops >= 0.5: 0.6, 1.2, 2.5, 0.5, 3.0 → 5 cells (0.4 excluded, NaN excluded)
+    assert cooled_footprint_m2(b, i, min_drop_c=0.5) == 5.0
+    assert cooled_footprint_m2(None, i) is None
+
+
+def test_cooled_footprint_profile_bands_and_relief():
+    from coolspend.sdk_client import cooled_footprint_profile
+    b, i = _two_grids()
+    prof = cooled_footprint_profile(b, i)
+    assert prof is not None
+    # bands are monotonically non-increasing as the threshold rises
+    band = prof["cooled_m2_by_band"]
+    assert band["0.5"] == 5      # 0.6,1.2,2.5,0.5,3.0
+    assert band["1"] == 3        # 1.2,2.5,3.0
+    assert band["2"] == 2        # 2.5,3.0
+    assert band["0.5"] >= band["1"] >= band["2"]
+    # 8 valid (non-NaN) cells; 5 cooled ≥0.5
+    assert prof["valid_cells_m2"] == 8.0
+    assert prof["cooled_fraction"] == round(5 / 8, 4)
+    assert prof["peak_drop_c"] == 3.0
+    # Measured dispersion over the cooled zone (drops 0.5,0.6,1.2,2.5,3.0).
+    assert prof["mean_drop_c"] == pytest.approx(1.56, abs=1e-3)
+    assert prof["std_drop_c"] > 0.0
+    assert prof["p10_drop_c"] < prof["mean_drop_c"] < prof["p90_drop_c"]
+    # heat stress (>=26 °C threshold) — all baseline cells are >=30, all
+    # interventions <26? no: interventions are 30, still >=26 → 0 relieved here.
+    assert prof["heat_stress_relieved_m2"] == 0.0
+
+
+def test_cooled_footprint_profile_heat_stress_relief():
+    from coolspend.sdk_client import cooled_footprint_profile
+    # baseline above 26 °C threshold, intervention below it → relieved
+    b = [[27.0, 27.0], [25.0, 27.0]]
+    i = [[25.0, 26.0], [24.0, 25.0]]
+    prof = cooled_footprint_profile(b, i, heat_stress_c=26.0)
+    # cell(0,0): 27→25 crosses below 26 (relieved). cell(0,1): 27→26 NOT below.
+    # cell(1,0): baseline 25 < 26, not stressed. cell(1,1): 27→25 relieved.
+    assert prof["heat_stress_relieved_m2"] == 2.0
+
+
+def test_cooled_footprint_profile_none_on_missing_grid():
+    from coolspend.sdk_client import cooled_footprint_profile
+    assert cooled_footprint_profile(None, [[1.0]]) is None
+    assert cooled_footprint_profile([[1.0]], [[1.0, 2.0]]) is None  # shape mismatch

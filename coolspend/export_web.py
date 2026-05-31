@@ -206,6 +206,21 @@ def export_web_bundle(
         logger.warning("scene.glb export failed", exc_info=True)
 
     # ── decision.json ────────────────────────────────────────────────────────
+    def _rank_sensitivity(cfgs: list[dict]) -> dict | None:
+        """Robustness of the rank-1 pick to the TOPSIS weights / €/°C tie-break.
+
+        Drops the verbose per-weight trace to keep the published bundle compact.
+        """
+        try:
+            from coolspend.sensitivity import rank_sensitivity_report  # noqa: PLC0415
+            rep = rank_sensitivity_report(cfgs)
+            sweep = rep.get("closeness_weight_sweep", {})
+            sweep.pop("winners_by_weight", None)  # compact: keep the summary only
+            return rep
+        except Exception:  # noqa: BLE001 — sensitivity is a bonus, never block export
+            logger.warning("rank sensitivity failed", exc_info=True)
+            return None
+
     def _cfg_summary(cfg: dict) -> dict:
         kpi = cfg.get("cost_per_utci_degree", {}) or {}
         species = []
@@ -229,6 +244,7 @@ def export_web_bundle(
             "utci_baseline_peak": cfg.get("baseline_utci_peak_c"),
             "utci_intervention_peak": cfg.get("validated_utci_peak_c"),
             "cost_per_utci_degree": kpi.get("value"),
+            "cooled_profile": cfg.get("cooled_profile"),
             "species": sorted(set(species)),
         }
 
@@ -250,6 +266,7 @@ def export_web_bundle(
         "site_depth_m": result.get("site_depth_m"),
         "utci_scale_c": [UTCI_SCALE_MIN_C, UTCI_SCALE_MAX_C],
         "configurations": [_cfg_summary(c) for c in configs],
+        "sensitivity": _rank_sensitivity(configs),
     }
     pd = out / "decision.json"
     pd.write_text(json.dumps(decision, indent=2), encoding="utf-8")
@@ -290,3 +307,19 @@ if __name__ == "__main__":
     print("\nWeb bundle:")
     for k, v in paths.items():
         print(f"  {k:16s} {v}")
+
+    # Publish the freshly-generated bundle to the dir the web app actually serves
+    # (web/public/web_bundle). Without this copy the deployed demo keeps serving a
+    # stale/mock bundle while the real one sits unused in outputs/web_bundle.
+    import shutil  # noqa: PLC0415
+
+    served_dir = Path(__file__).resolve().parent.parent / "web" / "public" / "web_bundle"
+    served_dir.mkdir(parents=True, exist_ok=True)
+    published = []
+    for _key, src in paths.items():
+        src_path = Path(src)
+        if src_path.exists():
+            dst = served_dir / src_path.name
+            shutil.copy2(src_path, dst)
+            published.append(dst)
+    print(f"\nPublished {len(published)} files to {served_dir}")

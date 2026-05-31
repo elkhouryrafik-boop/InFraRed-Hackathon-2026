@@ -327,6 +327,12 @@ export function Scene({ bundle, onBundle, appMode, setAppMode }: SceneProps) {
         setAppMode={setAppMode}
       />
 
+      {appMode === 'citywide' && citywideLoading && !citywideScan && (
+        <div className="citywide-bar">
+          <span className="citywide-bar__title">Scanning Barcelona…</span>
+        </div>
+      )}
+
       {appMode === 'citywide' && citywideScan && (
         <div className="citywide-bar">
           <span className="citywide-bar__title">

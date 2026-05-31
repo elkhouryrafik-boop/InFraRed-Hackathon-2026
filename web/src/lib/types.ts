@@ -1,18 +1,34 @@
 // Data-contract types for the "web bundle" produced by the Python exporter.
 // These mirror the files in /public/web_bundle/ exactly.
 
+// Per-cell analysis of the measured UTCI grids (null on mock/scalar backends).
+export interface CooledProfile {
+  cooled_m2_by_band: Record<string, number> // e.g. { "0.5": 3940, "1": 2928, "2": 1628 }
+  mean_drop_c: number
+  peak_drop_c: number
+  cooled_fraction: number
+  heat_stress_relieved_m2: number
+  heat_stress_threshold_c: number
+  valid_cells_m2: number
+  bands_c: number[]
+}
+
 export interface Configuration {
   rank: number
   label: string
   tree_count: number
   cost_eur: number
-  cooled_footprint_m2: number
-  eur_per_m2: number
+  // KPI fields are null on the mock/scalar backend (no measured grid). The
+  // exporter writes null, so the type must allow it — formatters guard for it.
+  cooled_footprint_m2: number | null
+  eur_per_m2: number | null
   delta_utci_c: number
-  utci_baseline_mean: number
-  utci_baseline_peak: number
-  utci_intervention_mean: number
-  utci_intervention_peak: number
+  utci_baseline_mean: number | null
+  utci_baseline_peak: number | null
+  utci_intervention_mean: number | null
+  utci_intervention_peak: number | null
+  cost_per_utci_degree?: number | null
+  cooled_profile?: CooledProfile | null
   species: string[]
 }
 

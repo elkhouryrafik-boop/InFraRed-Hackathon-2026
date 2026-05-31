@@ -97,6 +97,11 @@
   color: #ffffff;
   letter-spacing: -0.01em;
 }
+.kpi__value--depth {
+  font-size: 14px;
+  font-weight: 600;
+  color: #cfe9e1;
+}
 .kpi__unit {
   font-size: 12px;
   font-weight: 500;

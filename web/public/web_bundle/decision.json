@@ -26,6 +26,7 @@
       "utci_baseline_peak": null,
       "utci_intervention_peak": null,
       "cost_per_utci_degree": 80961.09,
+      "cooled_profile": null,
       "species": [
         "Black locust",
         "Chinaberry",
@@ -53,6 +54,7 @@
       "utci_baseline_peak": null,
       "utci_intervention_peak": null,
       "cost_per_utci_degree": 82382.62,
+      "cooled_profile": null,
       "species": [
         "Black locust",
         "Chinaberry",
@@ -81,6 +83,7 @@
       "utci_baseline_peak": null,
       "utci_intervention_peak": null,
       "cost_per_utci_degree": 1380490.31,
+      "cooled_profile": null,
       "species": [
         "Black locust",
         "Chinaberry",
@@ -96,5 +99,20 @@
         "Tipa"
       ]
     }
-  ]
+  ],
+  "sensitivity": {
+    "method": "TOPSIS weight sweep + \u20ac/\u00b0C primary-key invariance (offline, no re-sim)",
+    "closeness_weight_sweep": {
+      "n_steps": 21,
+      "modal_winner": "BALANCED",
+      "modal_winner_share": 0.9524,
+      "flips": true
+    },
+    "primary_key_invariance": {
+      "rank1_by_primary": "MAX_THERMAL_RELIEF",
+      "weight_invariant": true,
+      "min_kpi_gap": 1421.53
+    },
+    "verdict": "rank-1 invariant to TOPSIS weights (decided by \u20ac/\u00b0C primary key)"
+  }
 }

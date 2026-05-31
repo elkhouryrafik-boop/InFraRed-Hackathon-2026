@@ -88,6 +88,35 @@ def test_load_scored_grid_real_file():
         assert 41.3 < lat < 41.5, f"lat {lat} outside Barcelona"
 
 
+def test_load_centroid_is_true_centre_not_ring_biased(tmp_path):
+    """A closed ring repeats its first vertex last; the centroid must average the
+    distinct corners only, not double-count the duplicate (which would offset the
+    centre toward that corner). Regression for the ~57 m citywide offset bug."""
+    # Axis-aligned 400 m square in UTM-31N; true centre = (424200, 4586200).
+    ring = [
+        [424000.0, 4586000.0],
+        [424400.0, 4586000.0],
+        [424400.0, 4586400.0],
+        [424000.0, 4586400.0],
+        [424000.0, 4586000.0],  # closing duplicate of the first vertex
+    ]
+    grid = {
+        "type": "FeatureCollection",
+        "features": [{
+            "type": "Feature",
+            "properties": {"cell_id": "C_CENTRE", "composite_score_B": 0.5},
+            "geometry": {"type": "Polygon", "coordinates": [ring]},
+        }],
+    }
+    p = tmp_path / "grid.geojson"
+    p.write_text(json.dumps(grid), encoding="utf-8")
+
+    cell = citywide.load_scored_grid(p)[0]
+    cx, cy = cell["centroid_utm"]
+    assert cx == pytest.approx(424200.0, abs=1e-6)
+    assert cy == pytest.approx(4586200.0, abs=1e-6)
+
+
 def test_rank_cells_by_score():
     cells = _fake_cells()
     ranked = citywide.rank_cells(cells, "composite_score_B")

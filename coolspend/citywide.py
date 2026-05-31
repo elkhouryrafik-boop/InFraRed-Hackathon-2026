@@ -76,9 +76,12 @@ def load_scored_grid(path: str | Path | None = None) -> list[dict[str, Any]]:
         geom = feat["geometry"]
         coords = geom["coordinates"][0]  # outer ring, UTM
 
-        # Centroid in UTM
-        xs = [p[0] for p in coords]
-        ys = [p[1] for p in coords]
+        # Centroid in UTM. Drop the closing vertex of the ring before averaging —
+        # a closed ring repeats its first point as its last, and including that
+        # duplicate biases the mean toward that corner (here ~57 m SE per cell).
+        ring_pts = coords[:-1] if len(coords) > 1 and coords[0] == coords[-1] else coords
+        xs = [p[0] for p in ring_pts]
+        ys = [p[1] for p in ring_pts]
         cx_utm = sum(xs) / len(xs)
         cy_utm = sum(ys) / len(ys)
 
@@ -218,6 +221,28 @@ def scan_cells(
 
 # ── Full allocation (live smart_evaluate per cell) ────────────────────────────
 
+def _eur_per_m2_cooled(cfg: dict[str, Any]) -> float | None:
+    """Extract a scalar €/m²-cooled from a smart_evaluate configuration.
+
+    smart_evaluate may expose this as a bare ``eur_per_m2`` number, as a
+    ``cost_per_utci_degree`` metadata dict ``{"value": ..., "unit": ...}``, or
+    not at all — in which case fall back to cost ÷ cooled footprint.
+    """
+    direct = cfg.get("eur_per_m2")
+    if isinstance(direct, (int, float)):
+        return float(direct)
+    cpd = cfg.get("cost_per_utci_degree")
+    if isinstance(cpd, dict) and isinstance(cpd.get("value"), (int, float)):
+        return float(cpd["value"])
+    if isinstance(cpd, (int, float)):
+        return float(cpd)
+    cooled = cfg.get("cooled_footprint_m2") or 0
+    cost = cfg.get("cost_eur") or 0
+    if cooled > 0 and cost > 0:
+        return round(cost / cooled, 2)
+    return None
+
+
 def allocate_citywide(
     cells: list[dict[str, Any]] | None = None,
     budget_eur: float = 1_000_000.0,
@@ -290,7 +315,7 @@ def allocate_citywide(
             "validated_utci_c": cfg.get("validated_utci_c", 0.0),
             "heat_stress_area_m2": cfg.get("heat_stress_area_m2", 0),
             "cooled_footprint_m2": cfg.get("cooled_footprint_m2") or 0,
-            "cost_per_m2_cooled": cfg.get("cost_per_utci_degree"),
+            "cost_per_m2_cooled": _eur_per_m2_cooled(cfg),
             "headline": result.get("headline", ""),
             "centroid_lonlat": cell["centroid_lonlat"],
             "eval_polygon": ring,
