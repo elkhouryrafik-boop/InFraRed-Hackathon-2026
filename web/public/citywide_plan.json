@@ -1546,5 +1546,49 @@
     }
   ],
   "headline": "7 sites, 99 trees, 24,356 m² cooled, €990,000 of €1,000,000 allocated",
-  "disclaimer": "Per-cell evaluation uses a 200 m × 200 m sample polygon centred on each cell's centroid. Funding order driven by MEASURED Infrared UTCI €/m²-cooled. All in-ground trees tagged requires_utility_survey=True."
+  "disclaimer": "Per-cell evaluation uses a 200 m × 200 m sample polygon centred on each cell's centroid. Funding order driven by MEASURED Infrared UTCI €/m²-cooled. All in-ground trees tagged requires_utility_survey=True.",
+  "placement_audit": {
+    "trees_checked": 99,
+    "on_building": 0,
+    "clumps_under_min_spacing": 0,
+    "all_on_valid_ground": true,
+    "method": "independent OSM-building re-check + haversine spacing (coolspend.placement_audit)",
+    "per_site": {
+      "C030_031": {
+        "trees": 15,
+        "on_building": 0,
+        "clumps": 0
+      },
+      "C032_032": {
+        "trees": 12,
+        "on_building": 0,
+        "clumps": 0
+      },
+      "C022_010": {
+        "trees": 15,
+        "on_building": 0,
+        "clumps": 0
+      },
+      "C016_010": {
+        "trees": 15,
+        "on_building": 0,
+        "clumps": 0
+      },
+      "C030_023": {
+        "trees": 12,
+        "on_building": 0,
+        "clumps": 0
+      },
+      "C020_016": {
+        "trees": 15,
+        "on_building": 0,
+        "clumps": 0
+      },
+      "C031_035": {
+        "trees": 15,
+        "on_building": 0,
+        "clumps": 0
+      }
+    }
+  }
 }

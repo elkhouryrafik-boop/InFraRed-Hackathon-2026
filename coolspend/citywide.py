@@ -412,12 +412,30 @@ def allocate_citywide(
                 return False
         return True
 
+    # FEASIBILITY GATE (upstream of funding): a heat-vulnerable cell only earns a
+    # slot if a tree can ACTUALLY go there. Placement already returns only feasible
+    # spots (candidate_slots: off buildings/roads, ≥setback, ≥spacing, depave-aware),
+    # so trees_lonlat is the count of genuinely plantable positions. A cell with
+    # fewer than MIN_FEASIBLE_TREES (e.g. an all-rooftop/rail block) is INFEASIBLE —
+    # skipped here and the budget flows to the next feasible heat-ranked cell. This
+    # is why the funded set is "hottest AMONG sites where trees can actually go".
+    MIN_FEASIBLE_TREES = 5
+
     remaining = budget_eur
     allocated_cells = []
     unallocated_cells = []
+    infeasible_cells = []
     for r in results:
         cost = r.get("cost_eur", 0) or 0
         trees = r.get("trees_lonlat", []) or []
+        if len(trees) < MIN_FEASIBLE_TREES:
+            r["allocation_eur"] = 0.0
+            r["skip_reason"] = (
+                f"infeasible — only {len(trees)} plantable spot(s) "
+                f"(min {MIN_FEASIBLE_TREES}); mostly buildings/road/occupied ground"
+            )
+            infeasible_cells.append(r)
+            continue
         if remaining <= 0 or cost <= 0 or not _far_enough(r, allocated_cells):
             r["allocation_eur"] = 0.0
             unallocated_cells.append(r)
@@ -505,6 +523,8 @@ def allocate_citywide(
         "avg_cost_per_m2_cooled": round(total_allocated / total_cooled) if total_cooled > 0 else None,
         "allocated_cells": allocated_cells,
         "unallocated_cells": unallocated_cells,
+        "infeasible_count": len(infeasible_cells),
+        "infeasible_cells": infeasible_cells,
         "headline": (
             f"{len(allocated_cells)} sites, {total_trees} trees, "
             f"{total_cooled:,.0f} m² cooled, "
