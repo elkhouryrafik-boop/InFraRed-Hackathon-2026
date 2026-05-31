@@ -1,5 +1,5 @@
 {
-  "headline": "Smart placement: 20 trees, \u20ac200,000, 1.86 \u00b0C mean UTCI drop, covers 63% of hot-paved demand. Every in-ground tree requires a utility survey.",
+  "headline": "Smart placement: 20 trees, \u20ac200,000, 1.63 \u00b0C mean UTCI drop, covers 55% of hot-paved demand. Every in-ground tree requires a utility survey.",
   "backend": "live",
   "disclaimer": "LIVE Infrared UTCI \u2014 20 greedily-placed trees; budgeted weighted-max-coverage (submodular, 1-1/e bounded). Every in-ground tree requires a pre-dig utility survey (underground mains not in open data).",
   "site_center_lonlat": [
@@ -18,29 +18,29 @@
       "label": "SMART_PLACEMENT",
       "tree_count": 20,
       "cost_eur": 200000.0,
-      "cooled_footprint_m2": 2838.0,
-      "eur_per_m2": 70.5,
-      "delta_utci_c": 1.86,
+      "cooled_footprint_m2": 2573.0,
+      "eur_per_m2": 77.7,
+      "delta_utci_c": 1.63,
       "utci_baseline_mean": 29.23,
-      "utci_intervention_mean": 27.37,
+      "utci_intervention_mean": 27.6,
       "utci_baseline_peak": 31.02,
-      "utci_intervention_peak": 30.23,
-      "cost_per_utci_degree": 70.5,
+      "utci_intervention_peak": 30.11,
+      "cost_per_utci_degree": 77.7,
       "cooled_profile": {
         "cooled_m2_by_band": {
-          "0.5": 2838,
-          "1": 2276,
-          "2": 1626
+          "0.5": 2573,
+          "1": 2063,
+          "2": 1460
         },
-        "mean_drop_c": 2.906,
-        "std_drop_c": 1.927,
-        "p10_drop_c": 0.7,
-        "p90_drop_c": 5.99,
+        "mean_drop_c": 2.772,
+        "std_drop_c": 1.814,
+        "p10_drop_c": 0.74,
+        "p90_drop_c": 5.43,
         "peak_drop_c": 7.26,
-        "cooled_fraction": 0.6183,
-        "heat_stress_relieved_m2": 850.0,
+        "cooled_fraction": 0.5606,
+        "heat_stress_relieved_m2": 600.0,
         "heat_stress_threshold_c": 26.0,
-        "largest_cooled_patch_m2": 2345.0,
+        "largest_cooled_patch_m2": 2569.0,
         "n_cooled_patches": 2,
         "valid_cells_m2": 4590.0,
         "bands_c": [
@@ -51,7 +51,7 @@
       },
       "species": [
         "European hackberry",
-        "London plane",
+        "Japanese pagoda tree",
         "Tipa"
       ]
     }
