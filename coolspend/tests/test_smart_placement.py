@@ -19,8 +19,21 @@ from coolspend.smart_placement import (
     DemandCell,
     SpeciesOption,
     CandidateSlot,
-    place_trees_greedy,
+    place_trees_greedy as _raw_greedy,
 )
+
+
+def place_trees_greedy(*args, **kwargs):
+    """These tests verify greedy MECHANICS (hottest-first, cost-benefit, diversity,
+    max-crown, the 1-1/e bound) on the deterministic BINARY crown-coverage objective
+    — they use synthetic demand cells directly under the slot, which the shade-gain
+    model (correctly) casts shadow AWAY from. The shade-gain physics + live A/B are
+    covered in test_shade_gain_placement.py. So default these mechanics calls to the
+    binary objective unless a test overrides it.
+    """
+    kwargs.setdefault("use_shade_gain", False)
+    return _raw_greedy(*args, **kwargs)
+
 
 SP = SpeciesOption(name="plane", crown_m=8.0, tree_cost_eur=1000.0, cooling_score=1.0)
 
