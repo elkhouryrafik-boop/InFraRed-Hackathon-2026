@@ -337,11 +337,23 @@ def assemble_inputs(geometry: dict, backend: str = "live"):
     ]
 
     species = build_species_options()
+
+    # Plantable strip area (PAPER limitation #7): boundary minus the bits a tree
+    # cannot occupy (buildings ∪ street/furniture buffers), clipped to the site.
+    # This is the truer denominator for local canopy-cover % than the raw cell.
+    try:
+        blocked = unary_union([g for g in (buildings_m + streets_m) if g is not None])
+        plantable_geom = boundary_m.difference(blocked) if not blocked.is_empty else boundary_m
+        plantable_area_m2 = max(0.0, float(plantable_geom.area))
+    except Exception:  # noqa: BLE001 — degrade to boundary area if geometry is messy
+        plantable_area_m2 = float(boundary_m.area)
+
     logger.info(
-        "placement inputs: %d demand cells, %d candidate slots, %d species (depave €%.0f/tree)",
-        len(demand), len(candidates), len(species), depave,
+        "placement inputs: %d demand cells, %d candidate slots, %d species "
+        "(depave €%.0f/tree, plantable %.0f m²)",
+        len(demand), len(candidates), len(species), depave, plantable_area_m2,
     )
-    return demand, candidates, species
+    return demand, candidates, species, plantable_area_m2
 
 
 def run_smart_placement(geometry: dict, budget_eur: float, backend: str = "live") -> dict:
@@ -353,7 +365,7 @@ def run_smart_placement(geometry: dict, budget_eur: float, backend: str = "live"
     """
     from coolspend.spatial_engine import local_m_to_latlon  # noqa: PLC0415
 
-    demand, candidates, species = assemble_inputs(geometry, backend=backend)
+    demand, candidates, species, plantable_area_m2 = assemble_inputs(geometry, backend=backend)
     result: PlacementResult = place_trees_greedy(
         demand, candidates, species, budget_eur=budget_eur,
     )
@@ -377,4 +389,5 @@ def run_smart_placement(geometry: dict, budget_eur: float, backend: str = "live"
         "demand_total": round(result.total_demand_weight, 2),
         "covered_weight": round(result.covered_weight, 2),
         "stop_reason": result.stop_reason,
+        "plantable_area_m2": round(plantable_area_m2, 1),
     }

@@ -613,6 +613,7 @@ def smart_evaluate(
         "trees_lonlat": trees_lonlat,
         "cost_eur": cost_eur,
         "coverage_fraction": coverage_fraction,
+        "plantable_area_m2": placement.get("plantable_area_m2"),
         "delta_utci_c": delta_utci,
         "baseline_utci_c": baseline.utci_c,
         "baseline_utci_peak_c": baseline.utci_peak_c,

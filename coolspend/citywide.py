@@ -337,6 +337,7 @@ def allocate_citywide(
             # draw each funded site's planting, and so the last site can be trimmed
             # to the remaining budget. Greedy order = best-value first.
             "trees_lonlat": cfg.get("trees_lonlat", []),
+            "plantable_area_m2": cfg.get("plantable_area_m2"),
             "delta_utci_c": cfg.get("delta_utci_c", 0.0),
             "baseline_utci_c": cfg.get("baseline_utci_c", 0.0),
             "validated_utci_c": cfg.get("validated_utci_c", 0.0),
@@ -447,6 +448,7 @@ def allocate_citywide(
     for c in allocated_cells:
         c["design_metrics"] = design_metrics(
             c.get("trees_lonlat", []), site_area_m2=_sample_area, cost_eur=c.get("cost_eur"),
+            plantable_area_m2=c.get("plantable_area_m2"),
         )
     total_canopy_m2 = round(
         sum((c.get("design_metrics", {}).get("canopy_area_m2") or 0) for c in allocated_cells), 1
