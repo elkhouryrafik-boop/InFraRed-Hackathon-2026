@@ -89,3 +89,105 @@
   background: linear-gradient(90deg, #4ea8de, #37d08a);
   transition: width 0.2s linear;
 }
+
+/* ── Choice screen ── */
+.introgate--choose {
+  background:
+    radial-gradient(1200px 600px at 50% -10%, rgba(55, 208, 138, 0.10), transparent 60%),
+    radial-gradient(900px 500px at 50% 120%, rgba(78, 168, 222, 0.08), transparent 60%),
+    #060809;
+}
+.ig-choose {
+  max-width: 860px;
+  padding: 40px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.ig-choose__brand {
+  font-family: ui-monospace, 'JetBrains Mono', monospace;
+  font-size: 14px;
+  letter-spacing: 4px;
+  color: #37d08a;
+  margin-bottom: 18px;
+}
+.ig-choose__title {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 46px;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -1.5px;
+  color: #f4f7f4;
+  margin: 0;
+}
+.ig-choose__sub {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 19px;
+  color: rgba(244, 247, 244, 0.6);
+  margin: 10px 0 30px;
+}
+.ig-choose__opts {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.ig-opt {
+  flex: 1 1 320px;
+  max-width: 380px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 26px 28px;
+  border-radius: 16px;
+  background: rgba(17, 24, 31, 0.8);
+  border: 1px solid #212c36;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+.ig-opt:hover {
+  transform: translateY(-4px);
+  border-color: #37d08a;
+  background: rgba(55, 208, 138, 0.08);
+}
+.ig-opt--feature {
+  border-color: rgba(55, 208, 138, 0.5);
+  background: rgba(55, 208, 138, 0.06);
+}
+.ig-opt__time {
+  font-family: ui-monospace, 'JetBrains Mono', monospace;
+  font-size: 28px;
+  font-weight: 700;
+  color: #5be8a6;
+}
+.ig-opt__name {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: #f4f7f4;
+}
+.ig-opt__desc {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.4;
+  color: rgba(244, 247, 244, 0.55);
+}
+.ig-choose__skip {
+  margin-top: 34px;
+  font-family: ui-monospace, 'JetBrains Mono', monospace;
+  font-size: 15px;
+  letter-spacing: 0.5px;
+  color: rgba(244, 247, 244, 0.6);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 10px 16px;
+  transition: color 0.2s ease;
+}
+.ig-choose__skip:hover {
+  color: #f4f7f4;
+}

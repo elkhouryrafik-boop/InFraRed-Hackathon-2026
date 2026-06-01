@@ -393,6 +393,11 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
       plantingYear,
       reducedMotion,
       phase,
+      // Rebuild layer instances on 2D↔3D toggle. In 3D the flat 'trees' IconLayer is
+      // dropped (3D spheres replace it); without this dep the memo returns the SAME
+      // finalized instance on switch-back and deck never re-mounts it → canopies stay
+      // invisible until an unrelated prop (opacity/scenario) rebuilds the layers.
+      view3d,
     ],
   )
 

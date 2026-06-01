@@ -139,6 +139,9 @@ export function buildLayers(args: BuildLayersArgs): Layer[] {
             opacity: rasterOpacity * (1 - mix),
             transitions: animateReveal ? { opacity: 600 } : undefined,
             parameters: { depthTest: true },
+            // Clip the heatmap to the drawn boundary so the square raster grid can't
+            // spill past / read as offset from the polygon ring.
+            ...(hasMask ? { extensions: [new MaskExtension()], maskId: MASK_ID } : {}),
           },
           modelMatrix,
         ),
@@ -156,6 +159,7 @@ export function buildLayers(args: BuildLayersArgs): Layer[] {
             opacity: rasterOpacity * mix,
             transitions: animateReveal ? { opacity: 600 } : undefined,
             parameters: { depthTest: true },
+            ...(hasMask ? { extensions: [new MaskExtension()], maskId: MASK_ID } : {}),
           },
           modelMatrix,
         ),
