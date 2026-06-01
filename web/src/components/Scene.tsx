@@ -34,11 +34,13 @@ import type {
   WebBundle,
   UtciScenario,
   TreeProperties,
+  TreeEcology,
   CityPlan,
   CityPlanSite,
   Phase,
   CameraMode,
 } from '../lib/types'
+import ECOLOGY from '../data/ecology.json'
 import type { LngLat } from '../lib/draw'
 import { buildCitywideLayer, buildCityPlanLayer, buildCityTreesLayer } from '../lib/layers'
 import { speciesDims, foliageColor } from '../lib/species'
@@ -257,17 +259,21 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
         const dims = speciesDims(species)
         const [r, g, b] = foliageColor(species)
         const site = cell ? cityPlan?.allocated_cells.find((c) => c.cell_id === cell) : undefined
+        // Per-species ecology is identical wherever the species is planted, so the
+        // citywide trees get the SAME real ecological profile as the single-site view.
+        const eco = (ECOLOGY as Record<string, TreeEcology>)[species]
+        const sitePrefix = site ? `Part of the €1M plan — ${site.district} · ${site.barri}. ` : ''
         return {
           kind: 'proposed',
           species,
           crown_diameter_m: dims.crown_m,
           height_m: dims.height_m,
           crown_area_m2: Math.round(Math.PI * (dims.crown_m / 2) ** 2),
+          known: !!eco,
           color: [r, g, b],
           ecology: {
-            notes: site
-              ? `Part of the €1M plan — ${site.district} · ${site.barri}. Per-tree ecology is in the single-site view.`
-              : 'Proposed planting. Per-tree ecology is in the single-site view.',
+            ...(eco ?? {}),
+            notes: `${sitePrefix}${eco?.notes ?? 'Proposed planting.'}`,
           },
         } as TreeProperties
       }
