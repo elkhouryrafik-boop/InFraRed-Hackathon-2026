@@ -13,7 +13,9 @@ import { Kicker, Headline, Chip, Stat, Panel, GlossCard, Tag, Label } from "../c
 import { Reveal } from "../components/Reveal";
 import { Counter } from "../components/Counter";
 
-// ── SCENE 10 — "Never Report a Number We Didn't Compute" (~45s) ──────────────
+// ── SCENE 10 — "Never Report a Number We Didn't Compute" ──
+// The honesty architecture (four beats below): a MOCK | CACHED | LIVE tier
+// switch showing how the system never lets a synthetic number pass as measured.
 // The honesty architecture: a three-tier backend (MOCK | CACHED | LIVE) selected
 // by ONE setting, that never lets a synthetic number masquerade as measured.
 // A vertical tier-switch occupies centre stage; a single glowing toggle slides

@@ -1,3 +1,6 @@
+// WorldMap.tsx — animated world map with pulsing city pins and arcs drawn
+// between them (lat/lon projected equirectangularly onto an SVG-masked map).
+// Reusable kit component for "scales to any city"-style beats.
 import React from "react";
 import { staticFile, Easing, interpolate, useCurrentFrame } from "remotion";
 

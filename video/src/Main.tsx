@@ -1,3 +1,9 @@
+// Main.tsx — assembles the full "CoolSpend" film. It walks SCENES (the timeline
+// computed in lib/timeline) and, for each entry, mounts the matching scene
+// component (looked up in REGISTRY by 1-based index) inside a <Sequence> placed
+// at the entry's cumulative `offset` frame. Each scene is wrapped in SceneFrame
+// (vignette/grain/captions) and gets its own per-scene VO clip starting at
+// `voStartF`; a single music bed loops quietly underneath everything.
 import React from "react";
 import { AbsoluteFill, Sequence, staticFile } from "remotion";
 import { Audio } from "@remotion/media";
@@ -35,12 +41,15 @@ export const Main: React.FC = () => {
   return (
     <AbsoluteFill style={{ background: colors.bg }}>
       {SCENES.map((s) => {
+        // index is 1-based; `from={s.offset}` re-bases each scene's frame clock
+        // to 0 so a scene's useCurrentFrame() is local, not global.
         const Comp = REGISTRY[s.index];
         return (
           <Sequence key={s.id} from={s.offset} durationInFrames={s.df} layout="none">
             <SceneFrame df={s.df} cues={s.cues}>
               <Comp df={s.df} />
             </SceneFrame>
+            {/* per-scene VO, delayed by voStartF (the visual-settle head) */}
             <Sequence from={s.voStartF} layout="none">
               <Audio src={staticFile(s.voFile)} volume={1} />
             </Sequence>

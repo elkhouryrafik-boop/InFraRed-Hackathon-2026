@@ -1,3 +1,7 @@
+// kit.tsx — the shared styled text/UI atoms used across all scenes: Kicker (small
+// uppercase eyebrow), Headline, Chip, Stat, Panel, GlossCard (term + plain
+// explainer), Tag (provenance pill), and Label. All pull from theme tokens so
+// typography stays consistent.
 import React from "react";
 import { colors, fonts } from "../theme";
 

@@ -1,3 +1,6 @@
+// Backplate.tsx — reusable cinematic background layer: a video or image with a
+// slow Ken-Burns zoom/pan plus optional tint, vignette, and top/bottom gradient.
+// (Utility kit component; scenes that use b-roll often roll their own inline.)
 import React from "react";
 import { AbsoluteFill, Img, staticFile, Easing, interpolate, useCurrentFrame } from "remotion";
 import { Video } from "@remotion/media";

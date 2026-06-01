@@ -1,6 +1,25 @@
 """
 coolspend.optimizer — NSGA-II tree-budget multi-objective optimizer (OPT-01 + OPT-03).
 
+ALGORITHM (the code in THIS file): NSGA-II, a population-based, elitist
+multi-objective evolutionary algorithm (Deb et al. 2002), via pymoo. It evolves a
+population (POP_SIZE) over generations (N_GEN) using fast non-dominated sorting +
+crowding distance, and returns a Pareto front of thermal-vs-ecological trade-offs;
+three representatives are then TOPSIS-ranked (topsis_rank). This is genuinely an
+NSGA-II implementation — NOT a greedy method.
+
+PIPELINE PLACEMENT — IMPORTANT: this NSGA-II path is the *documented design
+alternative / benchmark*, NOT the shipped engine. The DEPLOYED single-site and
+city-wide placement engine is the budgeted cost-benefit GREEDY weighted
+max-coverage in coolspend.smart_placement.place_trees_greedy, which runs on the
+*measured* baseline UTCI demand field. The greedy ships because it is
+deterministic, interpretable, carries the (1 − 1/e) submodular guarantee, and
+optimizes on measured data rather than on the analytical surrogate this module
+relies on (whose calibration is R² < 0 for magnitude — a moderate ranker only).
+See PAPER.md §2.4, §4.8 and §8. (Resolves the "NSGA-II vs greedy" inconsistency:
+both exist in the repo; NSGA-II = this file = benchmark; greedy = smart_placement
+= production.)
+
 Two objectives (PROJECT.md "Ship as 2-objective" decision):
   F1 = -thermal_relief(config)       maximize cooling     (spatial_engine surrogate)
   F2 = -ecological_score(config)     maximize coherence   (rules_engine)

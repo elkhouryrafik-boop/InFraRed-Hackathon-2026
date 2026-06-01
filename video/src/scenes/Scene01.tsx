@@ -11,6 +11,9 @@ import { colors, fonts } from "../theme";
 import { Reveal } from "../components/Reveal";
 import { Kicker } from "../components/kit";
 
+// ── SCENE 01 — "The Hottest Block in Barcelona" ──
+// Cold-open over a Higgsfield aerial clip (slow push-in): names the urban heat
+// island and poses the film's question — one budget, where do we plant?
 // Scene 01 — "The Hottest Block in Barcelona" (higgsfield aerial opener).
 export const Scene01: React.FC<{ df: number }> = ({ df }) => {
   const frame = useCurrentFrame();

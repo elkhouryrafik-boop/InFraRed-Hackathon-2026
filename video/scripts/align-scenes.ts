@@ -1,5 +1,8 @@
 /**
- * align-scenes.ts
+ * align-scenes.ts — starter-kit helper that derives scene durations + per-line
+ * reveal frames by matching a VO transcript (Whisper word timings) against the
+ * script. (This film's timings come from gen_vo.py/ffprobe → timings.json; this
+ * is the alternative Whisper-alignment path.)
  *
  * Parses Whisper word-level timestamp JSON and computes scene timing values
  * for theme.ts and per-scene Reveal startFrame constants.

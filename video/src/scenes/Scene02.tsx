@@ -3,6 +3,11 @@ import { AbsoluteFill, useCurrentFrame, interpolate, Easing, spring, useVideoCon
 import { colors, fonts } from "../theme";
 import { Kicker, Label } from "../components/kit";
 
+// ── SCENE 02 — "UTCI: Measuring What People Feel" ──
+// Defines the film's core metric. Four beats: radiant heat on a silhouette →
+// four inputs (air/radiant/wind/humidity) funnel into one UTCI value → a gauge
+// needle reads the felt temperature → shade pulls it back below the 26 °C
+// comfort threshold. All motion is driven by p = frame/df.
 // ── Scene 02 — "UTCI: Measuring What People Feel" (~55s) ──
 // 4 beats scaled across df. Transparent root; content above y≈900; side margins ~110px.
 

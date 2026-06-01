@@ -6,6 +6,10 @@ import { Counter } from "../components/Counter";
 import { Reveal } from "../components/Reveal";
 import { Kicker, Tag, Label } from "../components/kit";
 
+// ── SCENE 08 — "Optimise, then validate" ──
+// The single-site payoff: a before/after UTCI heatmap (BeforeAfterHeatmap) plays
+// the optimise→validate pipeline while a stats column counts up the MEASURED
+// results (trees, m² cooled by band, mean/peak felt-temp drop, €/m² cooled).
 const STEPS = [
   "measured baseline UTCI",
   "greedy place",

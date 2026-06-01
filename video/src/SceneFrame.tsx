@@ -1,3 +1,7 @@
+// SceneFrame.tsx — the shared shell every scene renders inside (mounted by
+// Main/MainShort). Adds the film background, a frame-in/out opacity fade,
+// cinematic vignette, film grain, and the VO-synced caption track on top of the
+// scene's own content.
 import React from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
 import { colors } from "./theme";
@@ -12,6 +16,8 @@ export const SceneFrame: React.FC<{
   showCaptions?: boolean;
 }> = ({ df, cues, children, showCaptions = true }) => {
   const frame = useCurrentFrame();
+  // fade in over the first 14 frames, hold, then fade out over the last 16 —
+  // gives every scene a soft cut at both ends. df = this scene's total length.
   const fade = interpolate(
     frame,
     [0, 14, df - 16, df],

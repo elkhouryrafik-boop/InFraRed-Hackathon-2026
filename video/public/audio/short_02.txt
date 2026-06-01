@@ -1,0 +1,1 @@
+CoolSpend answers it. It maps the hot, paved, unshaded ground, then greedily places each tree where its real shadow actually falls, south of the heat. Diminishing returns give it a guarantee: within sixty-three percent of the perfect answer, every euro spent where it cools the most.

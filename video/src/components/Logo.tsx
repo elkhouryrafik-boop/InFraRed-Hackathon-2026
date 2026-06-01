@@ -1,3 +1,5 @@
+// Logo.tsx — brand lockup: a diamond glyph (or supplied image) plus the
+// CamelCase-split wordmark and optional tagline. Reusable kit component.
 import React from "react";
 import { Img, staticFile } from "remotion";
 

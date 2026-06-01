@@ -1,5 +1,7 @@
 /**
- * generate-theme.ts
+ * generate-theme.ts — scaffolding/build helper (NOT used by the live CoolSpend
+ * theme, which is hand-authored in src/theme.ts). Templating utility from the
+ * brand-explainer starter: fills a theme.ts.template from a brand-audit JSON.
  *
  * Reads Dembrandt JSON output (or Brand Guardian JSON) from stdin and writes
  * src/theme.ts to stdout. Substitutes {{PLACEHOLDER}} tokens in

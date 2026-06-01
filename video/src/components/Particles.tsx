@@ -1,3 +1,5 @@
+// Particles.tsx — drifting ambient particle field (deterministic seeded layout
+// so it's stable across renders). Decorative atmosphere kit component.
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 

@@ -75,6 +75,7 @@ class PolygonRequest(BaseModel):
 
 
 class EvaluateRequest(PolygonRequest):
+    """Body of POST /api/evaluate: the drawn ring plus budget and KPI weights."""
     budget_eur: float = Field(DEFAULT_BUDGET_EUR, gt=0)
     w_thermal: float = Field(0.6, ge=0, le=1)
     w_ecological: float = Field(0.4, ge=0, le=1)
@@ -129,6 +130,12 @@ def _backend_mode() -> str:
 
 
 def create_app() -> FastAPI:
+    """Build and return the CoolSpend FastAPI app (routes, CORS, .env loading).
+
+    Registers the interactive endpoints (/api/health, /api/buildings,
+    /api/evaluate, /api/citywide/*) and wires the three-tier Infrared backend via
+    the INFRARED_BACKEND env var. Called at import time and by the test client.
+    """
     # Load .env (INFRARED_API_KEY) regardless of how the app is launched, so a
     # live backend always has its key — not only via the __main__ block.
     try:

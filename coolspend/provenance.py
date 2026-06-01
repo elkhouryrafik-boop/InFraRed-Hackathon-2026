@@ -51,6 +51,12 @@ assert abs(sum(COMPOSITE_B_WEIGHTS.values()) - 1.0) < 1e-9
 
 @dataclass(frozen=True)
 class SignalSource:
+    """Provenance record for one composite sub-score: its weight, sensor, and status.
+
+    ``status`` flags how reproducible the sub-score is: "documented"/"reproduced"
+    vs "residual-gap" (the raw-imagery derivation lives in the upstream ingestion
+    pipeline, outside this repo).
+    """
     key: str
     weight: float
     sensor: str

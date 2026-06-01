@@ -1,6 +1,9 @@
 import React from "react";
 import { Easing, interpolate, useCurrentFrame } from "remotion";
 
+// Counter — animated number that eases from `from` to `to` over its frame window
+// (interpolated on useCurrentFrame). `format` (or `decimals`) controls display;
+// tabular-nums keeps digit width stable so the value doesn't jitter while ticking.
 type Props = {
   from?: number;
   to: number;

@@ -58,6 +58,7 @@ class _CaptureHandler(logging.Handler):
         self._target = target_list
 
     def emit(self, record: logging.LogRecord) -> None:  # type: ignore[override]
+        """Append the record's message to the target list; never raise (logging-safe)."""
         try:
             self._target.append(record.getMessage())
         except Exception:  # noqa: BLE001

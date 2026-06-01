@@ -14,6 +14,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Site:
+    """A scannable demo site: a WGS84 centre and the square side (m) it covers."""
     key: str
     name: str
     lon: float
@@ -45,4 +46,5 @@ DEFAULT_SITE_KEY: str = "paisos_catalans"
 
 
 def default_site() -> Site:
+    """Return the locked hero site (Plaça dels Països Catalans) for the demo."""
     return SITES[DEFAULT_SITE_KEY]

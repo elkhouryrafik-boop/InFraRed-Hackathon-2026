@@ -12,6 +12,12 @@ import { lonLatToPct, metresToPctX, rgb, TreeFeature } from "../lib/geo";
 import trees from "../data/trees.json";
 import boundary from "../data/boundary.json";
 
+// BeforeAfterHeatmap — the data viz at the heart of Scene 08. It stacks the two
+// real Infrared UTCI rasters (baseline + intervention) and crossfades them at
+// revealAtF, draws the real site boundary, and grows the proposed trees in from
+// data/trees.json — each placed by lon/lat via lonLatToPct (see lib/geo), with
+// crown size from crown_diameter_m via metresToPctX so dots match the raster 1:1.
+
 // Panel sized to the real bbox aspect (≈1.59:1) so raster + trees align 1:1.
 const PANEL_W = 1180;
 const PANEL_H = Math.round(PANEL_W / 1.59);

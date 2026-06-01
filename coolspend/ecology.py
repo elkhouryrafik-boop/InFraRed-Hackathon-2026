@@ -25,6 +25,14 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Ecology:
+    """Per-species ecological profile (one row of the _TABLE below).
+
+    All 0–1 fields are species-typical, literature-anchored estimates for
+    SELECTION/RANKING, not measured per-tree values. Note the sign convention:
+    drought/biodiversity/pollinator are "higher is better"; allergenicity and
+    pest_disease_risk are "higher is WORSE" (they enter ecosystem_score as
+    penalties). ``invasive`` triggers the hard veto in is_plantable / the score.
+    """
     scientific: str
     native_status: str          # "native …" | "naturalised" | "exotic" | "exotic-invasive"
     drought_heat_tolerance: float  # 0–1 (higher better under BCN climate change)
@@ -151,6 +159,7 @@ _PHASE_DOWN: frozenset[str] = frozenset({_norm_key("Platanus x acerifolia")})
 
 
 def get_ecology(scientific: str) -> Ecology | None:
+    """Look up a species' Ecology row by scientific name (name-normalised); None if absent."""
     return _BY_NAME.get(_norm_key(scientific))
 
 

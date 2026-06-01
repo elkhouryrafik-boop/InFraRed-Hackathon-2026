@@ -1,28 +1,44 @@
+# ─── Python ───────────────────────────────────────────────
 .env
+.venv/
 __pycache__/
 *.pyc
-.planning/spikes/*/audit_record.json
-coolspend/outputs/
-coolspend/cache/
-outputs/
-.venv/
 *.egg-info/
 
-# transient UI screenshots / playwright
-coolspend_ui_*.png
-.playwright-mcp/
+# ─── Generated / cached artifacts ─────────────────────────
+outputs/
+coolspend/outputs/
+coolspend/cache/          # large LiDAR/OSM/Infrared caches; regenerated on demand
+.planning/spikes/*/audit_record.json
 
-# transient verification screenshots (keep angels_trees_closer.png + angels_zoom2.png as referenced assets)
-coolspend_web_check.png
-coolspend_cesium_check.png
-angels_check.png
-angels_final.png
-angels_v2.png
-angels_zoom_trees.png
-angels_trees_final.png
+# ─── Node ─────────────────────────────────────────────────
+node_modules/
 
-# debug screenshots / playwright
-app-*.jpeg
+# ─── Transient screenshots / Playwright captures ──────────
+# Verification & debug screenshots are throwaway — never commit them.
+*.png
+*.jpeg
+*.jpg
+!video/public/**          # except real video assets
+!web/public/**            # except real web assets
 .playwright-mcp/
 web/.playwright-mcp/
-web/public/eval_bundle/
+web/public/eval_bundle/   # per-request evaluation bundle (written at runtime)
+
+# ─── Logs ─────────────────────────────────────────────────
+*.log
+
+# scratch dev artifacts at repo root (screenshots, ad-hoc logs)
+/*.png
+/*.jpeg
+/*.jpg
+/*.log
+
+# nested duplicate project copy — never publish
+hackathon_2/
+# regenerable python-side caches (incl. a 166MB LiDAR .tif > GitHub 100MB limit)
+coolspend/cache/
+coolspend/outputs/
+# duplicate of coolspend-explainer.mp4 (chooser uses that one)
+web/public/coolspend-explainer-10min.mp4
+video/out/coolspend-explainer-10min.mp4

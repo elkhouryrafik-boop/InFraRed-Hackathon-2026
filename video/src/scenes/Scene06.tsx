@@ -13,7 +13,9 @@ import { Kicker, Headline, Chip, Stat, Panel, GlossCard, Tag, Label } from "../c
 import { Reveal } from "../components/Reveal";
 import { Counter } from "../components/Counter";
 
-// ── SCENE 06 — "No Invasives, No London Plane" ───────────────────────────────
+// ── SCENE 06 — "No Invasives, No London Plane" ──
+// The species/ecology gate (three beats below). SPECIES[] is the candidate list
+// (3 invasive + 1 over-represented London plane); SURVIVORS are the 8 that pass.
 // A hard PLANTABILITY GATE removes invasive + over-represented species BEFORE
 // optimisation; survivors get an ecological HEALTH SCORE; a 40% anti-monoculture
 // cap protects the plan. Three beats across the full df.

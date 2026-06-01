@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class TreeViolation:
+    """A placed tree that failed the audit, with the human-readable reason(s) why."""
     index: int
     lon: float
     lat: float
@@ -35,6 +36,7 @@ class TreeViolation:
 
 @dataclass
 class AuditReport:
+    """Result of the independent post-placement audit (counts + per-tree violations)."""
     n_trees: int = 0
     n_on_building: int = 0
     n_too_close: int = 0
@@ -45,10 +47,12 @@ class AuditReport:
 
     @property
     def all_valid(self) -> bool:
+        """True iff no tree sits on a building (the only HARD violation)."""
         # "Valid" for the user's concern = NOT on a building (impossible site).
         return self.n_on_building == 0
 
     def summary(self) -> str:
+        """One-line human-readable tally of the audit (trees, on-building, clumps, ...)."""
         return (
             f"{self.n_trees} trees · {self.n_on_building} on a building · "
             f"{self.n_too_close} too close (<spacing) · "

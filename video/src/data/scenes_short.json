@@ -1,0 +1,65 @@
+[
+  {
+    "id": "s1-problem",
+    "comp": "Scene01",
+    "vo_text": "Cities run hotter than the land around them, and the hottest blocks are the most paved, the least green, the most lived-in. A Barcelona heat officer has one budget, and one question: where do you plant the trees?",
+    "captions": [
+      { "text": "Cities run hotter than the countryside" },
+      { "text": "Hottest blocks: most paved, least green" },
+      { "text": "One budget. Where do we plant?" }
+    ]
+  },
+  {
+    "id": "s2-method",
+    "comp": "Scene05",
+    "vo_text": "CoolSpend answers it. It maps the hot, paved, unshaded ground, then greedily places each tree where its real shadow actually falls, south of the heat. Diminishing returns give it a guarantee: within sixty-three percent of the perfect answer, every euro spent where it cools the most.",
+    "captions": [
+      { "text": "Map the hot, paved, unshaded ground" },
+      { "text": "Place trees where the shadow falls" },
+      { "text": "Plant south of the heat" },
+      { "text": "Submodular: within 63% of optimal" }
+    ]
+  },
+  {
+    "id": "s3-validate",
+    "comp": "Scene08",
+    "vo_text": "Then it stops proposing and starts measuring. The chosen layout is re-simulated on the live Infrared UTCI engine. On one plaza: twenty trees cool two thousand seven hundred and seventy-nine square metres of ground by at least half a degree, at seventy-two euros a square metre. Measured, not estimated.",
+    "captions": [
+      { "text": "Optimise, then validate" },
+      { "text": "Re-simulated on live Infrared UTCI" },
+      { "text": "20 trees, 2,779 m2 cooled" },
+      { "text": "EUR 72/m2 - measured, not estimated" }
+    ]
+  },
+  {
+    "id": "s4-citywide",
+    "comp": "Scene09",
+    "vo_text": "Scale it to the city. Give it a million euros, and it ranks all four hundred ninety-four blocks and funds the hottest first. Ninety trees across six districts, twenty thousand square metres cooled, reaching about twenty-six thousand residents within a three-hundred-metre walk.",
+    "captions": [
+      { "text": "Spend EUR 1,000,000 across the city" },
+      { "text": "494 blocks ranked, hottest funded first" },
+      { "text": "90 trees, 6 districts, EUR 900k" },
+      { "text": "~26,745 residents reached" }
+    ]
+  },
+  {
+    "id": "s5-honesty",
+    "comp": "Scene10",
+    "vo_text": "And every number is honest. Three backends, mock, cached, and live, keep a synthetic preview from ever masquerading as a measurement. The rule is simple: never report a number we did not compute.",
+    "captions": [
+      { "text": "Three backends: mock, cached, live" },
+      { "text": "No synthetic preview posing as measured" },
+      { "text": "Never report a number we didn't compute" }
+    ]
+  },
+  {
+    "id": "s6-close",
+    "comp": "Scene11",
+    "vo_text": "Real geometry, real ecology, real budgets. A plan a city can defend. CoolSpend. Fidelity, not novelty.",
+    "captions": [
+      { "text": "Real geometry, ecology, budgets" },
+      { "text": "A plan a city can defend" },
+      { "text": "Fidelity, not novelty" }
+    ]
+  }
+]

@@ -1,3 +1,7 @@
+// theme.ts — global design tokens for the film: the color palette, font stacks,
+// canvas size + FPS, the real site's geographic bounds (SITE_BOUNDS, used by
+// lib/geo to map lon/lat → pixels), and provenance-tag colors. Everything visual
+// imports from here, so one edit restyles the whole video.
 import { loadFont as loadInter } from "@remotion/google-fonts/Inter";
 import { loadFont as loadJetBrains } from "@remotion/google-fonts/JetBrainsMono";
 

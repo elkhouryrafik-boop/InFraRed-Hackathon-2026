@@ -10,6 +10,10 @@ import { colors, fonts } from "../theme";
 import { Reveal } from "../components/Reveal";
 import { Kicker } from "../components/kit";
 
+// ── SCENE 11 — "What We Don't Yet Know — and Why That's the Point" ──
+// Dusk b-roll closer: lists the honest limitations (buried pipes, cautious
+// setback, uncommitted budget, one city/one July) and lands the thesis
+// "Fidelity, not novelty" + the CoolSpend · Barcelona lockup.
 // Scene 11 — "What We Don't Yet Know — and Why That's the Point" (dusk closer).
 export const Scene11: React.FC<{ df: number }> = ({ df }) => {
   const frame = useCurrentFrame();

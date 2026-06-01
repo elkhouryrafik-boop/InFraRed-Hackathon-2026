@@ -23,6 +23,13 @@ from coolspend import shade_proxy as sp
 
 @dataclass(frozen=True)
 class CoolingEstimate:
+    """One rung's cooling answer, carrying its own honesty label.
+
+    ``is_measured`` is the single source of truth for the measured-vs-estimate
+    badge: True only for the cached/live UTCI rungs, False for the scalar/shade
+    proxy rungs. ``fidelity`` names the rung; ``label`` is the human-readable
+    disclaimer surfaced in the UI/payload.
+    """
     cooled_m2: float | None       # cooled footprint (≥0.5 °C for measured; shaded hot m² for proxy)
     mean_delta_c: float | None    # mean ΔUTCI over the cooled zone
     fidelity: str                 # "scalar" | "shade_proxy" | "cached_utci" | "live_utci"
@@ -101,6 +108,7 @@ class ShadeProxyEstimator:
     fidelity = "shade_proxy"
 
     def estimate(self, trees_lonlat: list, polygon_lonlat: list) -> CoolingEstimate:
+        """Estimate cooling from sim-free crown sun-blockage over the site (NOT measured)."""
         ring_m, trees_m, (lat0, _lon0) = _to_local_m(polygon_lonlat, trees_lonlat)
         if not ring_m or not trees_m:
             return CoolingEstimate(None, None, self.fidelity, False, None,
@@ -124,6 +132,7 @@ class MockScalarEstimator:
     fidelity = "scalar"
 
     def estimate(self, trees_lonlat: list, polygon_lonlat: list) -> CoolingEstimate:
+        """Return the legacy synthetic-scalar estimate (always is_measured=False)."""
         return CoolingEstimate(None, None, self.fidelity, False, None,
                                "synthetic scalar (NOT measured)")
 

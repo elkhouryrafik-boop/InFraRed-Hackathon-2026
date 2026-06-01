@@ -1,5 +1,10 @@
 """Generate per-scene VO (edge-tts Ryan) + VTT word timings; emit timings.json.
 
+This is THE VO pipeline for the full film: it reads each scene's `vo_text` from
+src/data/scenes.json, synthesizes one mp3 per scene with edge-tts, probes the
+real duration with ffprobe, and writes src/data/timings.json — which lib/timeline
+then reads to size each scene. Re-run this whenever scene narration changes.
+
 Run from video/ dir:  python scripts/gen_vo.py
 Outputs:
   public/audio/vo_<NN>.mp3   (one per scene)

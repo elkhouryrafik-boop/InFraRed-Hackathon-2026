@@ -1,3 +1,6 @@
+// Grain.tsx — full-frame film-grain overlay. A static SVG fractal-noise texture
+// is offset per frame so the grain shimmers, blended over the scene to give a
+// filmic, less-digital look.
 import React from "react";
 import { AbsoluteFill, useCurrentFrame } from "remotion";
 

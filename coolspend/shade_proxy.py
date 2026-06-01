@@ -41,6 +41,7 @@ _SHADE_UTCI_DROP_C = 3.0
 
 @dataclass(frozen=True)
 class SunDir:
+    """A sampled sun position: altitude plus the horizontal direction to the sun."""
     altitude_rad: float
     # Unit horizontal vector pointing TOWARD the sun in local metres (x=E, y=N).
     east: float
@@ -85,6 +86,7 @@ def _shadow_center(tx: float, ty: float, height_m: float, sun: SunDir) -> tuple[
 
 @dataclass(frozen=True)
 class ProxyTree:
+    """A shade-casting tree for the proxy: crown radius + height drive shadow length."""
     x_m: float
     y_m: float
     crown_r_m: float
@@ -93,6 +95,7 @@ class ProxyTree:
 
 @dataclass(frozen=True)
 class ProxyCell:
+    """A ground cell whose sun-blockage we score (site-local metres)."""
     x_m: float
     y_m: float
     weight: float       # baseline heat priority (UTCI − comfort), ≥0
@@ -136,6 +139,7 @@ def shade_gain_per_cell(
 
 @dataclass(frozen=True)
 class ShadeProxyResult:
+    """Site-level sim-free shade estimate (all values are ESTIMATES, not measured)."""
     cooled_m2: float          # hot ground newly shaded (sun-weighted), m²
     mean_delta_c: float | None
     weighted_gain: float      # Σ cell.weight × shade_gain (the placement objective)

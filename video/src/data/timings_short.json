@@ -1,0 +1,44 @@
+[
+  {
+    "id": "s1-problem",
+    "comp": "Scene01",
+    "idx": 1,
+    "file": "audio/short_01.mp3",
+    "duration_s": 13.152
+  },
+  {
+    "id": "s2-method",
+    "comp": "Scene05",
+    "idx": 2,
+    "file": "audio/short_02.mp3",
+    "duration_s": 18.984
+  },
+  {
+    "id": "s3-validate",
+    "comp": "Scene08",
+    "idx": 3,
+    "file": "audio/short_03.mp3",
+    "duration_s": 21.072
+  },
+  {
+    "id": "s4-citywide",
+    "comp": "Scene09",
+    "idx": 4,
+    "file": "audio/short_04.mp3",
+    "duration_s": 17.256
+  },
+  {
+    "id": "s5-honesty",
+    "comp": "Scene10",
+    "idx": 5,
+    "file": "audio/short_05.mp3",
+    "duration_s": 13.632
+  },
+  {
+    "id": "s6-close",
+    "comp": "Scene11",
+    "idx": 6,
+    "file": "audio/short_06.mp3",
+    "duration_s": 10.992
+  }
+]

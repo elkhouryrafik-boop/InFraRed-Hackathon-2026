@@ -1,3 +1,9 @@
+// timeline.ts — the single source of truth for the full film's scene order,
+// per-scene length, and caption timing. It joins two data files by position:
+//   data/scenes.json  → titles + caption phrases (the script, see scripts/*)
+//   data/timings.json → measured VO clip duration_s + audio filename
+// and produces SCENES[] (consumed by Main.tsx) + TOTAL_FRAMES (registered in
+// Root.tsx). All times are in seconds here and converted to frames via FPS.
 import { FPS } from "../theme";
 import scenes from "../data/scenes.json";
 import timings from "../data/timings.json";
@@ -28,10 +34,15 @@ const timeArr = timings as { id: string; duration_s: number; file: string }[];
 
 const voStartF = Math.round(HEAD_S * FPS);
 
+// `offset` accumulates as we walk the scenes, so each scene's start frame is the
+// sum of all previous scene lengths (scenes play strictly back-to-back).
 let offset = 0;
 export const SCENES: SceneMeta[] = sceneArr.map((sc, i) => {
+  // total scene length = head settle + spoken VO + tail breathing room.
   const dur = timeArr[i]?.duration_s ?? 8;
   const df = Math.round((HEAD_S + dur + TAIL_S) * FPS);
+  // distribute caption phrases evenly across the spoken span (rough sync; the
+  // -2 frames on toF leaves a tiny gap so consecutive cues don't overlap).
   const spanF = Math.round(dur * FPS);
   const phrases = sc.captions.map((c) => c.text);
   const per = phrases.length > 0 ? spanF / phrases.length : spanF;

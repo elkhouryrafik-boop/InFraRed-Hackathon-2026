@@ -1,3 +1,9 @@
+// geo.ts — coordinate helpers for placing real geographic data over the site
+// rasters. lonLatToPct maps a point to a 0–100% position inside SITE_BOUNDS;
+// metresToPctX converts a real-world length (e.g. a crown radius) to a % of
+// frame width at Barcelona's latitude. Also exports the TreeFeature shape (the
+// data/trees.json schema) and an rgb() color helper.
+
 // Map lon/lat → pixel within a bounds-aligned frame (linear Web-Mercator-lite;
 // the site span is tiny so a linear map is visually exact at this scale).
 import { SITE_BOUNDS } from "../theme";

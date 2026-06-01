@@ -96,6 +96,12 @@ class CandidateSlot:
 
 @dataclass
 class PlacedTree:
+    """One tree the greedy placed, in the order it was selected.
+
+    Coordinates are site-local metres. ``marginal_weight`` is the NEW demand
+    weight this tree shaded at the moment it was chosen (its marginal gain),
+    which is monotonically non-increasing across the placement order.
+    """
     x_m: float
     y_m: float
     species: str
@@ -106,6 +112,12 @@ class PlacedTree:
 
 @dataclass
 class PlacementResult:
+    """Output of place_trees_greedy: the chosen layout plus its coverage bookkeeping.
+
+    ``stop_reason`` records WHY the greedy halted (budget exhausted or no
+    positive-gain affordable slot remained) — the loop is condition-terminated,
+    never capped by a fixed iteration count.
+    """
     placed: list[PlacedTree] = field(default_factory=list)
     total_cost_eur: float = 0.0
     covered_weight: float = 0.0      # demand weight shaded by the final layout
@@ -114,6 +126,7 @@ class PlacementResult:
 
     @property
     def coverage_fraction(self) -> float:
+        """Fraction of total demand weight shaded by the final layout (0..1)."""
         return self.covered_weight / self.total_demand_weight if self.total_demand_weight else 0.0
 
 

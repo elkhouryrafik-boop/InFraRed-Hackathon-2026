@@ -13,7 +13,9 @@ import { Kicker, Headline, Chip, Stat, Panel, GlossCard, Tag, Label } from "../c
 import { Reveal } from "../components/Reveal";
 import { Counter } from "../components/Counter";
 
-// ── SCENE 07 — "Decades of Canopy, Counted in Euros" (~50s) ───────────────────
+// ── SCENE 07 — "Decades of Canopy, Counted in Euros" ──
+// Growth + cost. ACT 1 animates two real Chapman-Richards crown-growth curves;
+// ACT 2 itemises CapEx/OpEx and discounts 40 years of value to a per-tree PV.
 // Two linked acts across df.
 //   ACT 1 (0–48%)  GROWTH — an age×crown axis. Two real Chapman-Richards sigmoids
 //                  rise from a shared planting crown of 1.5 m: a FAST green curve

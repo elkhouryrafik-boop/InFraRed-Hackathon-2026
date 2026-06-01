@@ -14,6 +14,10 @@ import { Reveal } from "../components/Reveal";
 import { Counter } from "../components/Counter";
 
 // ── SCENE 03 — "Four Real Maps of a Real City" ──
+// Establishes the data foundation: four independent real layers (satellite
+// vulnerability grid, OSM geometry, arbrat-viari tree inventory, Padró
+// population). Beats: cards fan→stack into a BCN outline → the 494-cell
+// vulnerability grid → OSM footprints + species table → Padró population/barris.
 // CoolSpend stands on four real, independently sourced layers of Barcelona.
 
 const EASE = Easing.bezier(0.16, 1, 0.3, 1);

@@ -13,7 +13,9 @@ import { Kicker, Headline, Chip, Stat, Panel, GlossCard, Tag, Label } from "../c
 import { Reveal } from "../components/Reveal";
 import { Counter } from "../components/Counter";
 
-// ── SCENE 05 — "The Greedy Shade-Gain Engine" ────────────────────────────────
+// ── SCENE 05 — "The Greedy Shade-Gain Engine" ──
+// The technical centerpiece. PICKS[] is the pre-baked greedy result, but every
+// number is animated from its source on screen. See the 4-act breakdown below.
 // The technical heart of the film: the SHIPPED placement method =
 // budgeted weighted-maximum-coverage GREEDY with ray-cast shade-gain and the
 // submodular (1 − 1/e) guarantee. Four acts laid across the full df.

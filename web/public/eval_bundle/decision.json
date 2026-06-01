@@ -1,0 +1,74 @@
+{
+  "headline": "Smart placement: 30 trees, \u20ac300,000, 0.66 \u00b0C mean UTCI drop, covers 12% of hot-paved demand. Every in-ground tree requires a utility survey.",
+  "backend": "live",
+  "disclaimer": "LIVE Infrared UTCI \u2014 30 greedily-placed trees; budgeted weighted-max-coverage (submodular, 1-1/e bounded). Every in-ground tree requires a pre-dig utility survey (underground mains not in open data).",
+  "site_center_lonlat": [
+    2.1670852285217506,
+    41.382757214815236
+  ],
+  "site_width_m": 272.93281453679083,
+  "site_depth_m": 121.65922267269343,
+  "utci_scale_c": [
+    20.0,
+    40.0
+  ],
+  "configurations": [
+    {
+      "rank": 1,
+      "label": "SMART_PLACEMENT",
+      "tree_count": 30,
+      "cost_eur": 300000.0,
+      "cooled_footprint_m2": 4584.0,
+      "eur_per_m2": 65.4,
+      "delta_utci_c": 0.66,
+      "utci_baseline_mean": 27.85,
+      "utci_intervention_mean": 27.19,
+      "utci_baseline_peak": 30.81,
+      "utci_intervention_peak": 30.3,
+      "cost_per_utci_degree": 65.4,
+      "cooled_profile": {
+        "cooled_m2_by_band": {
+          "0.5": 4584,
+          "1": 3552,
+          "2": 2308
+        },
+        "mean_drop_c": 2.405,
+        "std_drop_c": 1.567,
+        "p10_drop_c": 0.66,
+        "p90_drop_c": 4.94,
+        "peak_drop_c": 6.36,
+        "cooled_fraction": 0.2586,
+        "heat_stress_relieved_m2": 1124.0,
+        "heat_stress_threshold_c": 26.0,
+        "largest_cooled_patch_m2": 2872.0,
+        "n_cooled_patches": 8,
+        "valid_cells_m2": 17724.0,
+        "bands_c": [
+          0.5,
+          1.0,
+          2.0
+        ]
+      },
+      "species": [
+        "European hackberry",
+        "Japanese pagoda tree",
+        "Tipa"
+      ]
+    }
+  ],
+  "sensitivity": {
+    "method": "TOPSIS weight sweep + \u20ac/\u00b0C primary-key invariance (offline, no re-sim)",
+    "closeness_weight_sweep": {
+      "n_steps": 21,
+      "modal_winner": "SMART_PLACEMENT",
+      "modal_winner_share": 1.0,
+      "flips": false
+    },
+    "primary_key_invariance": {
+      "rank1_by_primary": "SMART_PLACEMENT",
+      "weight_invariant": true,
+      "min_kpi_gap": null
+    },
+    "verdict": "rank-1 invariant to TOPSIS weights (decided by \u20ac/\u00b0C primary key)"
+  }
+}

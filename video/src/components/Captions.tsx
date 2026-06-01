@@ -1,3 +1,8 @@
+// Captions.tsx — lower-third subtitle renderer. Shows whichever Cue (a phrase
+// with frame in/out times) covers the current frame, with a short fade in/out.
+// cuesFromTimings() is the helper that turns caption phrases + VTT segments into
+// those frame-timed cues; the timeline modules build cues a simpler way (even
+// split), so cuesFromTimings is the VTT-driven alternative.
 import React from "react";
 import { interpolate, useCurrentFrame } from "remotion";
 import { colors, fonts } from "../theme";

@@ -1,0 +1,1 @@
+And every number is honest. Three backends, mock, cached, and live, keep a synthetic preview from ever masquerading as a measurement. The rule is simple: never report a number we did not compute.

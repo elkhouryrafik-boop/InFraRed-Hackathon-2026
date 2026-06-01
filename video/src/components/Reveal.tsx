@@ -1,6 +1,10 @@
 import React from "react";
 import { Easing, interpolate, useCurrentFrame } from "remotion";
 
+// Reveal — fade + slide/scale entrance wrapper. Animates children from hidden to
+// shown over [startFrame, startFrame+durationInFrames] using one eased 0→1 t
+// that drives opacity, translate, and scale together. Used everywhere for
+// staggered content entrances.
 type Props = {
   startFrame: number;
   durationInFrames?: number;

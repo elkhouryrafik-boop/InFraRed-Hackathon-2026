@@ -37,6 +37,22 @@ peak felt temperature **31.0 → 29.8 °C**; cooling depth 3,260 m² ≥1 °C / 
 excludes the species Barcelona is phasing out (Robinia, Ligustrum lucidum, Ulmus pumila)
 per the *Pla Director de l'Arbrat de Barcelona*.
 
+## Repository layout
+
+```
+coolspend/        Python backend — optimiser, spatial surrogate, Infrared client,
+                  ecology/cost models, FastAPI server (api_server.py), tests/
+  docs/           Literature-anchored method notes (planting, species, costs)
+web/              Primary deliverable — Vite + React + deck.gl decision UI
+video/            Remotion explainer film (source for the in-app intro video)
+L1_INGEST_data/   Real input data: BCN climate (EPW), scored grid (494 cells),
+                  intervention costs — read directly by coolspend/ at runtime
+tools/            One-off utilities (report build, portfolio precompute, transcribe)
+PAPER.md          Full method + results writeup (the canonical project explanation)
+MOCKS.md          Provenance ledger: what is measured vs heuristic vs unsourced
+DATA_SOURCES.md   Origin and licence of every input dataset
+```
+
 ## Run locally
 
 **Tokens** (web/.env.local): `VITE_MAPBOX_TOKEN` (basemap, required);

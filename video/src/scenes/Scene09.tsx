@@ -12,6 +12,10 @@ import { Counter } from "../components/Counter";
 import { Reveal } from "../components/Reveal";
 import { Kicker, Tag, Label, Panel } from "../components/kit";
 
+// ── SCENE 09 — "Spend €1,000,000 across the city" ──
+// The citywide rollup over a Ken-Burns screenshot of the live app: a big
+// committed-budget counter (€900k of €1M) plus stat chips (trees, sites, m²
+// cooled, residents served) — the measured multi-site portfolio.
 export const Scene09: React.FC<{ df: number }> = ({ df }) => {
   const frame = useCurrentFrame();
   const t = interpolate(frame, [0, df], [0, 1], { extrapolateRight: "clamp", easing: Easing.bezier(0.4, 0, 0.2, 1) });
