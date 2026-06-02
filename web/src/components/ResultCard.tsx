@@ -21,6 +21,10 @@ interface ResultCardProps {
   /** Show the docked growth slider only when there are trees to age. */
   showGrowth: boolean
   onSeeCityPlan: () => void
+  /** Persist this run ("make it remember"). Omitted ⇒ no Save button. */
+  onSave?: () => void
+  /** True while a save is in flight (disables the button). */
+  saving?: boolean
 }
 
 /** SVG ring gauge: mint arc on a flat track, hero number in the centre. */
@@ -59,6 +63,8 @@ export function ResultCard({
   growthParams,
   showGrowth,
   onSeeCityPlan,
+  onSave,
+  saving,
 }: ResultCardProps) {
   const top = useMemo(() => rankOne(bundle.decision.configurations), [bundle.decision])
   const kpi = top ? toKpiView(top) : null
@@ -167,9 +173,21 @@ export function ResultCard({
         </div>
       )}
 
-      <button type="button" className="cs-btn cs-btn--ghost rc-cta" onClick={onSeeCityPlan}>
-        See the €1M city plan →
-      </button>
+      <div className="rc-actions">
+        {onSave && (
+          <button
+            type="button"
+            className="cs-btn cs-btn--primary rc-save"
+            onClick={onSave}
+            disabled={saving}
+          >
+            {saving ? 'Saving…' : '⤓ Save this run'}
+          </button>
+        )}
+        <button type="button" className="cs-btn cs-btn--ghost rc-cta" onClick={onSeeCityPlan}>
+          See the €1M city plan →
+        </button>
+      </div>
     </section>
   )
 }

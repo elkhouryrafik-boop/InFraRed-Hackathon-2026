@@ -1,0 +1,38 @@
+# Render Blueprint for the CoolSpend FastAPI backend.
+# Deploy: push to GitHub, then in Render → New → Blueprint, point at this repo.
+# The frontend deploys separately on Vercel (see DEPLOY.md).
+services:
+  - type: web
+    name: coolspend-api
+    runtime: python
+    plan: free                # OK for a demo; upgrade to Starter if live UTCI grids OOM
+    buildCommand: pip install -r requirements-api.txt
+    startCommand: uvicorn coolspend.api_server:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      # The Infrared API key — SECRET. Set its value in the Render dashboard; never
+      # commit it. (sync:false keeps it out of this file.)
+      - key: INFRARED_API_KEY
+        sync: false
+      # mock | cached | live. `live` runs real Infrared UTCI (~60-90s/eval, costs
+      # API quota, needs the key). `cached` replays the bundled showcase and falls
+      # back to mock for new polygons.
+      - key: INFRARED_BACKEND
+        value: live
+      # Infrared weather endpoint has intermittent 500s; `auto` falls back to the
+      # bundled measured EPW so a live run never hard-blocks on weather.
+      - key: INFRARED_WEATHER_SOURCE
+        value: auto
+      # Comma-separated allowed browser origins — set to your Vercel URL(s) so the
+      # frontend's cross-origin /api fetch is not blocked by CORS.
+      - key: CORS_ORIGINS
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.12.6"
+    # Persistent disk for the SQLite runs DB + saved-run blobs (coolspend/var).
+    # NOTE: free-tier disks can be reset on redeploy — for durable storage swap
+    # DATABASE_URL → Neon Postgres and the blob store → S3/R2 (see store.py seams).
+    disk:
+      name: coolspend-var
+      mountPath: /opt/render/project/src/coolspend/var
+      sizeGB: 1

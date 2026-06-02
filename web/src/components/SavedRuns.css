@@ -1,0 +1,127 @@
+/* SavedRuns — saved-evaluation gallery, bottom-left in the design phase. Uses the
+   shared .panel glass + design tokens (web/src/styles/tokens.css). */
+
+.saved-runs {
+  position: absolute;
+  left: var(--s-4);
+  bottom: var(--s-4);
+  z-index: 12;
+  width: 280px;
+  max-height: 46vh;
+  display: flex;
+  flex-direction: column;
+  padding: var(--s-3) var(--s-3) var(--s-2);
+}
+
+.sr-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 var(--s-1) var(--s-2);
+}
+
+.sr-title {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semi);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--brand);
+}
+
+.sr-count {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+
+.sr-error {
+  font-size: var(--fs-xs);
+  color: var(--danger);
+  padding: var(--s-1) var(--s-2);
+}
+
+.sr-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.sr-item {
+  width: 100%;
+  text-align: left;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    'name meta'
+    'date meta';
+  gap: 2px var(--s-2);
+  align-items: center;
+  background: var(--surface-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  padding: var(--s-2) var(--s-3);
+  cursor: pointer;
+  color: var(--ink-1);
+  font-family: var(--font-ui);
+  transition: background var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
+}
+
+.sr-item:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--hairline-strong);
+}
+
+.sr-item:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.sr-item__name {
+  grid-area: name;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-med);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sr-item__date {
+  grid-area: date;
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+
+.sr-item__meta {
+  grid-area: meta;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--s-1);
+}
+
+.sr-chip {
+  font-size: var(--fs-xs);
+  padding: 1px var(--s-1);
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.sr-chip.is-cool {
+  background: var(--measured-bg);
+  color: var(--measured);
+}
+
+.sr-item__loading {
+  grid-area: meta;
+  font-size: var(--fs-xs);
+  color: var(--brand);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sr-item { transition: none; }
+}

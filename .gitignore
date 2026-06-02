@@ -9,6 +9,8 @@ __pycache__/
 outputs/
 coolspend/outputs/
 coolspend/cache/          # large LiDAR/OSM/Infrared caches; regenerated on demand
+# runtime persistence: SQLite runs db + saved-run blobs
+coolspend/var/
 .planning/spikes/*/audit_record.json
 
 # ─── Node ─────────────────────────────────────────────────

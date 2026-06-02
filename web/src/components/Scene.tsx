@@ -22,12 +22,14 @@ import { TreeInspect } from './TreeInspect'
 import { ActionRail } from './ActionRail'
 import { ModeSwitch } from './ModeSwitch'
 import { ResultCard } from './ResultCard'
+import { SavedRuns } from './SavedRuns'
 import { CitywidePanel } from './CitywidePanel'
+import { saveRun, evaluateResponseToBundle, type EvaluateResponse } from '../lib/api'
 import { Onboarding, type OnboardingIntent } from './Onboarding'
 import { Legend } from './Legend'
 import { useAreaDraw } from './useAreaDraw'
 import { canopyScale, DEFAULT_GROWTH, MAX_MATURITY_YEARS } from '../lib/growth'
-import { useCesiumTileset, tilesetOpacity } from './useCesiumTileset'
+import { useCesiumTileset } from './useCesiumTileset'
 import { buildLayers } from '../lib/layers'
 import { boundaryOuterRing, toDeckBounds } from '../lib/bundle'
 import type {
@@ -55,14 +57,6 @@ const SITE_PITCH = 50
 const SITE_BEARING = -18
 const CITY_VIEW = { longitude: 2.17, latitude: 41.39, zoom: 10.5, pitch: 0, bearing: 0 }
 const FLYTO_DURATION = 1200
-
-const EMPTY_MAP_STYLE = {
-  version: 8 as const,
-  name: 'coolspend-empty',
-  sources: {},
-  glyphs: 'mapbox://fonts/mapbox/{fontstack}/{range}.pbf',
-  layers: [{ id: 'bg', type: 'background' as const, paint: { 'background-color': '#0b0f14' } }],
-}
 
 interface SceneProps {
   bundle: WebBundle
@@ -164,11 +158,17 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
 
   const [scenario, setScenario] = useState<UtciScenario>('intervention')
   const [selectedTree, setSelectedTree] = useState<TreeProperties | null>(null)
-  const [tilesLoaded, setTilesLoaded] = useState(false)
+  const [, setTilesLoaded] = useState(false)
   const [rasterOpacity, setRasterOpacity] = useState(0.7)
   const [credits, setCredits] = useState<string | null>(null)
   const [budgetEur, setBudgetEur] = useState(500_000)
   const [evaluating, setEvaluating] = useState(false)
+  // Save/load ("make it remember"): savedVersion bumps after a save to refetch the
+  // gallery; lastPolyRef keeps the drawn ring (draw.clear wipes it on evaluate) so
+  // a Save can record the polygon.
+  const [saving, setSaving] = useState(false)
+  const [savedVersion, setSavedVersion] = useState(0)
+  const lastPolyRef = useRef<LngLat[] | null>(null)
   // Vignette dim during scripted flights + intro (§5).
   const [vignette, setVignette] = useState(0.45)
 
@@ -306,6 +306,8 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
   // ── Evaluate → recenter via the authoritative flyTo (the camera-bug fix, §5).
   const handleEvaluated = useCallback(
     (b: WebBundle) => {
+      // Capture the drawn ring BEFORE clear wipes it, so a later Save can store it.
+      if (draw.ring) lastPolyRef.current = draw.ring
       draw.clear()
       setSelectedTree(null)
       onBundle?.(b)
@@ -330,9 +332,7 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
   // overlays sit flat), so no modelMatrix is computed here.
 
   const cesium = useCesiumTileset(viewState.zoom)
-  const tilesOpacity = tilesetOpacity(viewState.zoom)
 
-  const photorealActive = tilesLoaded && tilesOpacity > 0.5
   // 2D = clean empty satellite (analysis). 3D = light basemap (white buildings
   // extrude cleanly on it) for the cinematic view.
   const mapStyle = view3d
@@ -341,6 +341,47 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
 
   const boundaryRing = useMemo(() => boundaryOuterRing(bundle.boundary), [bundle.boundary])
   const rasterBounds = useMemo(() => toDeckBounds(bundle.bounds), [bundle.bounds])
+
+  // ── Save this run (persist) + reload a saved run (the "memory" loop).
+  const onSaveRun = useCallback(async () => {
+    const suggested = (bundle.decision.headline || 'My run').split(/[:,.]/)[0].trim().slice(0, 60)
+    const name = window.prompt('Name this run', suggested)
+    if (!name) return
+    const polygon = lastPolyRef.current ?? (boundaryRing as LngLat[])
+    if (!polygon || polygon.length < 3) {
+      window.alert('Cannot save: this run has no site polygon.')
+      return
+    }
+    const payload: EvaluateResponse = {
+      decision: bundle.decision,
+      boundary: bundle.boundary,
+      trees: bundle.trees,
+      bounds: bundle.bounds,
+      baselineImageUrl: bundle.baselineImageUrl || null,
+      interventionImageUrl: bundle.interventionImageUrl || null,
+      impervious: bundle.impervious ?? null,
+      canopy: bundle.canopy ?? null,
+      growth: bundle.growth ?? null,
+    }
+    setSaving(true)
+    try {
+      await saveRun({ name, polygon, budget_eur: budgetEur, payload })
+      setSavedVersion((v) => v + 1)
+    } catch (e: unknown) {
+      window.alert('Save failed: ' + (e instanceof Error ? e.message : String(e)))
+    } finally {
+      setSaving(false)
+    }
+  }, [bundle, boundaryRing, budgetEur])
+
+  const onPickRun = useCallback(
+    (resp: EvaluateResponse) => {
+      if (resp.empty || !resp.decision) return
+      lastPolyRef.current = resp.site_polygon_lonlat ?? null
+      handleEvaluated(evaluateResponseToBundle(resp))
+    },
+    [handleEvaluated],
+  )
 
   // Cross-fade target: 0 = baseline, 1 = with-trees. Deck tweens the two stacked
   // drapes' opacities, so the Evaluate reveal + the toggle dissolve smoothly.
@@ -751,6 +792,9 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
         </div>
       )}
 
+      {/* Saved runs gallery — the app's memory (reload a past evaluation). */}
+      {phase === 'design' && <SavedRuns version={savedVersion} onPick={onPickRun} />}
+
       {phase === 'result' && (
         <ResultCard
           bundle={bundle}
@@ -759,6 +803,8 @@ export function Scene({ bundle, onBundle, phase, setPhase, seenKey }: SceneProps
           growthParams={growthParams}
           showGrowth={!!bundle.trees && bundle.trees.features.length > 0}
           onSeeCityPlan={() => setPhase('citywide')}
+          onSave={onSaveRun}
+          saving={saving}
         />
       )}
 

@@ -1,0 +1,37 @@
+# CoolSpend — FastAPI deploy dependency set (Render web service).
+#
+# This is the SLIM set the live API server actually needs — NOT the HF-Spaces
+# requirements.txt (which is pinned for the Gradio app). Derived from the real
+# import graph of `coolspend.api_server` + the /api/evaluate path (smart_evaluate,
+# export_web, ground_analysis, citywide, store).
+#
+# Start it with:  uvicorn coolspend.api_server:app --host 0.0.0.0 --port $PORT
+
+# ── Web server ───────────────────────────────────────────────────────────────
+fastapi==0.112.4          # pinned to match the repo's tested FastAPI/Starlette pair
+starlette==0.37.2         # fastapi 0.112.4-compatible
+uvicorn[standard]>=0.30   # ASGI server (Render start command)
+python-multipart>=0.0.9   # form parsing (pulled by fastapi features)
+
+# ── Pipeline / geometry / numerics (real import graph) ─────────────────────────
+pydantic>=2.0,<3
+pyproj>=3.6,<4
+shapely>=2.0,<3.0
+numpy>=1.26,<2.0
+scipy>=1.10             # ndimage (cooled-patch contiguity) + pipeline numerics
+pymoo==0.6.1           # imported on the pipeline path; pinned (0.6.x API)
+
+# ── Heatmap PNG export (lazy-imported in export_web._colorize_utci_png) ────────
+matplotlib>=3.7,<4.0
+Pillow>=10.0           # PIL.Image — required at runtime to write the UTCI PNGs
+
+# ── Data fetch + weather + env ─────────────────────────────────────────────────
+requests>=2.31         # Open Data BCN inventory + ICGC WMS/raster
+python-dotenv>=1.0     # load .env (local); on Render use real env vars
+
+# ── Live Infrared backend (INFRARED_BACKEND=live) ──────────────────────────────
+infrared-sdk           # lazily imported; only needed for the live backend
+
+# ── OPTIONAL ───────────────────────────────────────────────────────────────────
+# rasterio>=1.3        # ICGC LiDAR canopy-height sampling (bcn_lidar). Absent ->
+#                      # canopy context degrades to None; the pipeline is unaffected.

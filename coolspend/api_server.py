@@ -81,6 +81,22 @@ class EvaluateRequest(PolygonRequest):
     w_ecological: float = Field(0.4, ge=0, le=1)
 
 
+class SaveRunRequest(BaseModel):
+    """Body of POST /api/runs: persist an evaluated run so the app remembers it.
+
+    `payload` is the /api/evaluate response the client already holds (decision +
+    boundary + trees + bounds + image URLs + impervious/canopy/growth). The server
+    snapshots the heatmap PNGs out of the shared eval bundle into the run's own
+    blob dir, so a later evaluate cannot corrupt this saved run.
+    """
+    name: str = Field(..., min_length=1, max_length=120)
+    polygon: list[list[float]] = Field(..., min_length=3)
+    budget_eur: float = Field(DEFAULT_BUDGET_EUR, gt=0)
+    w_thermal: float = Field(0.6, ge=0, le=1)
+    w_ecological: float = Field(0.4, ge=0, le=1)
+    payload: dict[str, Any] = Field(..., description="The /api/evaluate response to persist")
+
+
 # ── Geometry helpers (UTM-31N via the single CRS boundary in spatial_engine) ──
 
 def _ring_closed(polygon: list[list[float]]) -> list[list[float]]:
@@ -146,13 +162,24 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title="CoolSpend API", version="1.0")
 
-    # Vite dev server runs on a different origin; allow local dev origins.
+    # Persistence ("make it remember"): create the runs table on boot so the
+    # save/load endpoints work on a fresh deploy with no manual migration step.
+    from coolspend import store  # noqa: PLC0415
+    store.init_db()
+
+    # Vite dev server runs on a different origin; allow local dev origins. In a
+    # split production deploy (frontend on Vercel, backend on Render) the frontend
+    # is yet another origin, so CORS_ORIGINS (comma-separated) appends the deployed
+    # web URL(s) — without it the browser would block the cross-origin /api fetch.
+    _origins = [
+        "http://localhost:5173", "http://127.0.0.1:5173",
+        "http://localhost:4173", "http://127.0.0.1:4173",
+    ]
+    _extra = os.environ.get("CORS_ORIGINS", "")
+    _origins += [o.strip() for o in _extra.split(",") if o.strip()]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:5173", "http://127.0.0.1:5173",
-            "http://localhost:4173", "http://127.0.0.1:4173",
-        ],
+        allow_origins=_origins,
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -334,6 +361,47 @@ def create_app() -> FastAPI:
         from coolspend.citywide import load_scored_grid, allocate_citywide  # noqa: PLC0415
         cells = load_scored_grid()
         return allocate_citywide(cells, budget_eur=budget_eur, top_n=min(top_n, 20), backend=backend)
+
+    # ── Saved runs: make it remember (Day-2 slides, Part 2) ──────────────────
+
+    @app.post("/api/runs")
+    def save_run(req: SaveRunRequest) -> dict[str, Any]:
+        """Persist an evaluated run (metadata row + heatmap blobs). Returns {id}.
+
+        The heatmaps are snapshotted out of the shared eval bundle (_EVAL_DIR,
+        still present from the just-finished evaluate) into the run's own blob dir.
+        """
+        run_id = store.save_run(
+            name=req.name,
+            polygon=req.polygon,
+            params={
+                "budget_eur": req.budget_eur,
+                "w_thermal": req.w_thermal,
+                "w_ecological": req.w_ecological,
+                "backend": _backend_mode(),
+            },
+            payload=req.payload,
+            eval_dir=_EVAL_DIR,
+        )
+        return {"id": run_id}
+
+    @app.get("/api/runs")
+    def list_runs() -> list[dict[str, Any]]:
+        """List saved runs (newest first) with headline KPIs for the gallery."""
+        return store.list_runs()
+
+    @app.get("/api/runs/{run_id}")
+    def get_run(run_id: int) -> dict[str, Any]:
+        """Return a saved run as an evaluate-shaped payload the frontend re-renders."""
+        run = store.get_run(run_id)
+        if run is None:
+            raise HTTPException(status_code=404, detail=f"No saved run #{run_id}.")
+        return run
+
+    # Serve the blob store (saved-run heatmaps) so a reloaded run's PNGs resolve.
+    # Mounted BEFORE the catch-all "/" below, mirroring the /eval_bundle mount.
+    _blob_url, _blob_path = store.blob_mount()
+    app.mount(_blob_url, StaticFiles(directory=str(_blob_path)), name="blobs")
 
     # Serve the runtime-written evaluate bundle so its PNGs resolve in BOTH dev and
     # a built deploy. In dev vite serves web/public/eval_bundle; in production the

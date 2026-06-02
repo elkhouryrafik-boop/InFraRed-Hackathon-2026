@@ -114,6 +114,8 @@
   border-top: 1px solid var(--hairline);
 }
 
+.rc-actions { display: flex; flex-direction: column; gap: var(--s-2); margin-top: var(--s-2); }
+.rc-save { width: 100%; }
 .rc-cta { width: 100%; margin-top: var(--s-1); }
 
 @media (max-width: 640px) {

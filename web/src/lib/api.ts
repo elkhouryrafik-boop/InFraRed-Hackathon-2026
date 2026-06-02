@@ -1,5 +1,11 @@
 // HTTP client for the CoolSpend backend (coolspend/api_server.py).
 // In dev, vite proxies /api -> http://localhost:8000 (see vite.config.ts).
+// In a split production deploy (frontend on Vercel, backend on Render) the dev
+// proxy does not exist, so VITE_API_BASE (set at build time on Vercel) points at
+// the backend origin. Default '' keeps relative paths for local dev + any
+// same-origin deploy, so nothing changes unless you opt in.
+const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, '') ?? ''
+const apiUrl = (path: string): string => API_BASE + path
 
 import type {
   Decision,
@@ -36,10 +42,12 @@ export interface EvaluateResponse {
   impervious?: ImperviousAnalysis | null
   canopy?: CanopyCover | null
   growth?: { ramp_years: number; initial_fraction: number; horizon_years: number } | null
+  /** Present only on a payload returned by GET /api/runs/{id} — the saved drawn ring. */
+  site_polygon_lonlat?: LngLat[]
 }
 
 async function postJson<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(path, {
+  const res = await fetch(apiUrl(path), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -77,9 +85,52 @@ export function fetchEvaluate(params: EvaluateParams): Promise<EvaluateResponse>
 import type { CitywideScan } from './types'
 
 export async function fetchCitywideScan(topN = 20, budgetEur = 1_000_000): Promise<CitywideScan> {
-  const res = await fetch(`/api/citywide/scan?top_n=${topN}&budget_eur=${budgetEur}`)
+  const res = await fetch(apiUrl(`/api/citywide/scan?top_n=${topN}&budget_eur=${budgetEur}`))
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
   return (await res.json()) as CitywideScan
+}
+
+// ── Saved runs (make it remember) ────────────────────────────────────────────
+
+/** One row in the saved-runs gallery — headline KPIs only (no heavy geometry). */
+export interface RunSummary {
+  id: number
+  created_at: string
+  name: string
+  backend: string | null
+  budget_eur: number | null
+  delta_utci_c: number | null
+  cooled_m2: number | null
+  n_trees: number | null
+  cost_eur: number | null
+  eur_per_m2: number | null
+}
+
+export interface SaveRunParams {
+  name: string
+  polygon: LngLat[]
+  budget_eur?: number
+  w_thermal?: number
+  w_ecological?: number
+  /** The evaluate response to persist (decision/boundary/trees/bounds + image URLs). */
+  payload: EvaluateResponse
+}
+
+export function saveRun(params: SaveRunParams): Promise<{ id: number }> {
+  return postJson<{ id: number }>('/api/runs', params)
+}
+
+export async function listRuns(): Promise<RunSummary[]> {
+  const res = await fetch(apiUrl('/api/runs'))
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+  return (await res.json()) as RunSummary[]
+}
+
+/** Load a saved run as an evaluate response the Scene re-renders via the usual path. */
+export async function getRun(id: number): Promise<EvaluateResponse> {
+  const res = await fetch(apiUrl(`/api/runs/${id}`))
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+  return (await res.json()) as EvaluateResponse
 }
 
 /**
