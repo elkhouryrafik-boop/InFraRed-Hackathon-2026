@@ -42,7 +42,11 @@ export function FallbackScene({ bundle }: FallbackSceneProps) {
       buildLayers({
         tilesetUrl: null, // no Cesium without a basemap context
         boundaryRing,
-        raster: { image: rasterImage, bounds: rasterBounds },
+        // Fallback shows a single scenario drape; map it to the baseline slot
+        // with rasterMix=0 so the cross-fade machinery resolves to one image.
+        rasterBaseline: rasterImage ? { image: rasterImage, bounds: rasterBounds } : null,
+        rasterIntervention: null,
+        rasterMix: 0,
         rasterOpacity,
         trees: bundle.trees,
         modelMatrix: null, // flat — no elevation lift in fallback

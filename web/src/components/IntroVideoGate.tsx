@@ -3,14 +3,14 @@ import './IntroVideoGate.css'
 
 const VIDEOS = {
   short: '/coolspend-2min.mp4',
-  long: '/coolspend-explainer.mp4',
 } as const
 type Choice = keyof typeof VIDEOS
 
 /**
- * First-visit front door. Shows a choice — a 2-minute brief, the 10-minute
- * deep-dive, or skip — then plays the chosen film full-screen (autoplay muted,
- * one tap to unmute, skippable). On end/skip it calls onDone, revealing the app.
+ * First-visit front door. Offers the 2-minute brief or skip, then plays the
+ * film full-screen (autoplay muted, one tap to unmute, skippable). On end/skip
+ * it calls onDone, revealing the app. The 10-minute deep-dive is not shipped
+ * with the web demo (too large for edge hosting) — it lives in the docs.
  */
 export function IntroVideoGate({ onDone }: { onDone: () => void }) {
   const ref = useRef<HTMLVideoElement | null>(null)
@@ -69,18 +69,13 @@ export function IntroVideoGate({ onDone }: { onDone: () => void }) {
         <div className="ig-choose">
           <div className="ig-choose__brand">● COOLSPEND · BARCELONA</div>
           <h1 className="ig-choose__title">Where each euro buys the most cooling.</h1>
-          <p className="ig-choose__sub">Watch how the platform works — pick your depth.</p>
+          <p className="ig-choose__sub">Watch how the platform works — a 2-minute brief.</p>
 
           <div className="ig-choose__opts">
-            <button className="ig-opt" onClick={() => setChoice('short')}>
+            <button className="ig-opt ig-opt--feature" onClick={() => setChoice('short')}>
               <span className="ig-opt__time">2 min</span>
               <span className="ig-opt__name">Brief intro</span>
-              <span className="ig-opt__desc">Fast and to the point — the idea and the result.</span>
-            </button>
-            <button className="ig-opt ig-opt--feature" onClick={() => setChoice('long')}>
-              <span className="ig-opt__time">10 min</span>
-              <span className="ig-opt__name">Full deep-dive</span>
-              <span className="ig-opt__desc">Every detail of how it's designed — data, method, honesty.</span>
+              <span className="ig-opt__desc">The idea and the result — fast and to the point.</span>
             </button>
           </div>
 
@@ -117,7 +112,7 @@ export function IntroVideoGate({ onDone }: { onDone: () => void }) {
       </button>
 
       <div className="introgate__caption">
-        CoolSpend · {choice === 'short' ? '2-min brief' : '10-min deep-dive'}
+        CoolSpend · 2-min brief
       </div>
 
       <div className="introgate__bar">
