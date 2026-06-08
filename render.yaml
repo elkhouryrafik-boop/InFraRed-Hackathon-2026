@@ -1,6 +1,18 @@
-# Render Blueprint for the CoolSpend FastAPI backend.
+# Render Blueprint for the CoolSpend FastAPI backend + its database.
 # Deploy: push to GitHub, then in Render → New → Blueprint, point at this repo.
-# The frontend deploys separately on Vercel (see DEPLOY.md).
+# Render reads this file and provisions BOTH the web service and a free Postgres,
+# wiring DATABASE_URL automatically (no manual copy-paste). The frontend deploys
+# separately on Vercel (see DEPLOY.md).
+
+# Free managed Postgres — durable saved-run storage (metadata + heatmap blobs).
+# Note: Render's free Postgres is deleted ~30 days after creation; fine for a demo,
+# upgrade the plan for production. SQLite is the local default (DATABASE_URL unset).
+databases:
+  - name: coolspend-db
+    plan: free
+    databaseName: coolspend
+    user: coolspend
+
 services:
   - type: web
     name: coolspend-api
@@ -29,10 +41,12 @@ services:
         sync: false
       - key: PYTHON_VERSION
         value: "3.12.6"
-    # Persistent disk for the SQLite runs DB + saved-run blobs (coolspend/var).
-    # NOTE: free-tier disks can be reset on redeploy — for durable storage swap
-    # DATABASE_URL → Neon Postgres and the blob store → S3/R2 (see store.py seams).
-    disk:
-      name: coolspend-var
-      mountPath: /opt/render/project/src/coolspend/var
-      sizeGB: 1
+      # Durable storage: Render injects the free Postgres connection string here
+      # from the `databases` block above, so saved runs (metadata + heatmap blobs)
+      # survive redeploys. The free web tier has NO persistent disk — keeping the
+      # data in Postgres (not a file) is what makes "save → it's still there"
+      # hold across a restart. store.py speaks both Postgres and SQLite.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: coolspend-db
+          property: connectionString

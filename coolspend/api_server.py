@@ -41,7 +41,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -398,10 +398,19 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=404, detail=f"No saved run #{run_id}.")
         return run
 
-    # Serve the blob store (saved-run heatmaps) so a reloaded run's PNGs resolve.
-    # Mounted BEFORE the catch-all "/" below, mirroring the /eval_bundle mount.
-    _blob_url, _blob_path = store.blob_mount()
-    app.mount(_blob_url, StaticFiles(directory=str(_blob_path)), name="blobs")
+    # Serve saved-run blobs (heatmap PNGs) from the DB-backed blob store so a
+    # reloaded run's images resolve. Registered BEFORE the catch-all "/" mount so
+    # it wins the match. Durable: the bytes live in the database (store.py), not on
+    # the ephemeral host disk a free-tier deploy gives you.
+    _blob_prefix = store.blob_base_url()  # default "/blobs"
+
+    @app.get(_blob_prefix + "/{path:path}")
+    def serve_blob(path: str) -> Response:
+        blob = store.get_blob(path)
+        if blob is None:
+            raise HTTPException(status_code=404, detail=f"No saved blob at {path!r}.")
+        content, mime = blob
+        return Response(content=content, media_type=mime)
 
     # Serve the runtime-written evaluate bundle so its PNGs resolve in BOTH dev and
     # a built deploy. In dev vite serves web/public/eval_bundle; in production the

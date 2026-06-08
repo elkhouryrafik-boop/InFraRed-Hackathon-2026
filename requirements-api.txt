@@ -29,6 +29,12 @@ Pillow>=10.0           # PIL.Image — required at runtime to write the UTCI PNG
 requests>=2.31         # Open Data BCN inventory + ICGC WMS/raster
 python-dotenv>=1.0     # load .env (local); on Render use real env vars
 
+# ── Persistence (saved runs) ───────────────────────────────────────────────────
+# Postgres driver for the durable deploy. SQLite (stdlib) is the local default, so
+# psycopg is only imported when DATABASE_URL is a postgres:// URL (see store.py).
+# [binary] ships a prebuilt wheel — no system libpq needed on the Render builder.
+psycopg[binary]>=3.1
+
 # ── Live Infrared backend (INFRARED_BACKEND=live) ──────────────────────────────
 infrared-sdk           # lazily imported; only needed for the live backend
 

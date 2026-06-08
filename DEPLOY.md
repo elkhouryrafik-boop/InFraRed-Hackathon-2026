@@ -1,14 +1,20 @@
 # Deploy CoolSpend to a live URL
 
 The [IAAC Day-2](https://slides.infrared.city/iaac-day2/) "ship it" path:
-**frontend → Vercel · backend → Render · (optional) database → Neon.** `main` is
-production; open a PR for a preview URL.
+**frontend → Vercel · backend → Render · database → Render Postgres (free).** `main`
+is production; open a PR for a preview URL.
 
 ```
 Browser ──> Vercel (web/, static)  ──/api/*──>  Render (coolspend FastAPI)  ──>  infrared.city
                                                       │
-                                                      └── coolspend/var/  (SQLite runs + blobs)
+                                                      └── Render Postgres  (runs metadata + heatmap blobs)
 ```
+
+The `render.yaml` blueprint provisions the FastAPI service **and** a free Postgres
+together and injects `DATABASE_URL` automatically. Saved runs — metadata *and* the
+heatmap PNG bytes — live in Postgres, so they survive redeploys; the free web tier
+has no persistent disk, which is exactly why the data goes in the DB, not a file.
+Locally, `DATABASE_URL` is unset and the same code uses a SQLite file (no setup).
 
 Two moving parts you provide: an **Infrared API key** and (free) **Render** +
 **Vercel** accounts. Mapbox/Cesium tokens are optional (the map degrades without
@@ -22,10 +28,11 @@ Config lives in [`render.yaml`](./render.yaml).
 
 1. Push this repo to GitHub.
 2. Render → **New → Blueprint** → pick the repo. It reads `render.yaml` and
-   creates the `coolspend-api` web service:
+   creates **both** the `coolspend-api` web service and a free `coolspend-db`
+   Postgres, wiring `DATABASE_URL` between them automatically:
    - build `pip install -r requirements-api.txt`
    - start `uvicorn coolspend.api_server:app --host 0.0.0.0 --port $PORT`
-   - mounts a 1 GB disk at `coolspend/var` for the SQLite DB + saved-run blobs.
+   - `DATABASE_URL` injected from `coolspend-db` (saved runs persist here).
 3. Set the secret env vars in the dashboard (left as `sync:false`):
    - `INFRARED_API_KEY` — your infrared.city key (**secret**; never commit it).
    - `CORS_ORIGINS` — your Vercel URL, e.g. `https://coolspend.vercel.app`
@@ -35,8 +42,9 @@ Config lives in [`render.yaml`](./render.yaml).
      the bundled showcase, mock for new draws). Default in the blueprint: `live`.
 4. Deploy. Verify: `https://<service>.onrender.com/api/health` → `{"status":"ok","backend":"live"}`.
 
-> Free instances sleep after inactivity (first request is slow) and the disk can
-> reset on redeploy. For durable storage see [§4](#4--durability-swap-when-you-outgrow-sqlite).
+> Free web instances sleep after inactivity (first request is slow). Saved runs are
+> safe across sleeps/redeploys because they live in Postgres, not on the disk. Note
+> Render's free Postgres is removed ~30 days after creation — see [§4](#4--durability-notes).
 
 ## 2 · Frontend → Vercel
 
@@ -64,20 +72,22 @@ On the live Vercel URL:
 
 If step 3 survives a refresh, the app remembers — persistence works end to end.
 
-## 4 · Durability swap (when you outgrow SQLite)
+## 4 · Durability notes
 
-SQLite-on-disk is the MVP. `coolspend/store.py` exposes env seams so production
-durability is a config change, not a rewrite:
+`coolspend/store.py` speaks **both** SQLite and Postgres off one `DATABASE_URL`
+seam — no code change to move between them:
 
-| Concern | MVP (default) | Production swap |
+| Concern | Local default | Production (Render blueprint) |
 |---|---|---|
-| Metadata DB | SQLite file (`DATABASE_URL` unset) | `DATABASE_URL=postgres://…` (Neon) — add a driver in `store.py` |
-| Blob store | local dir (`BLOB_DIR`) | `BLOB_DIR`/`BLOB_BASE_URL` → S3/R2-backed mount |
+| Metadata DB | SQLite file (`DATABASE_URL` unset) | Render Postgres (`DATABASE_URL` injected) |
+| Heatmap blobs | `blobs` table in the SQLite file | `blobs` table (BYTEA) in Postgres |
 
-The contract never changes: **metadata in rows, big files in the blob store, the
-row holds only the link.** (`store.py` raises `NotImplementedError` for a
-non-SQLite `DATABASE_URL` rather than silently writing local — wire the driver
-when you take that step.)
+The contract: **metadata in rows, heatmap bytes in the `blobs` table, the metadata
+row holds only the link.** Bytes live in the DB (not a file) precisely so saved
+runs survive a diskless free host. Two future swaps, both config-only: upgrade the
+Render Postgres `plan` past free (the free DB is deleted ~30 days after creation),
+or, if blob volume outgrows the DB, point `BLOB_BASE_URL` at an S3/R2 object store
+(the blob get/put functions in `store.py` are the single seam to change).
 
 ## Secrets — the one rule
 

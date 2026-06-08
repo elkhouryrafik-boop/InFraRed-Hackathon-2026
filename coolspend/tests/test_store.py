@@ -1,11 +1,18 @@
 """Tests for coolspend.store — the "make it remember" persistence layer.
 
-Verifies the slides' Exercise-A contract: metadata lives in a SQLite row, the
-heavy heatmap files live in a blob dir, and the row stores only the URL — never
-the bytes. Plus the save -> list -> get round-trip the save/load feature needs.
+Verifies the slides' Exercise-A contract: metadata lives in a row, the heavy
+heatmap bytes live in the blob store, and the metadata row holds only the URL —
+never the image bytes. Plus the save -> list -> get round-trip the save/load
+feature needs, and the dual SQLite/Postgres dialect routing.
+
+Durability change from the first MVP: the heatmap bytes now live IN the database
+(a `blobs` table), not on the local filesystem — a free-tier host has no persistent
+disk, so file-based blobs would not survive a redeploy. These tests run on SQLite;
+the Postgres code path is asserted by dialect/placeholder routing (no live server).
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -15,9 +22,8 @@ from coolspend import store
 
 @pytest.fixture()
 def temp_store(tmp_path, monkeypatch):
-    """Point the store at a temp SQLite db + temp blob dir for the test."""
+    """Point the store at a temp SQLite db for the test."""
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'test.db'}")
-    monkeypatch.setenv("BLOB_DIR", str(tmp_path / "blobs"))
     monkeypatch.setenv("BLOB_BASE_URL", "/blobs")
     return tmp_path
 
@@ -90,8 +96,9 @@ def test_save_list_get_roundtrip(temp_store):
     assert got["decision"]["configurations"][0]["tree_count"] == 18
 
 
-def test_blob_stores_link_not_bytes(temp_store):
-    """The DB row holds a URL; the PNG bytes live only on disk in the blob dir."""
+def test_blob_bytes_durable_in_db_link_in_row(temp_store):
+    """Heatmap bytes live in the DB blob store (durable on a diskless host) and are
+    retrievable by their URL path; the queryable metadata row holds only the link."""
     eval_dir = _fake_eval_dir(temp_store)
     run_id = store.save_run(
         name="bytes check",
@@ -101,15 +108,25 @@ def test_blob_stores_link_not_bytes(temp_store):
         eval_dir=eval_dir,
     )
 
-    # The PNG was copied OUT into the run's own blob dir...
-    blob_png = temp_store / "blobs" / "runs" / str(run_id) / "utci_baseline.png"
-    assert blob_png.is_file()
-    assert blob_png.read_bytes() == b"\x89PNG-baseline-bytes"
+    # The PNG bytes round-trip through the blob store under their URL path...
+    blob = store.get_blob(f"runs/{run_id}/utci_baseline.png")
+    assert blob is not None
+    content, mime = blob
+    assert content == b"\x89PNG-baseline-bytes"
+    assert mime == "image/png"
 
-    # ...and the raw DB file does NOT contain those PNG bytes (only a link).
-    db_bytes = (temp_store / "test.db").read_bytes()
-    assert b"PNG-baseline-bytes" not in db_bytes
-    assert f"/blobs/runs/{run_id}".encode() in db_bytes  # the link IS stored
+    # ...the queryable metadata row (list view) carries no image bytes, only KPIs...
+    row = store.list_runs()[0]
+    assert b"PNG-baseline-bytes" not in json.dumps(row).encode()
+
+    # ...and the reloaded payload references the blob by URL (the slides' "just a link").
+    got = store.get_run(run_id)
+    assert got["baselineImageUrl"] == f"/blobs/runs/{run_id}/utci_baseline.png"
+
+
+def test_get_blob_missing_returns_none(temp_store):
+    store.init_db()
+    assert store.get_blob("runs/123/nope.png") is None
 
 
 def test_get_missing_run_returns_none(temp_store):
@@ -135,10 +152,21 @@ def test_save_without_pngs_skips_images(temp_store, tmp_path):
     got = store.get_run(run_id)
     assert got["baselineImageUrl"] is None
     assert got["interventionImageUrl"] is None
+    # No blob was written for a run with no PNGs.
+    assert store.get_blob(f"runs/{run_id}/utci_baseline.png") is None
 
 
-def test_server_db_url_not_implemented(tmp_path, monkeypatch):
-    """The Postgres seam is declared but fails loudly rather than silently faking."""
-    monkeypatch.setenv("DATABASE_URL", "postgresql://user@host/db")
-    with pytest.raises(NotImplementedError):
-        store.init_db()
+def test_postgres_dialect_routing(monkeypatch):
+    """The Postgres seam is now wired (not a NotImplementedError stub): a postgres://
+    URL switches the dialect and the SQL placeholder style. Asserted as pure routing
+    so no live Postgres server is needed in CI."""
+    monkeypatch.setenv("DATABASE_URL", "postgresql://user@host:5432/db")
+    assert store._is_postgres() is True
+    assert store._q("SELECT 1 FROM runs WHERE id = ?") == "SELECT 1 FROM runs WHERE id = %s"
+
+    monkeypatch.setenv("DATABASE_URL", "postgres://user@host/db")  # short scheme too
+    assert store._is_postgres() is True
+
+    monkeypatch.setenv("DATABASE_URL", "sqlite:///local.db")
+    assert store._is_postgres() is False
+    assert store._q("WHERE id = ?") == "WHERE id = ?"
