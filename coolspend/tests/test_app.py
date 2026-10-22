@@ -18,6 +18,10 @@ import socket
 
 import pytest
 
+# The Gradio tier is optional (legacy HF-Space UI). Without it, skip rather
+# than error the whole suite at collection.
+pytest.importorskip("gradio")
+
 # Ensure INFRARED_API_KEY is never set during these tests (T-03-05 guard)
 os.environ.pop("INFRARED_API_KEY", None)
 os.environ.setdefault("INFRARED_BACKEND", "mock")

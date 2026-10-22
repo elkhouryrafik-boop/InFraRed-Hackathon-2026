@@ -1,0 +1,10 @@
+-r requirements-api.txt
+
+# Full test suite, including the legacy Gradio tier.
+-r requirements.txt
+
+pytest>=8
+httpx>=0.27          # starlette.testclient
+ladybug-core>=0.6    # nature_metrics: EPW-derived UTCI-hours
+ladybug-comfort>=0.4
+ruff>=0.6
