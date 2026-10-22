@@ -1,3 +1,18 @@
+---
+title: CoolSpend Tree Budget Optimizer
+emoji: 🌳
+colorFrom: green
+colorTo: blue
+sdk: gradio
+sdk_version: 4.44.1
+app_file: coolspend/app.py
+pinned: false
+---
+
+<!-- The block above configures the Hugging Face Space build (legacy Gradio UI).
+     GitHub renders it as a table; it is kept because tests/test_requirements.py
+     guards the Space's sdk_version pin against requirements.txt. -->
+
 # CoolSpend
 
 **3rd place — Infrared.city Buildathon 2026** (Tree Budget track). Solo entry.
