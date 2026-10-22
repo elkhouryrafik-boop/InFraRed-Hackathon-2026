@@ -98,17 +98,11 @@ UTCI / thermal comfort is the headline, used twice per single-site run in a meas
 
 Usable end-to-end. Building, ground, and weather context plus `run_area_and_wait` gave us a real before/after UTCI proof point. Three things tripped us up, all fixable. The weather endpoint started returning HTTP 500, so we added an EPW (Barcelona TMYx) fallback behind an `INFRARED_WEATHER_SOURCE=epw` toggle. The 512×512 UTCI grid spans a square bigger than the drawn polygon with the valid cells in one corner, so we had to crop to the non-NaN bounding box, or demand scattered to the wrong coordinates and placement returned zero trees. And the building layer is live-only, which pushed us to an OSM-buildings fallback for offline runs. Clearer grid-extent and CRS docs, a built-in EPW toggle, and offline building footprints would have helped most.
 
-### Prize account email
-```
-elkhouryrafik@gmail.com
-```
-
 ---
 
-## Before you submit — 3 open items
+## Before you submit — 2 open items
 
 1. **Challenge track** — pick the real dropdown option (Climate / Heat / Sustainability family).
 2. **Live demo URL** — confirm whether the HF Space is live; paste or leave blank.
-3. **Team members** — confirm solo vs. add names.
 
 *Numbers are exact from PAPER.md (Section 6) and `web/public/citywide_plan.json`. All cooling figures are measured on live Infrared UTCI, cached by geometry hash.*

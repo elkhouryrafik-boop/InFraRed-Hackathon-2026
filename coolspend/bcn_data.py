@@ -37,7 +37,7 @@ CACHE_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_TTL_SEC = 30 * 24 * 3600  # inventory updates weekly; 30-day cache is safe
 
 CKAN_BASE = "https://opendata-ajuntament.barcelona.cat/data/api/3/action"
-USER_AGENT = "CoolSpend-Buildathon/2.0 (mailto:elkhouryrafik@gmail.com)"
+USER_AGENT = "CoolSpend-Buildathon/2.0 (+https://github.com/elkhouryrafik-boop/InFraRed-Hackathon-2026)"
 
 # Stable dataset slugs (DATA_SOURCES.md §A). UUIDs rotate — resolve at runtime.
 INVENTORY_SLUGS = ("arbrat-viari", "arbrat-zona", "arbrat-parcs")

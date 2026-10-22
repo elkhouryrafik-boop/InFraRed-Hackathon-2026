@@ -69,7 +69,7 @@ CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 CACHE_TTL_SEC = 30 * 24 * 3600  # Padró is annual; 30-day cache is conservative.
 
-USER_AGENT = "CoolSpend-Buildathon/2.0 (mailto:elkhouryrafik@gmail.com)"
+USER_AGENT = "CoolSpend-Buildathon/2.0 (+https://github.com/elkhouryrafik-boop/InFraRed-Hackathon-2026)"
 _HTTP_TIMEOUT = (10.0, 300.0)
 
 # Population dataset (CKAN slug is stable; resource UUIDs rotate, resolved at runtime).

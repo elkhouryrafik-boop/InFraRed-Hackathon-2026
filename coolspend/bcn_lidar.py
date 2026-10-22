@@ -43,7 +43,7 @@ RASTER_URL = (
 )
 ATTRIBUTION = "ICGC + CREAF, CC BY 4.0 (Variables biofísiques de l'arbrat de Catalunya, 2016-2017)"
 _HTTP_TIMEOUT = (10.0, 600.0)
-_USER_AGENT = "CoolSpend-Buildathon/2.0 (mailto:elkhouryrafik@gmail.com)"
+_USER_AGENT = "CoolSpend-Buildathon/2.0 (+https://github.com/elkhouryrafik-boop/InFraRed-Hackathon-2026)"
 
 
 def ensure_raster(auto_download: bool = True) -> bool:
