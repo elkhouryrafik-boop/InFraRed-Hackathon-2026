@@ -545,7 +545,7 @@ def _build_baseline_geometry() -> dict:
 
 def validate_top3_with_infrared(
     top3: list[dict],
-    budget: "SimBudget | None" = None,   # type: ignore[name-defined]
+    budget: "SimBudget | None" = None,   # type: ignore[name-defined]  # noqa: F821
 ) -> list[dict]:
     """Validate Top-3 surrogate configs with real (or mock) Infrared UTCI calls.
 

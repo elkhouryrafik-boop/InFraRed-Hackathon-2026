@@ -87,7 +87,7 @@ def _utci_colormap():
 
 def _make_ground_plane(
     width: float, depth: float, subdiv: int = 2
-) -> "trimesh.Trimesh":
+) -> "trimesh.Trimesh":  # noqa: F821
     """Flat ground quad at z=0, subdivided for vertex coloring."""
     import trimesh
     # Simple triangulated quad
@@ -103,7 +103,7 @@ def _make_ground_plane(
     return mesh
 
 
-def _make_building_mesh(coordinates: list[float], indices: list[int] | None) -> "trimesh.Trimesh":
+def _make_building_mesh(coordinates: list[float], indices: list[int] | None) -> "trimesh.Trimesh":  # noqa: F821
     """Convert Infrared DotBimMesh (flat coords + triangle indices) to trimesh."""
     import trimesh
     verts = np.array(coordinates, dtype=float).reshape(-1, 3)
@@ -120,7 +120,7 @@ def _make_tree_sphere(
     x: float, y: float, z: float,
     crown_radius: float, trunk_height: float,
     color: list[float] = COLOR_CANOPY,
-) -> "trimesh.Trimesh":
+) -> "trimesh.Trimesh":  # noqa: F821
     """Create a tree as a trunk cylinder + canopy sphere."""
     import trimesh
     # Trunk: thin cylinder from ground to crown base
@@ -147,7 +147,7 @@ def _make_tree_sphere(
 
 
 def _apply_utci_to_ground(
-    ground: "trimesh.Trimesh",
+    ground: "trimesh.Trimesh",  # noqa: F821
     utci_grid: list[list[float]] | None,
     width: float, depth: float,
 ) -> None:
