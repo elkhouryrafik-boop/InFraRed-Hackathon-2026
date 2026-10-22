@@ -4,43 +4,51 @@
 __pycache__/
 *.pyc
 *.egg-info/
+.pytest_cache/
+.ruff_cache/
 
 # ─── Generated / cached artifacts ─────────────────────────
 outputs/
 coolspend/outputs/
-coolspend/cache/          # large LiDAR/OSM/Infrared caches; regenerated on demand
+# large LiDAR/OSM/Infrared caches, regenerated on demand
+coolspend/cache/
 # runtime persistence: SQLite runs db + saved-run blobs
 coolspend/var/
+*.db
+*.db-wal
+*.db-shm
 .planning/spikes/*/audit_record.json
 
 # ─── Node ─────────────────────────────────────────────────
 node_modules/
+web/dist/
+web/.vercel/
+*.tsbuildinfo
 
 # ─── Transient screenshots / Playwright captures ──────────
-# Verification & debug screenshots are throwaway — never commit them.
+# verification and debug screenshots are throwaway
 *.png
 *.jpeg
 *.jpg
-!video/public/**          # except real video assets
-!web/public/**            # except real web assets
+# ...except real shipped assets
+!video/public/**
+!web/public/**
+!docs/img/**
 .playwright-mcp/
 web/.playwright-mcp/
-web/public/eval_bundle/   # per-request evaluation bundle (written at runtime)
+web/test-results/
+# per-request evaluation bundle (written at runtime, never source)
+web/public/eval_bundle/
 
 # ─── Logs ─────────────────────────────────────────────────
 *.log
-
-# scratch dev artifacts at repo root (screenshots, ad-hoc logs)
 /*.png
 /*.jpeg
 /*.jpg
-/*.log
 
-# nested duplicate project copy — never publish
+# ─── Never publish ────────────────────────────────────────
+# nested duplicate project copy
 hackathon_2/
-# regenerable python-side caches (incl. a 166MB LiDAR .tif > GitHub 100MB limit)
-coolspend/cache/
-coolspend/outputs/
-# duplicate of coolspend-explainer.mp4 (chooser uses that one)
+# duplicate of the explainer mp4 the chooser actually uses
 web/public/coolspend-explainer-10min.mp4
 video/out/coolspend-explainer-10min.mp4
